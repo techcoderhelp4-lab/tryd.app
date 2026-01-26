@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../widgets/gradient_button.dart';
-import 'home_screen.dart';
+import '../../../../widgets/gradient_button.dart';
+import "../../home/presentation/home_screen.dart";
 
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;

@@ -10,6 +10,7 @@ class GradientButton extends StatelessWidget {
   final double? width;
   final double? height;
   final bool showIcon;
+  final TextStyle? textStyle;
 
   const GradientButton({
     super.key,
@@ -18,6 +19,7 @@ class GradientButton extends StatelessWidget {
     this.width,
     this.height,
     this.showIcon = true,
+    this.textStyle,
   });
 
   static const Color _primaryColor = Color(0xFF900EBF);
@@ -86,7 +88,7 @@ class GradientButton extends StatelessWidget {
                         Center(
                           child: Text(
                             text,
-                            style: GoogleFonts.lexendDeca(
+                            style: textStyle ?? GoogleFonts.lexendDeca(
                               fontSize: 19,
                               fontWeight: FontWeight.w600,
                               height: 1.26,

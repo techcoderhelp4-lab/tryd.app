@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../widgets/gradient_button.dart';
-import 'signup_screen.dart';
-import 'home_screen.dart';
+import '../../../../widgets/gradient_button.dart';
+import "../../auth/presentation/signup_screen.dart";
+import "../../home/presentation/home_screen.dart";
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

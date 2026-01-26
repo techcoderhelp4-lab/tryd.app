@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../widgets/gradient_button.dart';
-import 'login_screen.dart';
+import '../../../../../../../widgets/gradient_button.dart';
+import '../../auth/presentation/login_screen.dart';
 
 class StartScreen extends StatelessWidget {
   const StartScreen({super.key});
@@ -47,14 +48,14 @@ class StartScreen extends StatelessWidget {
 
   Widget _buildContentSection(BuildContext context, double screenWidth) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.082),
+      padding: EdgeInsets.symmetric(horizontal: 0.082.sw),
       child: Column(
         children: [
-          const SizedBox(height: 16),
+          SizedBox(height: 16.h),
           _buildHeadline(),
-          const SizedBox(height: 35),
+          SizedBox(height: 35.h),
           _buildSubtitle(),
-          const SizedBox(height: 40),
+          SizedBox(height: 40.h),
           _buildButton(context),
           const Spacer(),
         ],
@@ -67,7 +68,7 @@ class StartScreen extends StatelessWidget {
       'Every step brings you closer to your goals and greater rewards.',
       textAlign: TextAlign.center,
       style: GoogleFonts.lexendDeca(
-        fontSize: 24,
+        fontSize: 24.sp,
         fontWeight: FontWeight.w600,
         height: 1.25,
         color: _primaryTextColor,
@@ -81,7 +82,7 @@ class StartScreen extends StatelessWidget {
       'This productive tool is designed to help you better manage your task project-wise conveniently!',
       textAlign: TextAlign.center,
       style: GoogleFonts.poppins(
-        fontSize: 14,
+        fontSize: 14.sp,
         fontWeight: FontWeight.w400,
         height: 1.5,
         color: _secondaryTextColor,

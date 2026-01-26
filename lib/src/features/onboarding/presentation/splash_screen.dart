@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:math' as math;
 import 'start_screen.dart';
 
@@ -107,7 +108,7 @@ class _SplashScreenState extends State<SplashScreen>
             },
             child: Image.asset(
               'assets/images/logo-full-white.png',
-              width: MediaQuery.of(context).size.width * _logoWidthRatio,
+              width: 0.55.sw,
               fit: BoxFit.contain,
               filterQuality: FilterQuality.high,
               isAntiAlias: true,
