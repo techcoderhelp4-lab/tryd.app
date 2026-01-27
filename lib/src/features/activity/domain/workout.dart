@@ -6,10 +6,16 @@ part 'workout.g.dart';
 class Workout {
   final String id;
   final String type;
-  final int duration; // minutes
+  final int duration; // total seconds
   final double calories;
   final DateTime date;
   final double? distance;
+  
+  // HIIT/Interval specific
+  final int? exercises;
+  final int? rounds;
+  final int? workDuration;
+  final int? restDuration;
 
   Workout({
     required this.id,
@@ -18,6 +24,10 @@ class Workout {
     required this.calories,
     required this.date,
     this.distance,
+    this.exercises,
+    this.rounds,
+    this.workDuration,
+    this.restDuration,
   });
 
   factory Workout.fromJson(Map<String, dynamic> json) => _$WorkoutFromJson(json);

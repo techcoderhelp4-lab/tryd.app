@@ -42,22 +42,21 @@ final activityListProvider = AutoDisposeFutureProvider<List<Activity>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ActivityListRef = AutoDisposeFutureProviderRef<List<Activity>>;
-String _$workoutListHash() => r'5dba7aa5d12a16d4545f8d1990ff7c2d941ca381';
+String _$workoutHistoryHash() => r'326fb04e1e9a79f73334f0f78d469c7493063329';
 
-/// See also [workoutList].
-@ProviderFor(workoutList)
-final workoutListProvider = AutoDisposeFutureProvider<List<Workout>>.internal(
-  workoutList,
-  name: r'workoutListProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$workoutListHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// See also [WorkoutHistory].
+@ProviderFor(WorkoutHistory)
+final workoutHistoryProvider =
+    AutoDisposeAsyncNotifierProvider<WorkoutHistory, List<Workout>>.internal(
+      WorkoutHistory.new,
+      name: r'workoutHistoryProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$workoutHistoryHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef WorkoutListRef = AutoDisposeFutureProviderRef<List<Workout>>;
+typedef _$WorkoutHistory = AutoDisposeAsyncNotifier<List<Workout>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

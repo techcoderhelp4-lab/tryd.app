@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/network/api_constants.dart';
 import '../../../../core/network/api_client.dart';
 import '../domain/activity.dart';
@@ -7,54 +9,54 @@ import '../domain/workout.dart';
 
 part 'activity_repository.g.dart';
 
+const String kWorkoutHistoryKey = 'workoutHistory';
+const String kActivityHistoryKey = 'activityHistory';
+
 class ActivityRepository {
   final Dio _dio;
 
   ActivityRepository(this._dio);
 
   Future<List<Activity>> getUserActivities() async {
-    try {
-      final response = await _dio.get(ApiConstants.activities);
-      final List<dynamic> data = response.data['data'] ?? response.data;
-      return data.map((json) => Activity.fromJson(json)).toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
 
-  Future<Activity> logActivity(Activity activity) async {
-    try {
-      final response = await _dio.post(
-        ApiConstants.activities,
-        data: activity.toJson(),
-      );
-      return Activity.fromJson(response.data);
-    } catch (e) {
-      rethrow;
-    }
+    return [
+      Activity(id: '1', type: 'run', distance: 2.5, duration: 1245, calories: 300, date: DateTime.now().subtract(const Duration(days: 1))),
+      Activity(id: '2', type: 'run', distance: 3.0, duration: 1500, calories: 350, date: DateTime.now().subtract(const Duration(days: 3))),
+    ];
   }
 
   Future<List<Workout>> getWorkoutHistory() async {
     try {
-      final response = await _dio.get(ApiConstants.workouts);
-      final List<dynamic> data = response.data['data'] ?? response.data;
-      return data.map((json) => Workout.fromJson(json)).toList();
+      final prefs = await SharedPreferences.getInstance();
+      final historyJson = prefs.getString(kWorkoutHistoryKey);
+      if (historyJson == null) return [];
+      
+      final List<dynamic> decoded = jsonDecode(historyJson);
+      return decoded.map((json) {
+        // Handle migration if needed, or just parse
+        // Ensure id exists
+        if (json['id'] == null) json['id'] = DateTime.now().millisecondsSinceEpoch.toString();
+        if (json['type'] == null) json['type'] = 'hiit';
+        if (json['duration'] == null && json['totalTime'] != null) json['duration'] = json['totalTime']; // Map totalTime to duration
+        if (json['calories'] == null) json['calories'] = 0.0;
+        
+        return Workout.fromJson(json);
+      }).toList();
     } catch (e) {
-      rethrow;
+      return [];
     }
   }
 
-  Future<Workout> logWorkout(Workout workout) async {
-    try {
-      final response = await _dio.post(
-        ApiConstants.workouts,
-        data: workout.toJson(),
-      );
-      return Workout.fromJson(response.data);
-    } catch (e) {
-      rethrow;
-    }
+  Future<void> saveWorkout(Workout workout) async {
+    final prefs = await SharedPreferences.getInstance();
+    final history = await getWorkoutHistory();
+    final newHistory = [workout, ...history];
+    if (newHistory.length > 50) newHistory.removeRange(50, newHistory.length);
+    
+    await prefs.setString(kWorkoutHistoryKey, jsonEncode(newHistory.map((e) => e.toJson()).toList()));
   }
+
+  // Combined stream or future could go here
 }
 
 @riverpod
@@ -70,7 +72,18 @@ Future<List<Activity>> activityList(ActivityListRef ref) {
 }
 
 @riverpod
-Future<List<Workout>> workoutList(WorkoutListRef ref) {
-  final repository = ref.watch(activityRepositoryProvider);
-  return repository.getWorkoutHistory();
+class WorkoutHistory extends _$WorkoutHistory {
+  @override
+  Future<List<Workout>> build() async {
+    final repository = ref.watch(activityRepositoryProvider);
+    return repository.getWorkoutHistory();
+  }
+
+  Future<void> addWorkout(Workout workout) async {
+    final repository = ref.read(activityRepositoryProvider);
+    await repository.saveWorkout(workout);
+    // Invalidate self to refresh the list
+    ref.invalidateSelf();
+    await future;
+  }
 }
