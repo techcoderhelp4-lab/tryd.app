@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../../../widgets/custom_arrow_icon.dart';
+import '../../../../widgets/gradient_button.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../activity/presentation/running_screen.dart';
 import '../../activity/presentation/workout_screen.dart';
@@ -21,12 +24,13 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
   final int _selectedIndex = 2; // Rewards tab
   String _selectedCategory = 'All';
 
-  final List<Map<String, dynamic>> _categories = [
-    {'name': 'All', 'icon': null},
-    {'name': 'Cofee', 'icon': 'assets/images/cup.svg'},
+  List<Map<String, dynamic>> get _categories => [
+    {'name': 'All', 'icon': 'assets/images/square.svg'},
+    {'name': 'Coffee', 'icon': 'assets/images/teacup.svg'},
     {'name': 'Shop', 'icon': 'assets/images/basket.svg'},
     {'name': 'Food', 'icon': 'assets/images/burger.svg'},
     {'name': 'Gym', 'icon': 'assets/images/gym.svg'},
+    {'name': 'Books', 'icon': 'assets/images/books.svg'},
   ];
 
   final List<Map<String, dynamic>> _rewards = [
@@ -60,6 +64,30 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     },
   ];
 
+  final List<Map<String, dynamic>> _redemptions = [
+    {
+      'title': 'Nike 20% Discount',
+      'date': 'Requested on Oct 9, 2025',
+      'points': '2,000 points',
+      'status': 'pending',
+      'message': 'Your request is being reviewed. You\'ll be notified once approved.',
+    },
+    {
+      'title': 'Starbucks Coffee',
+      'date': 'Requested on Oct 5, 2025',
+      'points': '500 points',
+      'status': 'approved',
+      'code': 'STAR-XY89-2024',
+    },
+    {
+      'title': 'Gym Day Pass',
+      'date': 'Requested on Sep 28, 2025',
+      'points': '1,500 points',
+      'status': 'approved',
+      'code': 'GYM-AB12-2024',
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,27 +107,41 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
           
           SafeArea(
             bottom: false,
-            child: Column(
-              children: [
-                SizedBox(height: 28.h),
-                _buildHeader(context),
-                SizedBox(height: 20.h),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.only(bottom: 120.h),
-                    child: Column(
-                      children: [
-                        _buildPointsSection(),
-                        SizedBox(height: 30.h),
-                        _buildTabs(),
-                        SizedBox(height: 30.h),
-                        _buildCategories(),
-                        SizedBox(height: 30.h),
-                        _buildRewardsList(),
-                      ],
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      SizedBox(height: 28.h),
+                      _buildHeader(context),
+                      SizedBox(height: 20.h),
+                      _buildPointsSection(),
+                      SizedBox(height: 30.h),
+                    ],
+                  ),
+                ),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _StickyFiltersDelegate(
+                    minHeight: _selectedTabIndex == 0 ? 169.h : 80.h,
+                    maxHeight: _selectedTabIndex == 0 ? 170.h : 81.h,
+                    child: Container(
+                      child: Column(
+                        children: [
+                          _buildTabs(),
+                          if (_selectedTabIndex == 0) ...[
+                            SizedBox(height: 20.h),
+                            _buildCategories(),
+                            SizedBox(height: 15.h),
+                          ] else
+                            SizedBox(height: 30.h),
+                        ],
+                      ),
                     ),
                   ),
                 ),
+                _buildRewardsList(),
               ],
             ),
           ),
@@ -217,10 +259,12 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
+  int _selectedTabIndex = 0;
+
   Widget _buildTabs() {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 26.w),
-      height: 57.h,
+      height: 50.h,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15.r),
@@ -233,44 +277,86 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
           ),
         ],
       ),
-      child: Padding(
-        padding: EdgeInsets.all(8.w),
-        child: Row(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF910EBF), Color(0xFFFD3B6E)],
+      padding: EdgeInsets.all(8.w),
+      child: Row(
+        children: [
+          Expanded(
+            child: _selectedTabIndex == 0
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return GradientButton(
+                        text: 'Available Rewards',
+                        onPressed: () {}, // Already selected
+                        width: constraints.maxWidth,
+                        height: constraints.maxHeight,
+                        showIcon: false,
+                        textStyle: GoogleFonts.poppins(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      );
+                    },
+                  )
+                : GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedTabIndex = 0;
+                      });
+                    },
+                    child: Container(
+                      color: Colors.transparent,
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Available Rewards',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF8B88B5),
+                        ),
+                      ),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(9.r),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Available Rewards',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.white,
+          ),
+          Expanded(
+            child: _selectedTabIndex == 1
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return GradientButton(
+                        text: 'My Redemptions',
+                        onPressed: () {}, // Already selected
+                        width: constraints.maxWidth,
+                        height: constraints.maxHeight,
+                        showIcon: false,
+                        textStyle: GoogleFonts.poppins(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      );
+                    },
+                  )
+                : GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedTabIndex = 1;
+                      });
+                    },
+                    child: Container(
+                      color: Colors.transparent,
+                      alignment: Alignment.center,
+                      child: Text(
+                        'My Redemptions',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF8B88B5),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Container(
-                alignment: Alignment.center,
-                child: Text(
-                  'My Redemptions',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -281,6 +367,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
       child: ListView.separated(
         padding: EdgeInsets.symmetric(horizontal: 26.w),
         scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
         itemCount: _categories.length,
         separatorBuilder: (_, __) => SizedBox(width: 12.w),
         itemBuilder: (context, index) {
@@ -300,13 +387,6 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(15.r),
                 border: isSelected ? Border.all(color: const Color(0xFF900EBF)) : null,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 32,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -316,10 +396,6 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       category['icon'],
                       width: 28.w,
                       height: 28.w,
-                      colorFilter: ColorFilter.mode(
-                        isSelected ? const Color(0xFF900EBF) : const Color(0xFFFFD66B),
-                        BlendMode.srcIn,
-                      ),
                     )
                   else
                     Padding(
@@ -349,147 +425,690 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
   }
 
   Widget _buildRewardsList() {
-    return ListView.separated(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 0),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _rewards.length,
-      separatorBuilder: (_, __) => SizedBox(height: 16.h),
-      itemBuilder: (context, index) {
-        final reward = _rewards[index];
-        return Container(
-          height: 109.h,
-          width: 369.w,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15.r),
-            border: Border.all(color: const Color(0xFFF5F3F3)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 32,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    final items = _selectedTabIndex == 0 ? _rewards : _redemptions;
+    return SliverPadding(
+      padding: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 120.h),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            if (index.isOdd) return SizedBox(height: 16.h);
+            final itemIndex = index ~/ 2;
+            
+            if (_selectedTabIndex == 0) {
+              return _buildRewardCard(_rewards[itemIndex]);
+            } else {
+              return _buildRedemptionCard(_redemptions[itemIndex]);
+            }
+          },
+          childCount: items.length * 2 - 1,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRewardCard(Map<String, dynamic> reward) {
+    return Container(
+      height: 109.h,
+      width: 369.w,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15.r),
+        border: Border.all(color: const Color(0xFFF5F3F3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 32,
+            offset: const Offset(0, 4),
           ),
-          child: Stack(
-            children: [
-              Padding(
-                padding: EdgeInsets.all(12.w),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+        ],
+      ),
+      child: Stack(
+        children: [
+          Padding(
+            padding: EdgeInsets.all(12.w),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 68.w,
+                  height: 68.w,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(17.r),
+                    image: DecorationImage(
+                      image: AssetImage(reward['image']),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 16.w),
+                SizedBox(
+                  width: 160.w,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        reward['title'],
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.black,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        reward['subtitle'],
+                        style: GoogleFonts.lexendDeca(
+                          fontSize: 11.sp,
+                          color: const Color(0xFF8B88B5),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 8.h),
+                      Row(
+                        children: [
+                          Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
+                          SizedBox(width: 4.w),
+                          Text(
+                            reward['points'],
+                            style: GoogleFonts.lexendDeca(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                            ),
+                          ),
+                          SizedBox(width: 4.w),
+                          Text(
+                            'points',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF8B88B5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            right: 15.w,
+            bottom: 11.h,
+            child: GestureDetector(
+              onTap: () {
+                _showConfirmRedemptionDialog(context, reward);
+              },
+              child: Container(
+                width: 90.w,
+                height: 37.h,
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFF900EBF)),
+                  borderRadius: BorderRadius.circular(9.r),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Redeem',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF900EBF),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (reward['manual'] == true)
+            Positioned(
+              right: 9.w,
+              top: 9.h,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8337F).withOpacity(0.08),
+                  border: Border.all(color: const Color(0xFFE8337F).withOpacity(0.22)),
+                  borderRadius: BorderRadius.circular(22.r),
+                ),
+                child: Text(
+                  'Manual Approval',
+                  style: GoogleFonts.poppins(
+                    fontSize: 9.sp,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRedemptionCard(Map<String, dynamic> item) {
+    if (item['status'] == 'pending') {
+      return Container(
+        width: 372.w,
+        padding: EdgeInsets.all(22.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7ED),
+          border: Border.all(color: const Color(0xFFECB953).withOpacity(0.74)),
+          borderRadius: BorderRadius.circular(22.r),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+             Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                 Text(
+                   item['title'],
+                   style: GoogleFonts.lexendDeca(
+                     fontSize: 14.sp,
+                     fontWeight: FontWeight.w600,
+                     color: Colors.black,
+                   ),
+                 ),
+                 SizedBox(height: 4.h),
+                 Text(
+                   item['date'],
+                   style: GoogleFonts.poppins(
+                     fontSize: 11.sp,
+                     color: const Color(0xFF818181),
+                   ),
+                 ),
+                 SizedBox(height: 4.h),
+                 Row(
+                   children: [
+                     Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
+                     SizedBox(width: 3.w),
+                     Text(
+                       item['points'],
+                       style: GoogleFonts.poppins(
+                         fontSize: 13.sp,
+                         fontWeight: FontWeight.w500,
+                         color: Colors.black,
+                       ),
+                     ),
+                   ],
+                 ),
+               ],
+             ),
+             SizedBox(height: 16.h),
+             Container(
+               padding: EdgeInsets.all(10.w),
+               decoration: BoxDecoration(
+                 border: Border.all(color: const Color(0xFFECB953).withOpacity(0.9)),
+                 borderRadius: BorderRadius.circular(6.r),
+               ),
+               child: Row(
+               crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                   Icon(Icons.access_time, color: const Color(0xFFDC931F), size: 20.sp),
+                   SizedBox(width: 8.w),
+                   Expanded(
+                     child: Text(
+                       item['message'],
+                       style: GoogleFonts.poppins(
+                         fontSize: 12.sp,
+                         color: const Color(0xFFDC931F),
+                         height: 1.2,
+                       ),
+                     ),
+                   ),
+                 ],
+               ),
+             ),
+          ],
+        ),
+      );
+    } else {
+      return Container(
+        width: 372.w,
+        padding: EdgeInsets.all(22.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFF5F3F3)),
+          borderRadius: BorderRadius.circular(15.r),
+          boxShadow: [
+             BoxShadow(
+               color: Colors.black.withOpacity(0.04),
+               blurRadius: 32,
+               offset: const Offset(0, 4),
+             ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+             Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                 Text(
+                   item['title'],
+                   style: GoogleFonts.lexendDeca(
+                     fontSize: 14.sp,
+                     fontWeight: FontWeight.w600,
+                     color: Colors.black,
+                   ),
+                 ),
+                 SizedBox(height: 4.h),
+                 Text(
+                   item['date'],
+                   style: GoogleFonts.poppins(
+                     fontSize: 11.sp,
+                     color: const Color(0xFF818181),
+                   ),
+                 ),
+                 SizedBox(height: 4.h),
+                 Row(
+                   children: [
+                     Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
+                     SizedBox(width: 3.w),
+                     Text(
+                       item['points'],
+                       style: GoogleFonts.poppins(
+                         fontSize: 13.sp,
+                         fontWeight: FontWeight.w500,
+                         color: Colors.black,
+                       ),
+                     ),
+                   ],
+                 ),
+               ],
+             ),
+             SizedBox(height: 16.h),
+             CustomPaint(
+               foregroundPainter: DashedRectPainter(
+                 color: const Color(0xFFF7A1BA), 
+                 strokeWidth: 1.0, 
+                 gap: 5.0,
+                 borderRadius: 13.r,
+               ),
+               child: Container(
+                 height: 52.h,
+                 padding: EdgeInsets.symmetric(horizontal: 16.w),
+                 decoration: BoxDecoration(
+                   color: Colors.white,
+                   borderRadius: BorderRadius.circular(13.r),
+                 ),
+                 child: Row(
+                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                   children: [
+                     Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       mainAxisAlignment: MainAxisAlignment.center,
+                       children: [
+                         Text(
+                           'Your Coupon Code',
+                           style: GoogleFonts.poppins(
+                             fontSize: 11.sp,
+                             fontWeight: FontWeight.w400,
+                             color: const Color(0xFF818181),
+                           ),
+                         ),
+                         Text(
+                           item['code'],
+                           style: GoogleFonts.lexendDeca(
+                             fontSize: 14.sp,
+                             fontWeight: FontWeight.w600,
+                             color: Colors.black,
+                           ),
+                         ),
+                       ],
+                     ),
+                     Container(
+                       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                       decoration: BoxDecoration(
+                         color: const Color(0xFFF7A1BA).withOpacity(0.15),
+                         borderRadius: BorderRadius.circular(6.r),
+                       ),
+                       child: Text(
+                         'Copy',
+                         style: GoogleFonts.poppins(
+                           fontSize: 11.sp,
+                           fontWeight: FontWeight.w600,
+                           color: const Color(0xFFF83A71),
+                         ),
+                       ),
+                     ),
+                   ],
+                 ),
+               ),
+             ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _showConfirmRedemptionDialog(BuildContext context, Map<String, dynamic> reward) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22.r),
+          ),
+          child: Container(
+            width: 330.w,
+            padding: EdgeInsets.all(22.w),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22.r),
+              boxShadow: [
+                 BoxShadow(
+                   color: Colors.black.withOpacity(0.25),
+                   blurRadius: 6.2,
+                   offset: const Offset(0, 4),
+                 ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Confirm Redemption',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                SizedBox(height: 20.h),
+                Container(
+                  padding: EdgeInsets.all(16.w),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF5FE),
+                    border: Border.all(color: const Color(0xFF96AAD2).withOpacity(0.22)),
+                    borderRadius: BorderRadius.circular(11.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 6.2,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 46.w,
+                            height: 46.w,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF97316),
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                            child: Center(
+                              child: Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 24.sp),
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  reward['title'],
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 15.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                Text(
+                                  reward['subtitle'],
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w400,
+                                    color: const Color(0xFF8B88B5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                       SizedBox(height: 12.h),
+                       Container(
+                         height: 1,
+                         color: Colors.black.withOpacity(0.1),
+                       ),
+                       SizedBox(height: 12.h),
+                       Row(
+                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                         children: [
+                           Text(
+                             'Points Required',
+                             style: GoogleFonts.poppins(
+                               fontSize: 11.sp,
+                               fontWeight: FontWeight.w400,
+                               color: const Color(0xFF8B88B5),
+                             ),
+                           ),
+                           Row(
+                             children: [
+                               Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
+                               SizedBox(width: 4.w),
+                               Text(
+                                 reward['points'],
+                                 style: GoogleFonts.poppins(
+                                   fontSize: 16.sp,
+                                   fontWeight: FontWeight.w600,
+                                   color: Colors.black,
+                                 ),
+                               ),
+                             ],
+                           ),
+                         ],
+                       ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 16.h),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(11.r),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                       Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                           Text(
+                             'Current Balance',
+                             style: GoogleFonts.poppins(
+                               fontSize: 11.sp,
+                               fontWeight: FontWeight.w400,
+                               color: Colors.black,
+                             ),
+                           ),
+                           Text(
+                             'After Redemption',
+                             style: GoogleFonts.poppins(
+                               fontSize: 11.sp,
+                               fontWeight: FontWeight.w400,
+                               color: Colors.black,
+                             ),
+                           ),
+                         ],
+                       ),
+                       Column(
+                         crossAxisAlignment: CrossAxisAlignment.end,
+                         children: [
+                           Text(
+                             '12,450 pts',
+                             style: GoogleFonts.poppins(
+                               fontSize: 11.sp,
+                               fontWeight: FontWeight.w500,
+                               color: Colors.black,
+                             ),
+                           ),
+                           Text(
+                             '10,450 pts',
+                             style: GoogleFonts.poppins(
+                               fontSize: 11.sp,
+                               fontWeight: FontWeight.w500,
+                               color: const Color(0xFFF83A71),
+                             ),
+                           ),
+                         ],
+                       ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 24.h),
+                Row(
                   children: [
-                    Container(
-                      width: 68.w,
-                      height: 68.w,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(17.r),
-                        image: DecorationImage(
-                          image: AssetImage(reward['image']),
-                          fit: BoxFit.cover,
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          height: 37.h,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F4F6), // Updated bg color
+                            borderRadius: BorderRadius.circular(9.r),
+                            border: Border.all(color: const Color(0xFF900EBF)),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF838383),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    SizedBox(width: 16.w),
-                    Container(
-                      width: 160.w, // Reduced width to avoid overlap
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            reward['title'],
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                           // Handle redeem logic
+                           Navigator.pop(context);
+                        },
+                        child: Container(
+                          height: 37.h,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF900EBF),
+                            borderRadius: BorderRadius.circular(9.r),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Confirm Redeem',
                             style: GoogleFonts.poppins(
-                              fontSize: 12.sp, // Smaller font
-                              fontWeight: FontWeight.w400,
-                              color: Colors.black,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                          Text(
-                            reward['subtitle'],
-                            style: GoogleFonts.lexendDeca(
-                              fontSize: 11.sp, // Smaller subtitle
-                              color: const Color(0xFF8B88B5),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 8.h),
-                          Row(
-                            children: [
-                              Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
-                              SizedBox(width: 4.w),
-                              Text(
-                                reward['points'],
-                                style: GoogleFonts.lexendDeca(
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              SizedBox(width: 4.w),
-                              Text(
-                                'points',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12.sp,
-                                  color: const Color(0xFF8B88B5),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              Positioned(
-                right: 15.w,
-                bottom: 11.h,
-                child: Container(
-                  width: 90.w,
-                  height: 37.h,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFF900EBF)),
-                    borderRadius: BorderRadius.circular(9.r),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    'Redeem',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF900EBF),
-                    ),
-                  ),
-                ),
-              ),
-              if (reward['manual'] == true)
-                Positioned(
-                  right: 9.w,
-                  top: 9.h,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8337F).withOpacity(0.08),
-                      border: Border.all(color: const Color(0xFFE8337F).withOpacity(0.22)),
-                      borderRadius: BorderRadius.circular(22.r),
-                    ),
-                    child: Text(
-                      'Manual Approval',
-                      style: GoogleFonts.poppins(
-                        fontSize: 9.sp, // Smaller font
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
         );
       },
     );
+  }
+}
+
+class _StickyFiltersDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double minHeight;
+  final double maxHeight;
+
+  _StickyFiltersDelegate({
+    required this.child,
+    required this.minHeight,
+    required this.maxHeight,
+  });
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: shrinkOffset > 0 ? Colors.white : Colors.transparent,
+      child: SizedBox.expand(child: child),
+    );
+  }
+
+  @override
+  double get maxExtent => maxHeight;
+
+  @override
+  double get minExtent => minHeight;
+
+  @override
+  bool shouldRebuild(_StickyFiltersDelegate oldDelegate) {
+    return maxHeight != oldDelegate.maxHeight ||
+        minHeight != oldDelegate.minHeight ||
+        child != oldDelegate.child;
+  }
+}
+
+class DashedRectPainter extends CustomPainter {
+  final double strokeWidth;
+  final Color color;
+  final double gap;
+  final double dash;
+  final double borderRadius;
+
+  DashedRectPainter({
+    this.strokeWidth = 1.0, 
+    this.color = Colors.black, 
+    this.gap = 5.0,
+    this.dash = 5.0,
+    this.borderRadius = 0.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final RRect rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Radius.circular(borderRadius),
+    );
+
+    final Path path = Path()..addRRect(rrect);
+    
+    Path dashedPath = Path();
+    for (ui.PathMetric metric in path.computeMetrics()) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        dashedPath.addPath(
+          metric.extractPath(distance, distance + dash),
+          Offset.zero,
+        );
+        distance += dash + gap;
+      }
+    }
+    canvas.drawPath(dashedPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(DashedRectPainter oldDelegate) {
+    return oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.color != color ||
+        oldDelegate.gap != gap ||
+        oldDelegate.borderRadius != borderRadius;
   }
 }

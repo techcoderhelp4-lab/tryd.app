@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:intl_phone_field/country_picker_dialog.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../widgets/gradient_button.dart';
 import "../../auth/presentation/signup_screen.dart";
@@ -167,11 +170,110 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildInputFields() {
     return Column(
       children: [
-        _buildInputField(
-          label: 'Mobile No',
-          placeholder: '+94 12456 65324',
-          controller: _phoneController,
-          obscureText: false,
+        Container(
+          height: 72,
+          decoration: BoxDecoration(
+            color: _inputBgColor,
+            borderRadius: BorderRadius.circular(17),
+            boxShadow: [
+              BoxShadow(
+                offset: const Offset(0, 0),
+                blurRadius: 5.8,
+                spreadRadius: 0,
+                color: const Color(0xFFAFA9A9).withValues(alpha: 0.12),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 8), 
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Mobile No',
+                  style: GoogleFonts.lexendDeca(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    height: 1.25,
+                    color: _labelColor,
+                  ),
+                ),
+                Expanded(
+                  child: IntlPhoneField(
+                    controller: _phoneController,
+                    disableLengthCheck: true,
+                    validator: (phone) => null,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(15),
+                    ],
+                    decoration: InputDecoration(
+                      hintText: '12456 65324',
+                      hintStyle: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: _labelColor,
+                      ),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      counterText: '',
+                      errorStyle: const TextStyle(height: 0),
+                    ),
+                    initialCountryCode: 'KW', 
+                    showDropdownIcon: true,
+                    dropdownIconPosition: IconPosition.trailing,
+                    flagsButtonPadding: const EdgeInsets.only(right: 8),
+                    pickerDialogStyle: PickerDialogStyle(
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.all(20),
+                      countryCodeStyle: GoogleFonts.poppins(
+                        fontSize: 16, 
+                        fontWeight: FontWeight.w400,
+                        color: _inputTextColor,
+                      ),
+                      countryNameStyle: GoogleFonts.poppins(
+                        fontSize: 16, 
+                        fontWeight: FontWeight.w400,
+                        color: _inputTextColor,
+                      ),
+                      searchFieldInputDecoration: InputDecoration(
+                        hintText: 'Search Country',
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: _labelColor,
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF9FAFB),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        prefixIcon: const Icon(Icons.search, color: _labelColor),
+                      ),
+                    ),
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: _inputTextColor,
+                      height: 1.5,
+                    ),
+                    dropdownTextStyle: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: _inputTextColor,
+                    ),
+                    onChanged: (phone) {
+                      print(phone.completeNumber);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
@@ -360,4 +462,5 @@ class _LoginScreenState extends State<LoginScreen> {
       ],
     );
   }
+
 }
