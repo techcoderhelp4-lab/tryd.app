@@ -1,18 +1,23 @@
 class ApiConstants {
-  static const String baseUrl = 'https://api.tryd.app/api/v1'; // Example URL
+  static const String baseUrl = 'http://10.0.2.2:4000/api'; 
 
-  static const String login = '/auth/login';
-  static const String register = '/auth/register';
-  static const String logout = '/auth/logout';
+  static const String login = '/users/login';
+  static const String register = '/users/register';
+  static const String logout = '/users/logout';
+  static const String checkUserExists = '/auth/check-user';
+  static const String sendOtp = '/auth/send-otp';
+  static const String verifyOtp = '/auth/verify-otp';
+  static const String verifyOtpLogin = '/auth/verify-otp-login';
   
   static const String profile = '/users/profile';
   static const String updateProfile = '/users/profile';
-  static const String uploadProfilePicture = '/users/profile/picture';
+  static const String uploadProfilePicture = '/users/upload-profile-picture';
   static const String activitySummary = '/users/activity-summary';
 
   static const String challenges = '/challenges';
   static String challengeDetails(String id) => '/challenges/$id';
   static String joinChallenge(String id) => '/challenges/$id/join';
+  static String challengeLeaderboard(String id) => '/challenges/$id/leaderboard';
 
   static const String rewards = '/rewards';
   static String redeemReward(String id) => '/rewards/$id/redeem';
@@ -20,4 +25,13 @@ class ApiConstants {
 
   static const String activities = '/activities';
   static const String workouts = '/workouts';
+  
+  // Notification Endpoints
+  static const String notifications = '/notifications';
+  static const String notificationsUnreadCount = '/notifications/unread-count';
+  static const String notificationsMarkAllRead = '/notifications/mark-all-read';
+  static String notificationMarkRead(String id) => '/notifications/$id/read';
+  static String notificationDelete(String id) => '/notifications/$id';
+  
+  static const String pushTokens = '/push-tokens';
 }

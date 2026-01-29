@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/network/api_constants.dart';
 import '../../../../core/network/api_client.dart';
 import '../domain/challenge.dart';
+import '../domain/leaderboard_data.dart';
 
 part 'challenge_repository.g.dart';
 
@@ -14,8 +15,39 @@ class ChallengeRepository {
   Future<List<Challenge>> getChallenges() async {
     try {
       final response = await _dio.get(ApiConstants.challenges);
-      final List<dynamic> data = response.data['data'] ?? response.data;
-      return data.map((json) => Challenge.fromJson(json)).toList();
+      final data = response.data;
+      
+      List<Challenge> allChallenges = [];
+      
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('myChallenges') && data['myChallenges'] is List) {
+          final List<dynamic> my = data['myChallenges'];
+          allChallenges.addAll(my.map((json) {
+            final map = Map<String, dynamic>.from(json);
+            map['isJoined'] = true;
+            return Challenge.fromJson(map);
+          }));
+        }
+        
+        if (data.containsKey('joinChallenges') && data['joinChallenges'] is List) {
+          final List<dynamic> join = data['joinChallenges'];
+          allChallenges.addAll(join.map((json) {
+            final map = Map<String, dynamic>.from(json);
+            map['isJoined'] = false;
+            return Challenge.fromJson(map);
+          }));
+        }
+
+        // Fallback for old/other format
+        if (allChallenges.isEmpty && data.containsKey('data') && data['data'] is List) {
+          final List<dynamic> raw = data['data'];
+          allChallenges.addAll(raw.map((json) => Challenge.fromJson(json)));
+        }
+      } else if (data is List) {
+        allChallenges.addAll(data.map((json) => Challenge.fromJson(json)));
+      }
+      
+      return allChallenges;
     } catch (e) {
       rethrow;
     }
@@ -26,24 +58,22 @@ class ChallengeRepository {
       final response = await _dio.get(ApiConstants.challengeDetails(id));
       return Challenge.fromJson(response.data);
     } catch (e) {
-      // Fallback mock data for development
-      return Challenge(
-        id: id,
-        title: 'End March 160 KM Challenge',
-        description: 'Push your limits with this 160km endurance challenge! Join thousands of other runners in this month-long event found to help you stay consistent and reach new fitness heights.',
-        startDate: DateTime.now().subtract(const Duration(days: 5)),
-        endDate: DateTime.now().add(const Duration(days: 22)),
-        targetKm: 160.0,
-        rewardPoints: 10000,
-        imageUrl: 'assets/images/running.png',
-        isJoined: false,
-      );
+      rethrow;
     }
   }
 
   Future<void> joinChallenge(String id) async {
     try {
       await _dio.post(ApiConstants.joinChallenge(id));
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<LeaderboardData> getLeaderboard(String id) async {
+    try {
+      final response = await _dio.get(ApiConstants.challengeLeaderboard(id));
+      return LeaderboardData.fromJson(response.data);
     } catch (e) {
       rethrow;
     }
@@ -66,4 +96,10 @@ Future<List<Challenge>> challengesList(ChallengesListRef ref) {
 Future<Challenge> challengeDetails(ChallengeDetailsRef ref, String id) {
   final repository = ref.watch(challengeRepositoryProvider);
   return repository.getChallengeDetails(id);
+}
+
+@riverpod
+Future<LeaderboardData> challengeLeaderboard(ChallengeLeaderboardRef ref, String id) {
+  final repository = ref.watch(challengeRepositoryProvider);
+  return repository.getLeaderboard(id);
 }

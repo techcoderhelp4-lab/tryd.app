@@ -18,6 +18,10 @@ import '../domain/workout.dart';
 import 'add_number_screen.dart';
 import 'add_time_screen.dart';
 import 'history_screen.dart';
+import '../../home/presentation/home_screen.dart';
+import '../../rewards/presentation/rewards_screen.dart';
+import 'running_screen.dart';
+import '../../club/presentation/club_screen.dart';
 
 enum WorkoutPhase { work, rest }
 
@@ -29,7 +33,7 @@ class WorkoutScreen extends ConsumerStatefulWidget {
 }
 
 class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindingObserver {
-  int _selectedIndex = 1;
+  int _selectedIndex = 3;
 
   // Workout configuration
   int workDuration = 45; // Default 0:45
@@ -317,7 +321,13 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
         content: Text('Are you sure you want to exit? Your progress will be lost.', style: GoogleFonts.lexend(color: const Color(0xFF8B88B5))),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.lexend(color: const Color(0xFF8B88B5)))),
-          TextButton(onPressed: () { Navigator.pop(context); Navigator.pop(context); }, child: Text('Exit', style: GoogleFonts.lexend(color: const Color(0xFFF83A71)))),
+          TextButton(onPressed: () {
+            Navigator.pop(context); // Close dialog
+            Navigator.pushReplacement(
+              context, 
+              MaterialPageRoute(builder: (context) => const HomeScreen())
+            ); 
+          }, child: Text('Exit', style: GoogleFonts.lexend(color: const Color(0xFFF83A71)))),
         ],
       ),
     );
@@ -377,10 +387,26 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
             child: CustomBottomNavigation(
               currentIndex: _selectedIndex,
               onTap: (index) {
-                if (index == 0) {
+                if (index == 3) return;
+                
+                if (_isRunning.value) {
                   _showExitConfirmation();
-                } else {
-                  setState(() => _selectedIndex = index);
+                  return;
+                }
+
+                Widget? page;
+                switch (index) {
+                  case 0: page = const HomeScreen(); break;
+                  case 1: page = const RunningScreen(); break;
+                  case 2: page = const RewardsScreen(); break;
+                  case 4: page = const ClubScreen(); break;
+                }
+                
+                if (page != null) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => page!),
+                  );
                 }
               },
             ),
@@ -397,7 +423,16 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: _showExitConfirmation,
+            onTap: () {
+               if (_isRunning.value) {
+                 _showExitConfirmation();
+               } else {
+                 Navigator.pushReplacement(
+                   context,
+                   MaterialPageRoute(builder: (context) => const HomeScreen()),
+                 );
+               }
+            },
             child: SvgPicture.asset('assets/images/back_arrow_icon.svg', width: 28.w, height: 28.w),
           ),
           Text(

@@ -1,27 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../../../../widgets/custom_bottom_navigation.dart';
 import '../../activity/presentation/running_screen.dart';
+import '../../activity/presentation/activity_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../activity/presentation/workout_screen.dart';
 import '../../club/presentation/club_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
+import '../../profile/data/user_repository.dart';
+import '../../auth/domain/user.dart';
+import '../../notifications/presentation/notifications_screen.dart';
+import '../../notifications/data/notification_repository.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final userAsync = ref.watch(userProfileProvider);
+    final activityAsync = ref.watch(activitySummaryProvider('month'));
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -29,43 +37,59 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: false,
         child: Stack(
           children: [
-            SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildHeader(screenWidth),
-                  SizedBox(height: 9.h),
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: Colors.black.withValues(alpha: 0.1),
-                  ),
-                  SizedBox(height: 8.h),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.037),
-                    child: Column(
-                      children: [
-                        _buildPointsCard(),
-                        SizedBox(height: 8.h),
-                      ],
+            userAsync.when(
+              data: (user) => SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildHeader(screenWidth, user),
+                    SizedBox(height: 9.h),
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Colors.black.withOpacity(0.1),
                     ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(right: 0.037.sw),
-                    child: _buildBannerCard(),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.037),
-                    child: Column(
-                      children: [
-                        SizedBox(height: 8.h),
-                        _buildCurrentMonthCard(),
-                        SizedBox(height: 16.h),
-                        _buildStatsGrid(),
-                        SizedBox(height: 140.h),
-                      ],
+                    SizedBox(height: 8.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.037),
+                      child: Column(
+                        children: [
+                          _buildPointsCard(user.points ?? 0),
+                          SizedBox(height: 8.h),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    Padding(
+                      padding: EdgeInsets.only(right: 0.037.sw),
+                      child: _buildBannerCard(),
+                    ),
+                    activityAsync.when(
+                      data: (activityData) => Padding(
+                        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.037),
+                        child: Column(
+                          children: [
+                            SizedBox(height: 8.h),
+                            _buildCurrentMonthCard(activityData),
+                            SizedBox(height: 16.h),
+                            _buildStatsGrid(activityData),
+                            SizedBox(height: 140.h),
+                          ],
+                        ),
+                      ),
+                      loading: () => const Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child:  Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (err, stack) => Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Text('Failed to load stats', style: GoogleFonts.poppins(color: Colors.red)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(
+                child: Text('Something went wrong', style: GoogleFonts.poppins(color: Colors.red)),
               ),
             ),
             Positioned(
@@ -75,35 +99,20 @@ class _HomeScreenState extends State<HomeScreen> {
               child: CustomBottomNavigation(
                 currentIndex: _selectedIndex,
                 onTap: (index) {
-                  if (index == 0) {
-                    // Already on home screen, do nothing
-                  } else if (index == 1) {
-                    Navigator.push(
+                  if (index == 0) return;
+                  
+                  Widget? page;
+                  switch (index) {
+                    case 1: page = const RunningScreen(); break;
+                    case 2: page = const RewardsScreen(); break;
+                    case 3: page = const WorkoutScreen(); break;
+                    case 4: page = const ClubScreen(); break;
+                  }
+
+                  if (page != null) {
+                    Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const RunningScreen(),
-                      ),
-                    );
-                  } else if (index == 2) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RewardsScreen(),
-                      ),
-                    );
-                  } else if (index == 3) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const WorkoutScreen(),
-                      ),
-                    );
-                  } else if (index == 4) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ClubScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => page!),
                     );
                   }
                 },
@@ -115,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(double screenWidth) {
+  Widget _buildHeader(double screenWidth, User user) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
         0.037.sw,
@@ -124,6 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
         15.h,
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           GestureDetector(
             onTap: () {
@@ -135,10 +145,13 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               width: 46.w,
               height: 46.h,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                color: const Color(0xFFCCCCCC),
                 image: DecorationImage(
-                  image: AssetImage('assets/images/profile.png'),
+                  image: user.profilePicture != null && user.profilePicture!.isNotEmpty
+                      ? NetworkImage(user.profilePicture!)
+                      : const AssetImage('assets/images/profile.png') as ImageProvider,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -160,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 SizedBox(height: 4.h),
                 Text(
-                  'Livia Vaccaro',
+                  user.name,
                   style: GoogleFonts.lexendDeca(
                     fontSize: 19.sp,
                     fontWeight: FontWeight.w600,
@@ -171,33 +184,73 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          Stack(
-            children: [
-              Icon(
-                Icons.notifications,
-                size: 24.sp,
-                color: const Color(0xFF24252C),
-              ),
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  width: 8.w,
-                  height: 8.h,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF83A71),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          SizedBox(width: 8.w),
+          _buildNotificationBell(),
         ],
       ),
     );
   }
 
-  Widget _buildPointsCard() {
+  Widget _buildNotificationBell() {
+    final unreadCountAsync = ref.watch(unreadNotificationCountProvider);
+    
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 4.w),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(
+              Icons.notifications_none_rounded,
+              size: 30.sp,
+              color: const Color(0xFF24252C),
+            ),
+            unreadCountAsync.when(
+              data: (count) {
+                if (count == 0) return const SizedBox.shrink();
+                return Positioned(
+                  right: -2.w,
+                  top: -2.h,
+                  child: Container(
+                    padding: EdgeInsets.all(4.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF83A71),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    constraints: BoxConstraints(
+                      minWidth: 16.w,
+                      minHeight: 16.w,
+                    ),
+                    child: Center(
+                      child: Text(
+                        count > 9 ? '9+' : count.toString(),
+                        style: GoogleFonts.lexendDeca(
+                          fontSize: 9.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPointsCard(int points) {
     return SizedBox(
       height: 66.h,
       child: Padding(
@@ -230,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    '12,450',
+                    points.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
                     style: GoogleFonts.poppins(
                       fontSize: 24.sp,
                       fontWeight: FontWeight.w600,
@@ -278,79 +331,94 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCurrentMonthCard() {
-    return Container(
-      height: 80.h,
-      padding: EdgeInsets.symmetric(horizontal: 19.w, vertical: 14.h),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(
-          color: const Color(0xFFF5F3F3).withValues(alpha: 0.62),
-        ),
-        borderRadius: BorderRadius.circular(15.r),
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0, 4),
-            blurRadius: 32,
-            color: Colors.black.withValues(alpha: 0.04),
+  Widget _buildCurrentMonthCard(Map<String, dynamic> data) {
+    final distance = data['distance']?.toStringAsFixed(2) ?? '0.00';
+    
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ActivityScreen()),
+        );
+      },
+      child: Container(
+        height: 80.h,
+        padding: EdgeInsets.symmetric(horizontal: 19.w, vertical: 14.h),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(
+            color: const Color(0xFFF5F3F3).withOpacity(0.62),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 43.w,
-            height: 43.h,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEDE4FF),
-              borderRadius: BorderRadius.circular(22.r),
+          borderRadius: BorderRadius.circular(15.r),
+          boxShadow: [
+            BoxShadow(
+              offset: const Offset(0, 4),
+              blurRadius: 32,
+              color: Colors.black.withOpacity(0.04),
             ),
-            child: Center(
-              child: SvgPicture.asset(
-                'assets/images/runner_icon.svg',
-                width: 16.w,
-                height: 23.h,
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 43.w,
+              height: 43.h,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDE4FF),
+                borderRadius: BorderRadius.circular(22.r),
+              ),
+              child: Center(
+                child: SvgPicture.asset(
+                  'assets/images/runner_icon.svg',
+                  width: 16.w,
+                  height: 23.h,
+                ),
               ),
             ),
-          ),
-          SizedBox(width: 14.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Current Month',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w400,
-                    height: 1.54,
-                    color: const Color(0xFF24252C),
+            SizedBox(width: 14.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Current Month',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w400,
+                      height: 1.54,
+                      color: const Color(0xFF24252C),
+                    ),
                   ),
-                ),
-                Text(
-                  '10.00 km',
-                  style: GoogleFonts.poppins(
-                    fontSize: 19.sp,
-                    fontWeight: FontWeight.w700,
-                    height: 1.16,
-                    color: const Color(0xFF221F48),
+                  Text(
+                    '$distance km',
+                    style: GoogleFonts.poppins(
+                      fontSize: 19.sp,
+                      fontWeight: FontWeight.w700,
+                      height: 1.16,
+                      color: const Color(0xFF221F48),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Icon(
-            Icons.visibility,
-            color: const Color(0xFF900EBF),
-            size: 23.sp,
-          ),
-        ],
+            Icon(
+              Icons.visibility,
+              color: const Color(0xFF900EBF),
+              size: 23.sp,
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatsGrid() {
+  Widget _buildStatsGrid(Map<String, dynamic> data) {
+    final steps = data['steps']?.toString() ?? '0';
+    final calories = data['calories']?.toString() ?? '0';
+    final duration = data['duration'] ?? '0:00'; // Assuming backend returns formatted str or handle minutes
+    final bpm = data['bpm']?.toString() ?? '0'; // Placeholder as BPM is usually real-time or avg
+
     return SizedBox(
       height: 294.h,
       child: LayoutBuilder(
@@ -370,7 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   svgWidth: 21.w,
                   svgHeight: 21.h,
                   iconColor: const Color(0xFF34CDFD),
-                  value: '1278',
+                  value: steps,
                   label: 'Steps Count',
                   height: 152.h,
                   iconTopPadding: 22.h,
@@ -389,7 +457,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   svgWidth: 16.w,
                   svgHeight: 21.h,
                   iconColor: const Color(0xFFFEB720),
-                  value: '934',
+                  value: calories,
                   label: 'Burned Calories',
                   height: 130.h,
                   iconTopPadding: 15.h,
@@ -408,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   svgWidth: 24.w,
                   svgHeight: 24.h,
                   iconColor: const Color(0xFF5D37E5),
-                  value: '1:20',
+                  value: duration,
                   label: 'Durations',
                   suffix: 'mins',
                   height: 130.h,
@@ -426,7 +494,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   iconBackgroundColor: const Color(0xFFFBC7C1),
                   icon: Icons.favorite,
                   iconColor: const Color(0xFFFE413D),
-                  value: '114',
+                  value: bpm,
                   label: 'Average BPM',
                   height: 152.h,
                   iconTopPadding: 23.h,

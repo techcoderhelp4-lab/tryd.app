@@ -11,6 +11,12 @@ import '../../../../widgets/button_shape_clipper.dart';
 import '../data/activity_repository.dart';
 import '../domain/workout.dart';
 import '../domain/activity.dart';
+import '../domain/activity_stats.dart';
+import '../../home/presentation/home_screen.dart';
+import '../../rewards/presentation/rewards_screen.dart';
+import 'running_screen.dart';
+import 'workout_screen.dart';
+import '../../club/presentation/club_screen.dart';
 
 class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
@@ -26,18 +32,17 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
   Widget build(BuildContext context) {
     final workoutHistoryAsync = ref.watch(workoutHistoryProvider);
     final activityListAsync = ref.watch(activityListProvider);
+    
+    final period = _selectedFilter == 'W' ? 'week' : _selectedFilter == 'M' ? 'month' : 'week';
+    final statsAsync = ref.watch(activityStatsProvider(period));
 
-    // Combine data
+    // Combine data for list
     final List<dynamic> allActivities = [];
     if (workoutHistoryAsync.value != null) allActivities.addAll(workoutHistoryAsync.value!);
     if (activityListAsync.value != null) allActivities.addAll(activityListAsync.value!);
 
     // Sort by date descending
     allActivities.sort((a, b) => b.date.compareTo(a.date));
-
-    // Calculate weekly data (last 7 days from today, matching Sunday-Saturday)
-    final weeklyData = _calculateWeeklyData(allActivities);
-    final totalWeeklyKm = weeklyData.fold(0.0, (sum, val) => sum + val);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -70,11 +75,19 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                           // Filter tabs
                           _buildFilterTabs(),
                           SizedBox(height: 30.h),
-                          // This Week card
-                          _buildWeekCard(totalWeeklyKm),
-                          SizedBox(height: 22.h),
-                          // Weekly chart
-                          _buildWeeklyChart(weeklyData),
+                          
+                          statsAsync.when(
+                            data: (stats) => Column(
+                              children: [
+                                _buildWeekCard(stats),
+                                SizedBox(height: 22.h),
+                                _buildWeeklyChart(stats.dailyStats),
+                              ],
+                            ),
+                            loading: () => const Center(child: CircularProgressIndicator()),
+                            error: (e, _) => Center(child: Text("Error loading stats: $e")),
+                          ),
+                          
                           SizedBox(height: 22.h),
                           // Recent Activities heading
                           Text(
@@ -93,7 +106,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                               child: _buildActivityItem(activity),
                             );
                           }),
-                          if (allActivities.isEmpty)
+                          if (allActivities.isEmpty && !activityListAsync.isLoading)
                              Center(child: Padding(
                                padding: EdgeInsets.all(20.h),
                                child: Text("No recent activities", style: GoogleFonts.lexend(color: Colors.grey)),
@@ -117,10 +130,22 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
               onTap: (index) {
                 if (index == 0) {
                   Navigator.pop(context);
-                } else {
-                  setState(() {
-                    _selectedIndex = index;
-                  });
+                  return;
+                }
+
+                Widget? page;
+                switch (index) {
+                  case 1: page = const RunningScreen(); break;
+                  case 2: page = const RewardsScreen(); break;
+                  case 3: page = const WorkoutScreen(); break;
+                  case 4: page = const ClubScreen(); break;
+                }
+                
+                if (page != null) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => page!),
+                  );
                 }
               },
             ),
@@ -130,38 +155,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  List<double> _calculateWeeklyData(List<dynamic> activities) {
-    final List<double> data = List.filled(7, 0.0);
-    final now = DateTime.now();
-    // Find limits for 'This Week' (Sun to Sat of current week)
-    // Dart DateTime.weekday: Mon=1, Sun=7.
-    // We want matching array index: 0=Sun, 1=Mon, ..., 6=Sat
-    
-    // Calculate start of week (Sunday)
-    final currentWeekday = now.weekday; // 1-7
-    // If today is Sunday(7), we want to go back 0 days to get start? No, usually start is Sunday. 
-    // If today is Mon(1), start was yesterday.
-    // daysSinceSunday = weekday % 7. (Sun=7%7=0, Mon=1%7=1...)
-    final daysSinceSunday = now.weekday % 7;
-    final startOfWeek = now.subtract(Duration(days: daysSinceSunday));
-    final startOfSunday = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day); // midnight Sunday
 
-    for (var act in activities) {
-      if (act is Activity && act.date.isAfter(startOfSunday)) {
-        // Find which day of week
-        final dayIndex = act.date.weekday % 7; // 0=Sun
-        data[dayIndex] += act.distance;
-      } else if (act is Workout && act.date.isAfter(startOfSunday)) {
-        // Workouts don't strictly have 'distance', but we can add something or ignore
-        // If workout has distance
-        if (act.distance != null) {
-          final dayIndex = act.date.weekday % 7;
-          data[dayIndex] += act.distance!;
-        }
-      }
-    }
-    return data;
-  }
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
@@ -170,7 +164,12 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              );
+            },
             child: Container(
               width: 40.w,
               height: 40.h,
@@ -275,7 +274,13 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  Widget _buildWeekCard(double totalKm) {
+  Widget _buildWeekCard(ActivityStats stats) {
+    // Format duration (seconds to MM:SS)
+    final duration = Duration(seconds: stats.totalDuration);
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    final timeStr = '$minutes:${seconds.toString().padLeft(2, '0')}';
+
     return Container(
       width: double.infinity,
       height: 205.h,
@@ -300,7 +305,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                 ),
                 SizedBox(width: 7.w),
                 Text(
-                  'This Week',
+                  _selectedFilter == 'W' ? 'This Week' : _selectedFilter == 'M' ? 'This Month' : 'All Activities',
                   style: GoogleFonts.poppins(
                     fontSize: 19.sp,
                     fontWeight: FontWeight.w500,
@@ -316,7 +321,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
             left: 17.w,
             top: 76.h,
             child: Text(
-              totalKm.toStringAsFixed(2),
+              stats.totalDistance.toStringAsFixed(2),
               style: GoogleFonts.poppins(
                 fontSize: 51.sp,
                 fontWeight: FontWeight.w700,
@@ -339,17 +344,17 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
               ),
             ),
           ),
-          // Stats row (Static for now as we don't have full weekly aggregates for pace/time easily available without more logic)
+          // Stats row
           Positioned(
             left: 21.w,
             top: 126.h,
             child: Row(
               children: [
-                _buildStatColumn('Run', '1'),
-                SizedBox(width: 56.w),
-                _buildStatColumn('Avg pace', '5:30'),
-                SizedBox(width: 56.w),
-                _buildStatColumn('Time', '20:45'),
+                _buildStatColumn('Count', stats.activityCount.toString()),
+                SizedBox(width: 50.w),
+                _buildStatColumn('Avg pace', stats.averagePace.toStringAsFixed(2)),
+                SizedBox(width: 50.w),
+                _buildStatColumn('Time', timeStr),
               ],
             ),
           ),
@@ -384,9 +389,28 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  Widget _buildWeeklyChart(List<double> weeklyData) {
-    const maxMiles = 3.0; // Fixed max for scale flexibility
+  Widget _buildWeeklyChart(List<DailyStat> dailyStats) {
+    const maxDistance = 5.0; // Fixed max for scale flexibility
+    final now = DateTime.now();
+    
+    // Generate day labels and values for the current week (Sunday to Saturday)
     final dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    final List<double> weeklyData = List.filled(7, 0.0);
+    
+    // Calculate start of week (Sunday)
+    final daysSinceSunday = now.weekday % 7;
+    final startOfWeek = now.subtract(Duration(days: daysSinceSunday));
+    final startDate = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+
+    for (var stat in dailyStats) {
+      final statDate = DateTime.parse(stat.date);
+      if (statDate.isAfter(startDate.subtract(const Duration(seconds: 1)))) {
+        final dayIndex = statDate.weekday % 7;
+        if (dayIndex < 7) {
+          weeklyData[dayIndex] = stat.distance;
+        }
+      }
+    }
 
     return Container(
       width: double.infinity,
@@ -429,15 +453,15 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: List.generate(dayLabels.length, (index) {
-                            final miles = weeklyData[index];
-                            final heightFactor = (miles / maxMiles).clamp(0.0, 1.0);
+                            final dist = weeklyData[index];
+                            final heightFactor = (dist / maxDistance).clamp(0.0, 1.0);
                             
                             return SizedBox(
                               width: 16.w,
                               child: Stack(
                                 alignment: Alignment.bottomCenter,
                                 children: [
-                                  if (miles > 0)
+                                  if (dist > 0)
                                     FractionallySizedBox(
                                       heightFactor: heightFactor,
                                       child: Container(
@@ -483,14 +507,14 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    Text('5', style: _chartLabelStyle()),
                     Text('3', style: _chartLabelStyle()),
-                    Text('2', style: _chartLabelStyle()),
                     Text('1', style: _chartLabelStyle()),
-                    Text('0 mi', style: _chartLabelStyle()),
+                    Text('0 km', style: _chartLabelStyle()),
                   ],
                 ),
               ),
-              // Spacer to align with chart area (matches X-axis labels height + spacing)
+              // Spacer to align with chart area
               SizedBox(height: 8.h),
               Text('', style: _chartLabelStyle()),
             ],
@@ -507,6 +531,13 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
       color: const Color(0xFF221F48),
       height: 31 / 14,
     );
+  }
+
+  String _formatPace(double pace) {
+    if (pace == 0 || pace.isInfinite || pace.isNaN) return '0:00';
+    final minutes = pace.toInt();
+    final seconds = ((pace - minutes) * 60).toInt();
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   Widget _buildActivityItem(dynamic activity) {
@@ -537,9 +568,8 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
       time = '$minutes:${seconds.toString().padLeft(2, '0')}';
 
     } else if (activity is Activity) {
-      km = '${activity.distance} km';
-      // Calculate pace?
-      pace = '5:30'; // Placeholder
+      km = '${activity.distance.toStringAsFixed(2)} km';
+      pace = _formatPace(activity.averagePace);
       final duration = Duration(seconds: activity.duration);
       final minutes = duration.inMinutes;
       final seconds = duration.inSeconds % 60;

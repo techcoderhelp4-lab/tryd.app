@@ -3,12 +3,23 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
+import '../../home/presentation/home_screen.dart';
+import '../../activity/presentation/running_screen.dart';
+import '../../rewards/presentation/rewards_screen.dart';
+import '../../activity/presentation/workout_screen.dart';
+import '../../club/presentation/club_screen.dart';
 
-class LeaderboardScreen extends StatelessWidget {
-  const LeaderboardScreen({super.key});
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/challenge_repository.dart';
+import '../domain/leaderboard_data.dart';
+
+class LeaderboardScreen extends ConsumerWidget {
+  final String challengeId;
+  const LeaderboardScreen({super.key, required this.challengeId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final leaderboardAsync = ref.watch(challengeLeaderboardProvider(challengeId));
     return Scaffold(
       body: Stack(
         children: [
@@ -31,15 +42,34 @@ class LeaderboardScreen extends StatelessWidget {
               children: [
                 _buildAppBar(context),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(15, 0, 15, 20),
-                    child: Column(
-                      children: [
-                        _buildActiveChallengeCard(),
-                        SizedBox(height: 15.h),
-                        _buildLeaderboardCard(),
-                        SizedBox(height: 120.h),
-                      ],
+                  child: leaderboardAsync.when(
+                    data: (data) => SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(15, 0, 15, 20),
+                      child: Column(
+                        children: [
+                          _buildActiveChallengeCard(data.challenge),
+                          SizedBox(height: 15.h),
+                          _buildLeaderboardCard(data),
+                          SizedBox(height: 120.h),
+                        ],
+                      ),
+                    ),
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (err, stack) => Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(40.0),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.red),
+                            const SizedBox(height: 8),
+                            Text('Failed to load leaderboard: $err'),
+                            TextButton(
+                              onPressed: () => ref.invalidate(challengeLeaderboardProvider(challengeId)),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -55,8 +85,24 @@ class LeaderboardScreen extends StatelessWidget {
             child: CustomBottomNavigation(
               currentIndex: 4,
               onTap: (index) {
-                if (index != 4) {
+                if (index == 4) {
                    Navigator.pop(context);
+                   return;
+                }
+                
+                Widget? page;
+                switch (index) {
+                  case 0: page = const HomeScreen(); break;
+                  case 1: page = const RunningScreen(); break;
+                  case 2: page = const RewardsScreen(); break;
+                  case 3: page = const WorkoutScreen(); break;
+                }
+                
+                if (page != null) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => page!),
+                  );
                 }
               },
             ),
@@ -102,7 +148,7 @@ class LeaderboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActiveChallengeCard() {
+  Widget _buildActiveChallengeCard(LeaderboardChallengeInfo challenge) {
     return Container(
       width: double.infinity,
       height: 146,
@@ -150,12 +196,12 @@ class LeaderboardScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   // Title
                   Text(
-                    'End March 160 KM\nChallenge',
+                    challenge.title,
                     style: GoogleFonts.poppins(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
-                      height: 22 / 20,
+                      height: 22 / 18,
                     ),
                   ),
                   const Spacer(),
@@ -169,7 +215,7 @@ class LeaderboardScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '2 Days Remaining',
+                        '${challenge.endDate != null ? challenge.endDate!.difference(DateTime.now()).inDays.clamp(0, 999) : 0} Days Remaining',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
@@ -184,7 +230,7 @@ class LeaderboardScreen extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             // Circular progress indicator
-            _buildCircularProgress(67.1, 100),
+            _buildCircularProgress(challenge.userProgress ?? 0.0, challenge.targetKm),
           ],
         ),
       ),
@@ -247,7 +293,7 @@ class LeaderboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLeaderboardCard() {
+  Widget _buildLeaderboardCard(LeaderboardData data) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -288,7 +334,7 @@ class LeaderboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    '140,00 participants',
+                    '${data.leaderboard.length} participants',
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
@@ -312,7 +358,7 @@ class LeaderboardScreen extends StatelessWidget {
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.only(left: 20),
             child: Text(
-              '#2,456',
+              '#${data.currentUserRank}',
               style: GoogleFonts.poppins(
                 fontSize: 31,
                 fontWeight: FontWeight.w700,
@@ -337,34 +383,22 @@ class LeaderboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 17),
           // Leaderboard List
-          _buildLeaderboardList(),
+          _buildLeaderboardList(data.leaderboard),
         ],
       ),
     );
   }
 
-  Widget _buildLeaderboardList() {
-    final participants = [
-      {'rank': '01.', 'name': 'Budi Santoso', 'rankLabel': 'Rank #1', 'km': '154,80 KM', 'isYou': false},
-      {'rank': '02.', 'name': 'Budi Santoso', 'rankLabel': 'Rank #2', 'km': '152,87 KM', 'isYou': false},
-      {'rank': '03.', 'name': 'Thomas Speed', 'rankLabel': '', 'km': '151,24 KM', 'isYou': false},
-      {'rank': '04.', 'name': 'Andy William', 'rankLabel': '', 'km': '150,94 KM', 'isYou': false},
-      {'rank': '05.', 'name': 'abraham', 'rankLabel': '', 'km': '149,13 KM', 'isYou': false},
-      {'rank': '06.', 'name': 'You', 'rankLabel': '', 'km': '149,13 KM', 'isYou': true},
-      {'rank': '07.', 'name': 'Jhone Alex', 'rankLabel': '', 'km': '149,13 KM', 'isYou': false},
-      {'rank': '08.', 'name': 'Abdullah', 'rankLabel': '', 'km': '149,13 KM', 'isYou': false},
-      {'rank': '09.', 'name': 'Rajesh', 'rankLabel': '', 'km': '149,13 KM', 'isYou': false},
-      {'rank': '10.', 'name': 'Mukheem', 'rankLabel': '', 'km': '149,13 KM', 'isYou': false},
-    ];
-    
+  Widget _buildLeaderboardList(List<LeaderboardEntry> participants) {
     return Column(
       children: participants.map((participant) {
         return _buildParticipantRow(
-          rank: participant['rank'] as String,
-          name: participant['name'] as String,
-          rankLabel: participant['rankLabel'] as String,
-          km: participant['km'] as String,
-          isYou: participant['isYou'] as bool,
+          rank: '${participant.rank.toString().padLeft(2, '0')}.',
+          name: participant.user.name,
+          rankLabel: participant.rank <= 3 ? 'Rank #${participant.rank}' : '',
+          km: '${participant.completedKm.toStringAsFixed(2)} KM',
+          isYou: participant.isCurrentUser,
+          profilePicture: participant.user.profilePicture,
         );
       }).toList(),
     );
@@ -376,6 +410,7 @@ class LeaderboardScreen extends StatelessWidget {
     required String rankLabel,
     required String km,
     required bool isYou,
+    String? profilePicture,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 9),
@@ -421,12 +456,25 @@ class LeaderboardScreen extends StatelessWidget {
               const SizedBox(width: 26),
               // Profile image
               ClipOval(
-                child: Image.asset(
-                  'assets/images/profile.png',
-                  width: 32,
-                  height: 32,
-                  fit: BoxFit.cover,
-                ),
+                child: profilePicture != null && profilePicture.startsWith('http')
+                  ? Image.network(
+                      profilePicture,
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        'assets/images/profile.png',
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  : Image.asset(
+                      'assets/images/profile.png',
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.cover,
+                    ),
               ),
               const SizedBox(width: 12),
               // Name and rank label

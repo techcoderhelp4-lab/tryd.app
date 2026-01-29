@@ -5,15 +5,23 @@ import '../../../../widgets/gradient_button.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../challenges/presentation/challenge_detail_screen.dart';
 import '../../challenges/presentation/my_challenge_screen.dart';
+import '../../home/presentation/home_screen.dart';
+import '../../rewards/presentation/rewards_screen.dart';
+import '../../activity/presentation/running_screen.dart';
+import '../../activity/presentation/workout_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../challenges/data/challenge_repository.dart';
+import '../../challenges/domain/challenge.dart';
+import 'package:intl/intl.dart';
 
-class ClubScreen extends StatefulWidget {
+class ClubScreen extends ConsumerStatefulWidget {
   const ClubScreen({super.key});
 
   @override
-  State<ClubScreen> createState() => _ClubScreenState();
+  ConsumerState<ClubScreen> createState() => _ClubScreenState();
 }
 
-class _ClubScreenState extends State<ClubScreen> {
+class _ClubScreenState extends ConsumerState<ClubScreen> {
   String _selectedTab = 'My Challenges';
 
   @override
@@ -95,78 +103,110 @@ class _ClubScreenState extends State<ClubScreen> {
                     // Content based on selected tab
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 22),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (_selectedTab == 'My Challenges') ...[
-                            // My Challenges Section
-                            Text(
-                              'My Challenges',
-                              style: GoogleFonts.lexendDeca(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF1B2D51),
-                                height: 22 / 18,
-                              ),
+                      child: ref.watch(challengesListProvider).when(
+                        data: (challenges) {
+                          final myChallenges = challenges.where((c) => c.isJoined).toList();
+                          final availableChallenges = challenges.where((c) => !c.isJoined).toList();
+
+                          if (_selectedTab == 'My Challenges') {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'My Challenges',
+                                  style: GoogleFonts.lexendDeca(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF1B2D51),
+                                    height: 22 / 18,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                if (myChallenges.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 20),
+                                    child: Center(
+                                      child: Text(
+                                        'No joined challenges yet.',
+                                        style: GoogleFonts.poppins(color: Colors.grey),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  ...myChallenges.map((challenge) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 23),
+                                    child: _buildChallengeCard(
+                                      challenge: challenge,
+                                      isActive: true,
+                                    ),
+                                  )),
+                                
+                                // Previous Challenge Section (Static or mock for now as per design)
+                                Text(
+                                  'Previous Challenge',
+                                  style: GoogleFonts.lexendDeca(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF1B2D51),
+                                    height: 22 / 18,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildChallengeCardMock(
+                                  title: 'Spring Sprint 100 KM Challenge',
+                                  subtitle: 'Ended 30 September 2025',
+                                  progress: '39.46/40 km',
+                                  kmBadge: '100',
+                                  badgeColor: const Color(0xFF96AAD2),
+                                  badgeTextColor: Colors.white,
+                                  isActive: false,
+                                ),
+                              ],
+                            );
+                          } else {
+                            return Column(
+                              children: [
+                                if (availableChallenges.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 20),
+                                    child: Center(
+                                      child: Text(
+                                        'No available challenges to join.',
+                                        style: GoogleFonts.poppins(color: Colors.grey),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  ...availableChallenges.map((challenge) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 17),
+                                    child: _buildJoinChallengeCard(challenge),
+                                  )),
+                              ],
+                            );
+                          }
+                        },
+                        loading: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(40.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        error: (err, stack) => Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(40.0),
+                            child: Column(
+                              children: [
+                                const Icon(Icons.error_outline, color: Colors.red),
+                                const SizedBox(height: 8),
+                                Text('Failed to load challenges: $err'),
+                                TextButton(
+                                  onPressed: () => ref.invalidate(challengesListProvider),
+                                  child: const Text('Retry'),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            _buildChallengeCard(
-                              title: 'Spring Sprint 100 KM Challenge',
-                              subtitle: 'Complete 100 KM by the end of Nov 2025',
-                              progress: '40 of 100 KM',
-                              kmBadge: '100',
-                              badgeColor: const Color(0xFFFFE4F2),
-                              badgeTextColor: const Color(0xFFF83A71),
-                              isActive: true,
-                            ),
-                            const SizedBox(height: 23),
-                            // Previous Challenge Section
-                            Text(
-                              'Previous Challenge',
-                              style: GoogleFonts.lexendDeca(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF1B2D51),
-                                height: 22 / 18,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildChallengeCard(
-                              title: 'Spring Sprint 100 KM Challenge',
-                              subtitle: 'Ended 30 September 2025',
-                              progress: '39.46/40 km',
-                              kmBadge: '100',
-                              badgeColor: const Color(0xFF96AAD2),
-                              badgeTextColor: Colors.white,
-                              isActive: false,
-                            ),
-                          ] else ...[
-                            // Join a Challenge content
-                            _buildJoinChallengeCard(
-                              image: 'assets/images/running.png',
-                              title: 'Spring Sprint 100 KM Challenge',
-                              subtitle: 'Complete 100KM by the end of Nov 2025',
-                              timeInfo: '2 Days remaining  |  10k pts you will win',
-                              kmBadge: '100',
-                            ),
-                            const SizedBox(height: 17),
-                            _buildJoinChallengeCard(
-                              image: 'assets/images/running.png',
-                              title: 'Spring Sprint 100 KM Challenge',
-                              subtitle: 'Complete 100KM by the end of Nov 2025',
-                              timeInfo: '2 Days remaining  |  10k pts you will win',
-                              kmBadge: '100',
-                            ),
-                            const SizedBox(height: 17),
-                            _buildJoinChallengeCard(
-                              image: 'assets/images/running.png',
-                              title: 'Spring Sprint 100 KM Challenge',
-                              subtitle: 'Complete 100KM by the end of Nov 2025',
-                              timeInfo: '2 Days remaining  |  10k pts you will win',
-                              kmBadge: '100',
-                            ),
-                          ],
-                        ],
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 140),
@@ -181,8 +221,21 @@ class _ClubScreenState extends State<ClubScreen> {
                 child: CustomBottomNavigation(
                   currentIndex: 4,
                   onTap: (index) {
-                    if (index != 4) {
-                      Navigator.pop(context);
+                    if (index == 4) return;
+                    
+                    Widget? page;
+                    switch (index) {
+                      case 0: page = const HomeScreen(); break;
+                      case 1: page = const RunningScreen(); break;
+                      case 2: page = const RewardsScreen(); break;
+                      case 3: page = WorkoutScreen(); break;
+                    }
+                    
+                    if (page != null) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => page!),
+                      );
                     }
                   },
                 ),
@@ -291,6 +344,167 @@ class _ClubScreenState extends State<ClubScreen> {
   }
 
   Widget _buildChallengeCard({
+    required Challenge challenge,
+    required bool isActive,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MyChallengeScreen(challenge: challenge),
+          ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        height: isActive ? 104 : 102,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFF5F3F3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              offset: const Offset(0, 4),
+              blurRadius: 32,
+            ),
+          ],
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Stack(
+          children: [
+            // Title
+            Positioned(
+              left: 16,
+              top: isActive ? 21 : 20,
+              child: SizedBox(
+                width: 220,
+                child: Text(
+                  challenge.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.lexendDeca(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF24252C),
+                    height: 18 / 14,
+                  ),
+                ),
+              ),
+            ),
+            // Subtitle
+            Positioned(
+              left: 16,
+              top: isActive ? 43 : 42,
+              child: SizedBox(
+                width: 220,
+                child: Text(
+                  challenge.description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.lexendDeca(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF6E6A7C),
+                    height: 14 / 11,
+                  ),
+                ),
+              ),
+            ),
+            // Location icon
+            const Positioned(
+              left: 14,
+              top: 69,
+              child: Icon(
+                Icons.location_on,
+                color: Color(0xFFAB94FF),
+                size: 16,
+              ),
+            ),
+            // Progress text
+            Positioned(
+              left: 36,
+              top: 69,
+              child: Text(
+                '${challenge.targetKm.toStringAsFixed(0)} KM Challenge',
+                style: GoogleFonts.lexendDeca(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF24252C),
+                  height: 16 / 13,
+                ),
+              ),
+            ),
+            // KM Badge
+            Positioned(
+              right: 11,
+              top: 17,
+              child: Container(
+                width: 43,
+                height: 39,
+                decoration: BoxDecoration(
+                  color: isActive ? const Color(0xFFFFE4F2) : const Color(0xFF96AAD2),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Stack(
+                  children: [
+                    // "100" text
+                    Positioned(
+                      left: 5,
+                      top: 1,
+                      child: Text(
+                        challenge.targetKm.toStringAsFixed(0),
+                        style: GoogleFonts.lexendDeca(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: isActive ? const Color(0xFFF83A71) : Colors.white,
+                          height: 22 / 18,
+                        ),
+                      ),
+                    ),
+                    // "KM" text
+                    Positioned(
+                      left: 14,
+                      top: 24,
+                      child: Text(
+                        'KM',
+                        style: GoogleFonts.roboto(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: isActive ? const Color(0xFFF83A71) : Colors.white,
+                          height: 13 / 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // View Icon
+            if (isActive)
+              Positioned(
+                right: 13,
+                top: 65,
+                child: Container(
+                  width: 23,
+                  height: 23,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.visibility,
+                    color: Color(0xFF9260F4),
+                    size: 23,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChallengeCardMock({
     required String title,
     required String subtitle,
     required String progress,
@@ -304,7 +518,18 @@ class _ClubScreenState extends State<ClubScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const MyChallengeScreen(),
+            builder: (context) => MyChallengeScreen(
+              challenge: Challenge(
+                id: 'mock',
+                title: title,
+                description: subtitle,
+                startDate: DateTime.now(),
+                endDate: DateTime.now().add(const Duration(days: 7)),
+                targetKm: double.tryParse(kmBadge) ?? 100,
+                rewardPoints: 1000,
+                isJoined: true,
+              ),
+            ),
           ),
         );
       },
@@ -432,43 +657,21 @@ class _ClubScreenState extends State<ClubScreen> {
                 ),
               ),
             ),
-            // View Icon
-            if (isActive)
-              Positioned(
-                right: 13,
-                top: 65,
-                child: Container(
-                  width: 23,
-                  height: 23,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.visibility,
-                    color: Color(0xFF9260F4),
-                    size: 23,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildJoinChallengeCard({
-    required String image,
-    required String title,
-    required String subtitle,
-    required String timeInfo,
-    required String kmBadge,
-  }) {
+  Widget _buildJoinChallengeCard(Challenge challenge) {
+    final timeLeft = challenge.endDate.difference(DateTime.now()).inDays;
+    
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const ChallengeDetailScreen(challengeId: '1'),
+            builder: (context) => ChallengeDetailScreen(challengeId: challenge.id),
           ),
         );
       },
@@ -495,18 +698,31 @@ class _ClubScreenState extends State<ClubScreen> {
               padding: const EdgeInsets.all(11),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child: Image.asset(
-                  image,
-                  height: 130,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 130,
-                    width: double.infinity,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.broken_image),
-                  ),
-                ),
+                child: challenge.imageUrl != null && challenge.imageUrl!.startsWith('http')
+                  ? Image.network(
+                      challenge.imageUrl!,
+                      height: 130,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        'assets/images/running.png',
+                        height: 130,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  : Image.asset(
+                      challenge.imageUrl ?? 'assets/images/running.png',
+                      height: 130,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 130,
+                        width: double.infinity,
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.broken_image),
+                      ),
+                    ),
               ),
             ),
             const SizedBox(height: 8),
@@ -522,7 +738,7 @@ class _ClubScreenState extends State<ClubScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title,
+                          challenge.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.lexendDeca(
@@ -534,7 +750,7 @@ class _ClubScreenState extends State<ClubScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          subtitle,
+                          challenge.description,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.lexendDeca(
@@ -563,7 +779,7 @@ class _ClubScreenState extends State<ClubScreen> {
                           left: 5.32,
                           top: 2.13,
                           child: Text(
-                            kmBadge,
+                            challenge.targetKm.toStringAsFixed(0),
                             style: GoogleFonts.lexendDeca(
                               fontSize: 19.14,
                               fontWeight: FontWeight.w600,
@@ -606,7 +822,7 @@ class _ClubScreenState extends State<ClubScreen> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      timeInfo,
+                      '${timeLeft >= 0 ? timeLeft : 0} Days remaining  |  ${NumberFormat.compact().format(challenge.rewardPoints)} pts you will win',
                       style: GoogleFonts.lexendDeca(
                         fontSize: 11,
                         fontWeight: FontWeight.w400,

@@ -6,6 +6,11 @@ import '../../../../widgets/custom_clock_icon.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:math' as math;
 import '../../../../widgets/gradient_button.dart';
+import '../../home/presentation/home_screen.dart';
+import 'running_screen.dart';
+import '../../rewards/presentation/rewards_screen.dart';
+import 'workout_screen.dart';
+import '../../club/presentation/club_screen.dart';
 
 class AddTimeScreen extends StatefulWidget {
   final String title;
@@ -107,12 +112,24 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
             child: CustomBottomNavigation(
               currentIndex: _selectedIndex,
               onTap: (index) {
-                if (index == 0) {
+                if (index == 3) {
                   Navigator.pop(context);
-                } else {
-                  setState(() {
-                    _selectedIndex = index;
-                  });
+                  return;
+                }
+                
+                Widget? page;
+                switch (index) {
+                  case 0: page = const HomeScreen(); break;
+                  case 1: page = const RunningScreen(); break;
+                  case 2: page = const RewardsScreen(); break;
+                  case 4: page = const ClubScreen(); break;
+                }
+                
+                if (page != null) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => page!),
+                  );
                 }
               },
             ),

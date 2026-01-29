@@ -9,7 +9,15 @@ import '../../../../widgets/custom_chevron_icon.dart';
 import '../../activity/presentation/activity_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
 import '../../activity/presentation/workout_screen.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../auth/presentation/login_screen.dart';
+import '../../onboarding/presentation/start_screen.dart';
+import '../../home/presentation/home_screen.dart';
+import '../../activity/presentation/running_screen.dart';
+import '../../club/presentation/club_screen.dart';
+import 'package:image_picker/image_picker.dart';
 import '../data/user_repository.dart';
+import 'dart:io';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -22,6 +30,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int _selectedIndex = 4; // Profile is at index 4
   bool _showAvatar = true;
   double _topPadding = 130.0;
+  bool _isUploading = false;
 
   void _onSheetDrag(double extent) {
     // extent ranges from minChildSize (0.72) to maxChildSize (0.87 in this case)
@@ -39,6 +48,74 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       _showAvatar = extent < threshold;
       _topPadding = padding;
     });
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+
+    if (image == null) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      await ref.read(userRepositoryProvider).uploadProfilePicture(File(image.path));
+      ref.invalidate(userProfileProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload image: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  Future<void> _editName(String currentName) async {
+    final controller = TextEditingController(text: currentName);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Name'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: "Enter your name"),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (newName != null && newName.isNotEmpty && newName != currentName) {
+      try {
+        await ref.read(userRepositoryProvider).updateProfile({'name': newName});
+        ref.invalidate(userProfileProvider);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update name: $e')),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -122,13 +199,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             children: [
                               // User Name
                               Center(
-                                child: Text(
-                                  user.name,
-                                  style: GoogleFonts.lexendDeca(
-                                    fontSize: 19.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF24252C),
-                                  ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      user.name,
+                                      style: GoogleFonts.lexendDeca(
+                                        fontSize: 19.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF24252C),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.edit, size: 16.sp, color: const Color(0xFFF83A71)),
+                                      onPressed: () => _editName(user.name),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(height: 20),
@@ -203,7 +289,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           left: 0,
                           right: 0,
                           child: Center(
-                            child: _buildAvatar(avatarSize, user.profilePicture),
+                            child: Stack(
+                              children: [
+                                _buildAvatar(avatarSize, user.profilePicture),
+                                if (_isUploading)
+                                  Positioned.fill(
+                                    child: Container(
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black26,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Center(
+                                        child: CircularProgressIndicator(color: Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                                Positioned(
+                                  right: 15,
+                                  bottom: 15,
+                                  child: GestureDetector(
+                                    onTap: _pickAndUploadImage,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF900EBF),
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black26,
+                                            blurRadius: 10,
+                                            offset: Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.camera_alt,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                     ],
@@ -220,9 +348,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: CustomBottomNavigation(
                 currentIndex: _selectedIndex,
                 onTap: (index) {
-                  if (index == 4) return; // Already on profile
-                  setState(() => _selectedIndex = index);
-                  // Add actual navigation logic here if needed
+                  if (index == 4) return;
+                  
+                  Widget? page;
+                  switch (index) {
+                    case 0: page = const HomeScreen(); break;
+                    case 1: page = const RunningScreen(); break;
+                    case 2: page = const RewardsScreen(); break;
+                    case 3: page = const WorkoutScreen(); break;
+                  }
+                  
+                  if (page != null) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => page!),
+                    );
+                  }
                 },
               ),
             ),
@@ -283,7 +424,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              );
+            },
             child: Container(
               width: 40,
               height: 40,
@@ -306,8 +452,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ),
           GestureDetector(
-            onTap: () {
-              // Logout action
+            onTap: () async {
+              await ref.read(authRepositoryProvider).logout();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
             },
             child: const Icon(
               Icons.logout,
@@ -347,7 +499,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               shape: BoxShape.circle,
               color: const Color(0xFFCCCCCC),
               image: DecorationImage(
-                image: imageUrl != null
+                image: imageUrl != null && imageUrl.isNotEmpty
                     ? NetworkImage(imageUrl)
                     : const AssetImage('assets/images/profile.png') as ImageProvider,
                 fit: BoxFit.cover,

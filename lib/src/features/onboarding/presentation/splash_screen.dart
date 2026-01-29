@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:math' as math;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tryd/src/features/home/presentation/home_screen.dart';
 import 'start_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -53,24 +55,35 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    _navigateToStart();
+    _navigateToNextScreen();
   }
 
-  void _navigateToStart() async {
+  void _navigateToNextScreen() async {
     await Future.delayed(_displayDuration);
+    if (!mounted) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+
     if (mounted) {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const StartScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
-      );
+      if (token != null && token.isNotEmpty) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const StartScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          ),
+        );
+      }
     }
   }
 

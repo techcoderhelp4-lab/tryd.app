@@ -1,21 +1,24 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:intl_phone_field/country_picker_dialog.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../widgets/gradient_button.dart';
+import '../data/auth_repository.dart';
 import "../../auth/presentation/signup_screen.dart";
 import "../../home/presentation/home_screen.dart";
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   static const Color _primaryTextColor = Color(0xFF000000);
   static const Color _labelColor = Color(0xFF8B88B5);
   static const Color _inputTextColor = Color(0xFF221F48);
@@ -31,6 +34,10 @@ class _LoginScreenState extends State<LoginScreen> {
   int _otpTimeRemaining = _otpTimerDuration;
   bool _canResendOtp = false;
   int _resendAttempts = 0;
+  int _dynamicMaxLength = 12;
+
+  String _completePhoneNumber = '';
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -61,8 +68,8 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _sendOtp() {
-    if (_phoneController.text.isNotEmpty) {
+  Future<void> _sendOtp() async {
+    if (_phoneController.text.isNotEmpty && _completePhoneNumber.length >= 8) {
       if (_resendAttempts >= _maxResendAttempts) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -77,19 +84,75 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       setState(() {
-        _isOtpSent = true;
-        _resendAttempts++;
+        _isLoading = true;
       });
-      _startOtpTimer();
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      try {
+        final authRepo = ref.read(authRepositoryProvider);
+        
+        // 1. Check if user exists (Reverse of signup logic)
+        final userExists = await authRepo.checkUserExists(_completePhoneNumber);
+
+        if (!userExists) {
+            if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(
+               SnackBar(
+                 content: Text(
+                   'User not found with this number. Please Sign Up first.', 
+                   style: GoogleFonts.poppins()
+                 ), 
+                 backgroundColor: Colors.red
+               ),
+             );
+            }
+             setState(() {
+              _isLoading = false;
+            });
+            return;
+        }
+
+        // 2. User exists, Send OTP
+        await authRepo.sendOtp(_completePhoneNumber);
+
+        setState(() {
+          _isOtpSent = true;
+          _resendAttempts++;
+        });
+        _startOtpTimer();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'OTP sent successfully',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: const Color(0xFF900EBF),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to send OTP. Please try again.', style: GoogleFonts.poppins()), 
+              backgroundColor: Colors.red
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } else {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'OTP sent successfully',
-            style: GoogleFonts.poppins(),
-          ),
-          backgroundColor: const Color(0xFF900EBF),
-          duration: const Duration(seconds: 2),
+          content: Text('Please enter a valid mobile number', style: GoogleFonts.poppins()), 
+          backgroundColor: Colors.red
         ),
       );
     }
@@ -202,12 +265,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 Expanded(
                   child: IntlPhoneField(
                     controller: _phoneController,
+                    enabled: !_isOtpSent,
                     disableLengthCheck: true,
                     validator: (phone) => null,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(15),
-                    ],
                     decoration: InputDecoration(
                       hintText: '12456 65324',
                       hintStyle: GoogleFonts.poppins(
@@ -266,8 +326,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       fontWeight: FontWeight.w400,
                       color: _inputTextColor,
                     ),
+                    inputFormatters: [
+                      LengthLimitingTextInputFormatter(_dynamicMaxLength),
+                    ],
+                    onCountryChanged: (country) {
+                      setState(() {
+                        _dynamicMaxLength = country.maxLength + 1;
+                      });
+                    },
                     onChanged: (phone) {
-                      print(phone.completeNumber);
+                      _completePhoneNumber = phone.completeNumber;
+                      // print(phone.completeNumber);
                     },
                   ),
                 ),
@@ -299,10 +368,33 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _changeNumber() {
+    setState(() {
+      _isOtpSent = false;
+      _otpController.clear();
+      _otpTimer?.cancel();
+      _otpTimeRemaining = _otpTimerDuration;
+      _canResendOtp = false;
+      _resendAttempts = 0;
+    });
+  }
+
   Widget _buildTimerAndResend() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        GestureDetector(
+          onTap: _changeNumber,
+          child: Text(
+            'Change Number',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: _labelColor,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
         if (!_canResendOtp)
           Text(
             'Resend OTP in 0:${_otpTimeRemaining.toString().padLeft(2, '0')}',
@@ -389,7 +481,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 contentPadding: EdgeInsets.zero,
               ),
               keyboardType: isOTP ? TextInputType.number : TextInputType.phone,
-              maxLength: isOTP ? 5 : null,
+              maxLength: null,
               buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
             ),
           ],
@@ -400,15 +492,48 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildSignInButton() {
     return GradientButton(
-      text: _isOtpSent ? 'Sign in' : 'Send OTP',
-      onPressed: () {
+      text: _isOtpSent ? (_isLoading ? 'Signing In...' : 'Sign in') : (_isLoading ? 'Sending...' : 'Send OTP'),
+      onPressed: _isLoading ? () {} : () async {
         if (_isOtpSent) {
           if (_otpController.text.isNotEmpty) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => const HomeScreen(),
-              ),
-            );
+            
+            setState(() {
+              _isLoading = true;
+            });
+
+            try {
+              final authRepo = ref.read(authRepositoryProvider);
+              await authRepo.verifyOtpLogin(_completePhoneNumber, _otpController.text);
+
+                if (mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const HomeScreen(),
+                  ),
+                  (route) => false,
+                );
+              }
+            } catch (e) {
+               if (mounted) {
+                 String errorMessage = 'Verification failed. Invalid OTP.';
+                 if (e is DioException) {
+                   errorMessage = e.response?.data['message'] ?? 'Connection error';
+                 }
+                 
+                 ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(errorMessage, style: GoogleFonts.poppins()),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            } finally {
+               if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
+            }
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

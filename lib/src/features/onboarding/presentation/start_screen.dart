@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../../../../widgets/gradient_button.dart';
 import '../../auth/presentation/login_screen.dart';
+import '../../auth/presentation/signup_screen.dart';
 
 class StartScreen extends StatelessWidget {
   const StartScreen({super.key});
@@ -57,6 +58,8 @@ class StartScreen extends StatelessWidget {
           _buildSubtitle(),
           SizedBox(height: 40.h),
           _buildButton(context),
+          SizedBox(height: 16.h),
+          _buildLoginLink(context),
           const Spacer(),
         ],
       ),
@@ -92,14 +95,47 @@ class StartScreen extends StatelessWidget {
 
   Widget _buildButton(BuildContext context) {
     return GradientButton(
-      text: "Let's Start",
+      text: "Get Started",
       onPressed: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => const LoginScreen(),
+            builder: (context) => const SignupScreen(),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLoginLink(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          "Already have an account? ",
+          style: GoogleFonts.poppins(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w400,
+            color: _secondaryTextColor,
+          ),
+        ),
+        GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const LoginScreen(),
+              ),
+            );
+          },
+          child: Text(
+            "Sign In",
+            style: GoogleFonts.poppins(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFF83A71),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_constants.dart';
 import '../../../../core/network/api_client.dart';
 import '../../auth/domain/user.dart';
@@ -85,3 +86,8 @@ Future<User> userProfile(UserProfileRef ref) {
   final repository = ref.watch(userRepositoryProvider);
   return repository.getProfile();
 }
+
+final activitySummaryProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, period) {
+  final repository = ref.watch(userRepositoryProvider);
+  return repository.getActivitySummary(period: period);
+});

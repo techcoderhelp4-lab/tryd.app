@@ -76,6 +76,70 @@ class AuthRepository {
       await prefs.remove('auth_token');
     }
   }
+  Future<bool> checkUserExists(String phoneNumber) async {
+    try {
+      final response = await _dio.post(
+        ApiConstants.checkUserExists,
+        data: {'phoneNumber': phoneNumber},
+      );
+      return response.data['exists'] == true;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> sendOtp(String phoneNumber) async {
+    try {
+      await _dio.post(
+        ApiConstants.sendOtp,
+        data: {'phoneNumber': phoneNumber},
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<AuthResponse> verifyOtp(String phoneNumber, String otp) async {
+    try {
+      final response = await _dio.post(
+        ApiConstants.verifyOtp,
+        data: {'phoneNumber': phoneNumber, 'otp': otp},
+      );
+      
+      final authResponse = AuthResponse.fromJson(response.data);
+      
+      // Save token
+      if (authResponse.accessToken != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', authResponse.accessToken!);
+      }
+      
+      return authResponse;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<AuthResponse> verifyOtpLogin(String phoneNumber, String otp) async {
+    try {
+      final response = await _dio.post(
+        ApiConstants.verifyOtpLogin,
+        data: {'phoneNumber': phoneNumber, 'otp': otp},
+      );
+      
+      final authResponse = AuthResponse.fromJson(response.data);
+      
+      // Save token
+      if (authResponse.accessToken != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', authResponse.accessToken!);
+      }
+      
+      return authResponse;
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
 
 @Riverpod(keepAlive: true)

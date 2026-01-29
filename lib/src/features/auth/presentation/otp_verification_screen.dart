@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../widgets/gradient_button.dart';
+import 'package:tryd/src/features/auth/data/auth_repository.dart';
 import "../../home/presentation/home_screen.dart";
 
-class OtpVerificationScreen extends StatefulWidget {
+class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String phoneNumber;
 
   const OtpVerificationScreen({
@@ -13,10 +15,10 @@ class OtpVerificationScreen extends StatefulWidget {
   });
 
   @override
-  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  ConsumerState<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   static const Color _primaryTextColor = Color(0xFF000000);
   static const Color _labelColor = Color(0xFF8B88B5);
   static const Color _inputTextColor = Color(0xFF221F48);
@@ -34,6 +36,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     (index) => FocusNode(),
   );
 
+  bool _isLoading = false;
+
   @override
   void dispose() {
     for (var controller in _otpControllers) {
@@ -43,6 +47,69 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       node.dispose();
     }
     super.dispose();
+  }
+  
+  Future<void> _handleVerification() async {
+    final otp = _getOtpCode();
+    if (otp.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please enter OTP',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authRepo = ref.read(authRepositoryProvider);
+      
+      // Call real verification API
+      // Since our verification API returns a token, the repository handles saving it.
+      await authRepo.verifyOtp(widget.phoneNumber, otp);
+
+      if (mounted) {
+        // Show success message
+         ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Verified successfully!', style: GoogleFonts.poppins()),
+            backgroundColor: const Color(0xFF22D198),
+          ),
+        );
+
+        // Navigate to Home
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
+          ),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      print('OTP Verification Error: $e');
+      if (mounted) {
+        String errorMessage = 'Verification failed';
+        // You might want to parse 'e' to see if it's a DioException and show specific message (e.g. Invalid OTP)
+        
+         ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage, style: GoogleFonts.poppins()), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _onOtpDigitChanged(String value, int index) {
@@ -175,7 +242,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         keyboardType: TextInputType.number,
         maxLength: 1,
         style: GoogleFonts.poppins(
-          fontSize: 14,
+          fontSize: 20,
           fontWeight: FontWeight.w400,
           height: 1.5,
           color: _inputTextColor,
@@ -204,65 +271,62 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   Widget _buildVerifyButton() {
     return GradientButton(
-      text: 'Verify OTP',
-      onPressed: () {
-        final otp = _getOtpCode();
-        if (otp.length == 4) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => const HomeScreen(),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Please enter complete OTP',
-                style: GoogleFonts.poppins(),
-              ),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      },
+      text: _isLoading ? 'Verifying...' : 'Verify OTP',
+      onPressed: _isLoading ? () {} : _handleVerification,
     );
   }
 
   Widget _buildResendSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
       children: [
-        Text(
-          "If you didn't receive a code!  ",
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            height: 1.14,
-            color: _labelColor,
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            // Handle resend OTP
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'OTP resent successfully',
-                  style: GoogleFonts.poppins(),
-                ),
-                backgroundColor: const Color(0xFF900EBF),
-                duration: const Duration(seconds: 2),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "If you didn't receive a code!  ",
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                height: 1.14,
+                color: _labelColor,
               ),
-            );
-          },
+            ),
+            GestureDetector(
+              onTap: () {
+                // Handle resend OTP
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'OTP resent successfully',
+                      style: GoogleFonts.poppins(),
+                    ),
+                    backgroundColor: const Color(0xFF900EBF),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
+              child: Text(
+                'Resend',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.14,
+                  color: _linkColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
           child: Text(
-            'Resend',
+            'Change Number',
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              height: 1.14,
-              color: _linkColor,
+              color: _labelColor,
+              decoration: TextDecoration.underline,
             ),
           ),
         ),

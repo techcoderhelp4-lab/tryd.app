@@ -4,24 +4,34 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../../../widgets/custom_arrow_icon.dart';
 import '../../../../widgets/custom_calendar_icon.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import '../data/activity_repository.dart';
+import '../domain/workout.dart';
+import '../../home/presentation/home_screen.dart';
+import 'running_screen.dart';
+import '../../rewards/presentation/rewards_screen.dart';
+import 'workout_screen.dart';
+import '../../club/presentation/club_screen.dart';
 
-class HistoryScreen extends StatefulWidget {
+class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   int _selectedIndex = 3; // History/Workout tab
 
   @override
   Widget build(BuildContext context) {
+    final workoutHistoryAsync = ref.watch(workoutHistoryProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Background gradient image
           Positioned.fill(
             child: Opacity(
               opacity: 0.8,
@@ -31,8 +41,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
           ),
-          
-          // Main content
           SafeArea(
             child: Column(
               children: [
@@ -40,29 +48,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 _buildHeader(context),
                 const SizedBox(height: 52),
                 Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        // History card example
-                        Padding(
+                  child: workoutHistoryAsync.when(
+                    data: (history) => history.isEmpty 
+                      ? Center(child: Text("No workouts yet", style: GoogleFonts.lexend(color: Colors.grey)))
+                      : ListView.separated(
                           padding: const EdgeInsets.symmetric(horizontal: 15),
-                          child: _buildHistoryCard(),
+                          itemCount: history.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 15),
+                          itemBuilder: (context, index) {
+                            return _buildHistoryCard(history[index]);
+                          },
                         ),
-                        // Add more history cards here if needed via ListView.builder naturally
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-                          child: _buildHistoryCard(),
-                        ),
-                        const SizedBox(height: 140),
-                      ],
-                    ),
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text("Error: $e")),
                   ),
                 ),
+                const SizedBox(height: 140),
               ],
             ),
           ),
-          
-          // Bottom Navigation
           Positioned(
             left: 0,
             right: 0,
@@ -70,12 +74,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: CustomBottomNavigation(
               currentIndex: _selectedIndex,
               onTap: (index) {
-                if (index == 0) {
+                if (index == 3) {
                   Navigator.pop(context);
-                } else {
-                  setState(() {
-                    _selectedIndex = index;
-                  });
+                  return;
+                }
+                
+                Widget? page;
+                switch (index) {
+                  case 0: page = const HomeScreen(); break;
+                  case 1: page = const RunningScreen(); break;
+                  case 2: page = const RewardsScreen(); break;
+                  case 4: page = const ClubScreen(); break;
+                }
+                
+                if (page != null) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => page!),
+                  );
                 }
               },
             ),
@@ -120,10 +136,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildHistoryCard() {
+  Widget _buildHistoryCard(Workout workout) {
     return Container(
       width: double.infinity,
-      height: 159,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
@@ -144,7 +159,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
                 const SizedBox(width: 7),
                 Text(
-                  '20 Sep 2025',
+                  DateFormat('dd MMM yyyy').format(workout.date),
                   style: GoogleFonts.poppins(
                     fontSize: 19,
                     fontWeight: FontWeight.w500,
@@ -152,31 +167,26 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     height: 22 / 19,
                   ),
                 ),
-                const Spacer(),
-                const SizedBox(width: 7),
               ],
             ),
             const SizedBox(height: 18),
-            _buildStatsRow(),
+            _buildStatsRow(workout),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatsRow() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          _buildStatItem('Work', '5'),
-          _buildStatItem('Rest', '3'),
-          _buildStatItem('Exercises', '7'),
-          _buildStatItem('Rounds', '2'),
-        ],
-      ),
+  Widget _buildStatsRow(Workout workout) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _buildStatItem('Work', '${workout.workDuration ?? 0}s'),
+        _buildStatItem('Rest', '${workout.restDuration ?? 0}s'),
+        _buildStatItem('Ex', '${workout.exercises ?? 0}'),
+        _buildStatItem('Rounds', '${workout.rounds ?? 0}'),
+      ],
     );
   }
 

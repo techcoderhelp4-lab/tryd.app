@@ -9,6 +9,11 @@ import '../../../../widgets/custom_bottom_navigation.dart';
 import '../data/challenge_repository.dart';
 import '../domain/challenge.dart';
 import 'my_challenge_screen.dart';
+import '../../home/presentation/home_screen.dart';
+import '../../activity/presentation/running_screen.dart';
+import '../../rewards/presentation/rewards_screen.dart';
+import '../../activity/presentation/workout_screen.dart';
+import '../../club/presentation/club_screen.dart';
 
 class ChallengeDetailScreen extends ConsumerWidget {
   final String challengeId;
@@ -58,7 +63,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
                               SizedBox(height: 22.h),
                               _buildDetailsCard(challenge),
                               SizedBox(height: 20.h),
-                              _buildJoinButton(context),
+                              _buildJoinButton(context, ref, challenge),
                               SizedBox(height: 120.h), // Spacing for bottom nav
                             ],
                           ),
@@ -75,9 +80,24 @@ class ChallengeDetailScreen extends ConsumerWidget {
                     child: CustomBottomNavigation(
                       currentIndex: 4,
                       onTap: (index) {
-                         if (index != 4) {
-                           // Handle navigation or pop
+                         if (index == 4) {
                            Navigator.pop(context);
+                           return;
+                         }
+                         
+                         Widget? page;
+                         switch (index) {
+                           case 0: page = const HomeScreen(); break;
+                           case 1: page = const RunningScreen(); break;
+                           case 2: page = const RewardsScreen(); break;
+                           case 3: page = const WorkoutScreen(); break;
+                         }
+                         
+                         if (page != null) {
+                           Navigator.pushReplacement(
+                             context,
+                             MaterialPageRoute(builder: (context) => page!),
+                           );
                          }
                       },
                     ),
@@ -157,18 +177,31 @@ class ChallengeDetailScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Challenge image
-            Image.asset(
-              challenge.imageUrl ?? 'assets/images/running.png',
-              width: double.infinity,
-              height: 120.h,
-              fit: BoxFit.cover,
-              errorBuilder: (_,__,___) => Image.asset(
-                 'assets/images/running.png',
-                 width: double.infinity,
-                 height: 120.h,
-                 fit: BoxFit.cover,
-              ),
-            ),
+            challenge.imageUrl != null && challenge.imageUrl!.startsWith('http')
+              ? Image.network(
+                  challenge.imageUrl!,
+                  width: double.infinity,
+                  height: 120.h,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_,__,___) => Image.asset(
+                     'assets/images/running.png',
+                     width: double.infinity,
+                     height: 120.h,
+                     fit: BoxFit.cover,
+                  ),
+                )
+              : Image.asset(
+                  challenge.imageUrl ?? 'assets/images/running.png',
+                  width: double.infinity,
+                  height: 120.h,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_,__,___) => Image.asset(
+                     'assets/images/running.png',
+                     width: double.infinity,
+                     height: 120.h,
+                     fit: BoxFit.cover,
+                  ),
+                ),
             // Gradient section
             Container(
               width: double.infinity,
@@ -403,14 +436,59 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildJoinButton(BuildContext context) {
+  Widget _buildJoinButton(BuildContext context, WidgetRef ref, Challenge challenge) {
     return GradientButton(
-      text: 'Join Challenge',
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const MyChallengeScreen()),
-        );
+      text: challenge.isJoined ? 'Go to Challenge' : 'Join Challenge',
+      onPressed: () async {
+        if (challenge.isJoined) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => MyChallengeScreen(challenge: challenge)),
+          );
+          return;
+        }
+
+        try {
+          await ref.read(challengeRepositoryProvider).joinChallenge(challenge.id);
+          
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Successfully joined challenge!')),
+            );
+            
+            // Refresh challenges list and details
+            ref.invalidate(challengesListProvider);
+            ref.invalidate(challengeDetailsProvider(challenge.id));
+
+            // Navigate to My Challenge Screen
+             // Fetch updated challenge with isJoined = true locally for immediate nav or just assume
+             // We can create a joined copy
+             final joinedChallenge = Challenge(
+               id: challenge.id,
+               title: challenge.title,
+               description: challenge.description,
+               startDate: challenge.startDate,
+               endDate: challenge.endDate,
+               targetKm: challenge.targetKm,
+               rewardPoints: challenge.rewardPoints,
+               imageUrl: challenge.imageUrl,
+               isJoined: true,
+               userProgress: challenge.userProgress,
+               progressPercentage: challenge.progressPercentage,
+             );
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => MyChallengeScreen(challenge: joinedChallenge)),
+            );
+          }
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to join challenge: $e')),
+            );
+          }
+        }
       },
       height: 58.h,
     );

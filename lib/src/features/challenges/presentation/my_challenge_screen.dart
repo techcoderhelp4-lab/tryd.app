@@ -4,12 +4,22 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
 import 'leaderboard_screen.dart';
+import '../../home/presentation/home_screen.dart';
+import '../../activity/presentation/running_screen.dart';
+import '../../rewards/presentation/rewards_screen.dart';
+import '../../activity/presentation/workout_screen.dart';
+import '../../club/presentation/club_screen.dart';
 
-class MyChallengeScreen extends StatelessWidget {
-  const MyChallengeScreen({super.key});
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../domain/challenge.dart';
+import 'package:intl/intl.dart';
+
+class MyChallengeScreen extends ConsumerWidget {
+  final Challenge challenge;
+  const MyChallengeScreen({super.key, required this.challenge});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -40,13 +50,13 @@ class MyChallengeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Active challenge card
-                          _buildActiveChallengeCard(),
+                          _buildActiveChallengeCard(challenge),
                           const SizedBox(height: 15),
                           // Details card
-                          _buildDetailsCard(),
+                          _buildDetailsCard(challenge),
                           const SizedBox(height: 15),
                           // Leaderboard button
-                          _buildLeaderboardButton(context),
+                          _buildLeaderboardButton(context, challenge),
                           const SizedBox(height: 15),
                           // Unlock Rewards heading
                           Text(
@@ -60,7 +70,7 @@ class MyChallengeScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 15),
                           // Reward card
-                          _buildRewardCard(),
+                          _buildRewardCard(challenge),
                           const SizedBox(height: 120),
                         ],
                       ),
@@ -78,8 +88,24 @@ class MyChallengeScreen extends StatelessWidget {
             child: CustomBottomNavigation(
               currentIndex: 4,
               onTap: (index) {
-                if (index != 4) {
+                if (index == 4) {
                   Navigator.pop(context);
+                  return;
+                }
+                
+                Widget? page;
+                switch (index) {
+                  case 0: page = const HomeScreen(); break;
+                  case 1: page = const RunningScreen(); break;
+                  case 2: page = const RewardsScreen(); break;
+                  case 3: page = const WorkoutScreen(); break;
+                }
+                
+                if (page != null) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => page!),
+                  );
                 }
               },
             ),
@@ -120,7 +146,8 @@ class MyChallengeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActiveChallengeCard() {
+  Widget _buildActiveChallengeCard(Challenge challenge) {
+    final timeLeft = challenge.endDate.difference(DateTime.now()).inDays;
     return Container(
       width: double.infinity,
       height: 146,
@@ -168,12 +195,12 @@ class MyChallengeScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   // Title
                   Text(
-                    'End March 160 KM\nChallenge',
+                    challenge.title,
                     style: GoogleFonts.poppins(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
-                      height: 22 / 20,
+                      height: 22 / 18,
                     ),
                   ),
                   const Spacer(),
@@ -187,7 +214,7 @@ class MyChallengeScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '2 Days Remaining',
+                        '${timeLeft >= 0 ? timeLeft : 0} Days Remaining',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
@@ -202,7 +229,7 @@ class MyChallengeScreen extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             // Circular progress indicator
-            _buildCircularProgress(67.1, 100),
+            _buildCircularProgress(challenge.userProgress, challenge.targetKm), 
           ],
         ),
       ),
@@ -265,7 +292,8 @@ class MyChallengeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailsCard() {
+  Widget _buildDetailsCard(Challenge challenge) {
+    final dateFormat = DateFormat('d MMM');
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
@@ -283,9 +311,9 @@ class MyChallengeScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildDetailRow('Total Distance', '100 Km'),
+          _buildDetailRow('Total Distance', '${challenge.targetKm.toStringAsFixed(0)} Km'),
           const SizedBox(height: 7),
-          _buildDetailRow('Duration', '6-12 Oct'),
+          _buildDetailRow('Duration', '${dateFormat.format(challenge.startDate)} - ${dateFormat.format(challenge.endDate)}'),
           const SizedBox(height: 7),
           _buildDetailRow('Participants', '19,543 Runners'),
         ],
@@ -319,13 +347,13 @@ class MyChallengeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLeaderboardButton(BuildContext context) {
+  Widget _buildLeaderboardButton(BuildContext context, Challenge challenge) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const LeaderboardScreen(),
+            builder: (context) => LeaderboardScreen(challengeId: challenge.id),
           ),
         );
       },
@@ -367,7 +395,7 @@ class MyChallengeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRewardCard() {
+  Widget _buildRewardCard(Challenge challenge) {
     return Container(
       width: double.infinity,
       height: 73,
@@ -393,7 +421,7 @@ class MyChallengeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Run 100 km',
+                    'Run ${challenge.targetKm.toStringAsFixed(0)} km',
                     style: GoogleFonts.lexendDeca(
                       fontSize: 11,
                       fontWeight: FontWeight.w400,
@@ -403,7 +431,7 @@ class MyChallengeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'win 10k points',
+                    'win ${NumberFormat.compact().format(challenge.rewardPoints)} points',
                     style: GoogleFonts.lexendDeca(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,

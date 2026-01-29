@@ -1,4 +1,4 @@
-package com.example.tryd
+package tryd.app
 
 import io.flutter.embedding.android.FlutterActivity
 

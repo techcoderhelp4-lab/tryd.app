@@ -1,31 +1,123 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:intl_phone_field/country_picker_dialog.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../widgets/gradient_button.dart';
+import '../data/auth_repository.dart';
 import 'otp_verification_screen.dart';
 
-class SignupScreen extends StatefulWidget {
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   static const Color _primaryTextColor = Color(0xFF000000);
   static const Color _labelColor = Color(0xFF8B88B5);
   static const Color _inputTextColor = Color(0xFF221F48);
   static const Color _linkColor = Color(0xFFF83A71);
   static const Color _inputBgColor = Color(0xFFFFFFFF);
 
+  int _dynamicMaxLength = 12;
+  String _completePhoneNumber = '';
+  bool _isLoading = false;
   final TextEditingController _phoneController = TextEditingController();
 
   @override
   void dispose() {
     _phoneController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSignup() async {
+    if (_phoneController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(content: Text('Please enter your mobile number', style: GoogleFonts.poppins()), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    
+    // Basic validation
+    if (_completePhoneNumber.length < 8) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(content: Text('Please enter a valid mobile number', style: GoogleFonts.poppins()), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // ---------------------------------------------------------
+      // STEP 1: Check if phone number already exists 
+      // ---------------------------------------------------------
+      final authRepo = ref.read(authRepositoryProvider);
+      final userAlreadyExists = await authRepo.checkUserExists(_completePhoneNumber);
+
+      if (userAlreadyExists) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'This mobile number is already registered.',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+              action: SnackBarAction(
+                label: 'Login',
+                textColor: Colors.white,
+                onPressed: () {
+                  Navigator.of(context).pop(); // Go back to login screen
+                },
+              ),
+            ),
+          );
+        }
+        return; // Stop execution here
+      }
+
+      // ---------------------------------------------------------
+      // STEP 2: Send OTP if user does NOT exist
+      // ---------------------------------------------------------
+      await authRepo.sendOtp(_completePhoneNumber);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('OTP sent successfully', style: GoogleFonts.poppins()),
+            backgroundColor: const Color(0xFF900EBF),
+          ),
+        );
+        
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => OtpVerificationScreen(
+              phoneNumber: _completePhoneNumber,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Signup Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Something went wrong. Please try again.', style: GoogleFonts.poppins()), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -131,7 +223,7 @@ class _SignupScreenState extends State<SignupScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Enter Mobile Number',
+              'Mobile Number',
               style: GoogleFonts.lexendDeca(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -139,15 +231,12 @@ class _SignupScreenState extends State<SignupScreen> {
                 color: _labelColor,
               ),
             ),
+            const SizedBox(height: 2),
             Expanded(
               child: IntlPhoneField(
                 controller: _phoneController,
                 disableLengthCheck: true,
                 validator: (phone) => null,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(15),
-                ],
                 decoration: InputDecoration(
                   hintText: '12456 65324',
                   hintStyle: GoogleFonts.poppins(
@@ -157,7 +246,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   border: InputBorder.none,
                   isDense: true,
-                  contentPadding: EdgeInsets.zero,
+                  contentPadding: const EdgeInsets.only(top: 4),
                   counterText: '',
                   errorStyle: const TextStyle(height: 0),
                 ),
@@ -199,15 +288,23 @@ class _SignupScreenState extends State<SignupScreen> {
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                   color: _inputTextColor,
-                  height: 1.5,
+                  height: 1.25,
                 ),
                 dropdownTextStyle: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                   color: _inputTextColor,
                 ),
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(_dynamicMaxLength),
+                ],
+                onCountryChanged: (country) {
+                  setState(() {
+                    _dynamicMaxLength = country.maxLength + 1;
+                  });
+                },
                 onChanged: (phone) {
-                  print(phone.completeNumber);
+                  _completePhoneNumber = phone.completeNumber;
                 },
               ),
             ),
@@ -284,18 +381,8 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Widget _buildSignUpButton() {
     return GradientButton(
-      text: 'Sign up',
-      onPressed: () {
-        if (_phoneController.text.isNotEmpty) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => OtpVerificationScreen(
-                phoneNumber: _phoneController.text,
-              ),
-            ),
-          );
-        }
-      },
+      text: _isLoading ? 'Please wait...' : 'Sign up',
+      onPressed: _isLoading ? () {} : _handleSignup,
     );
   }
 

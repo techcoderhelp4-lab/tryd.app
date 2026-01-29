@@ -12,6 +12,11 @@ import '../../home/presentation/home_screen.dart';
 import '../../activity/presentation/running_screen.dart';
 import '../../activity/presentation/workout_screen.dart';
 import '../../club/presentation/club_screen.dart';
+import '../../profile/data/user_repository.dart';
+import '../data/reward_repository.dart';
+import '../domain/reward.dart';
+import '../domain/redemption.dart';
+import 'package:intl/intl.dart';
 
 class RewardsScreen extends ConsumerStatefulWidget {
   const RewardsScreen({super.key});
@@ -33,63 +38,12 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     {'name': 'Books', 'icon': 'assets/images/books.svg'},
   ];
 
-  final List<Map<String, dynamic>> _rewards = [
-    {
-      'title': 'Nike 20% Discount',
-      'subtitle': 'Valid on all products',
-      'points': '2,000',
-      'image': 'assets/images/nike.png',
-      'manual': false,
-    },
-    {
-      'title': 'Adidas Gift Voucher',
-      'subtitle': 'KD 200 off on purchase',
-      'points': '3,000',
-      'image': 'assets/images/adidas.png',
-      'manual': false,
-    },
-    {
-      'title': 'Monthly Gym Pass',
-      'subtitle': '1 month premium access',
-      'points': '8,000',
-      'image': 'assets/images/gym.png',
-      'manual': true,
-    },
-    {
-      'title': 'Starbucks Coffee',
-      'subtitle': 'Any grande beverage',
-      'points': '500',
-      'image': 'assets/images/starbucks.png',
-      'manual': false,
-    },
-  ];
-
-  final List<Map<String, dynamic>> _redemptions = [
-    {
-      'title': 'Nike 20% Discount',
-      'date': 'Requested on Oct 9, 2025',
-      'points': '2,000 points',
-      'status': 'pending',
-      'message': 'Your request is being reviewed. You\'ll be notified once approved.',
-    },
-    {
-      'title': 'Starbucks Coffee',
-      'date': 'Requested on Oct 5, 2025',
-      'points': '500 points',
-      'status': 'approved',
-      'code': 'STAR-XY89-2024',
-    },
-    {
-      'title': 'Gym Day Pass',
-      'date': 'Requested on Sep 28, 2025',
-      'points': '1,500 points',
-      'status': 'approved',
-      'code': 'GYM-AB12-2024',
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final userAsync = ref.watch(userProfileProvider);
+    final rewardsAsync = ref.watch(filteredRewardsProvider(_selectedCategory == 'All' ? null : _selectedCategory));
+    final redemptionsAsync = ref.watch(myRedemptionsProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -116,7 +70,11 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       SizedBox(height: 28.h),
                       _buildHeader(context),
                       SizedBox(height: 20.h),
-                      _buildPointsSection(),
+                      userAsync.when(
+                        data: (user) => _buildPointsSection(user.points ?? 0),
+                        loading: () => _buildPointsSection(0),
+                        error: (_, __) => _buildPointsSection(0),
+                      ),
                       SizedBox(height: 30.h),
                     ],
                   ),
@@ -141,7 +99,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     ),
                   ),
                 ),
-                _buildRewardsList(),
+                _buildRewardsList(rewardsAsync, redemptionsAsync),
               ],
             ),
           ),
@@ -157,10 +115,12 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 if (index == 2) return;
                 
                 Widget? page;
-                if (index == 0) page = const HomeScreen();
-                if (index == 1) page = const RunningScreen();
-                if (index == 3) page = const WorkoutScreen();
-                if (index == 4) page = const ClubScreen();
+                switch (index) {
+                  case 0: page = const HomeScreen(); break;
+                  case 1: page = const RunningScreen(); break;
+                  case 3: page = const WorkoutScreen(); break;
+                  case 4: page = const ClubScreen(); break;
+                }
                 
                 if (page != null) {
                   Navigator.pushReplacement(
@@ -183,7 +143,12 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              );
+            },
             child: Container(
               width: 40,
               height: 40,
@@ -211,7 +176,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  Widget _buildPointsSection() {
+  Widget _buildPointsSection(int points) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 26.w),
       child: Row(
@@ -236,7 +201,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '12,450',
+                NumberFormat('#,###').format(points),
                 style: GoogleFonts.poppins(
                   fontSize: 24.sp,
                   fontWeight: FontWeight.w600,
@@ -424,29 +389,47 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  Widget _buildRewardsList() {
-    final items = _selectedTabIndex == 0 ? _rewards : _redemptions;
-    return SliverPadding(
-      padding: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 120.h),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            if (index.isOdd) return SizedBox(height: 16.h);
-            final itemIndex = index ~/ 2;
-            
-            if (_selectedTabIndex == 0) {
-              return _buildRewardCard(_rewards[itemIndex]);
-            } else {
-              return _buildRedemptionCard(_redemptions[itemIndex]);
-            }
-          },
-          childCount: items.length * 2 - 1,
+  Widget _buildRewardsList(AsyncValue<List<Reward>> rewardsAsync, AsyncValue<List<Redemption>> redemptionsAsync) {
+    if (_selectedTabIndex == 0) {
+      return rewardsAsync.when(
+        data: (rewards) => SliverPadding(
+          padding: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 120.h),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                if (index.isOdd) return SizedBox(height: 16.h);
+                final itemIndex = index ~/ 2;
+                return _buildRewardCard(rewards[itemIndex]);
+              },
+              childCount: rewards.isEmpty ? 0 : rewards.length * 2 - 1,
+            ),
+          ),
         ),
-      ),
-    );
+        loading: () => const SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
+        error: (err, _) => SliverFillRemaining(child: Center(child: Text('Error: $err'))),
+      );
+    } else {
+      return redemptionsAsync.when(
+        data: (redemptions) => SliverPadding(
+          padding: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 120.h),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                if (index.isOdd) return SizedBox(height: 16.h);
+                final itemIndex = index ~/ 2;
+                return _buildRedemptionCard(redemptions[itemIndex]);
+              },
+              childCount: redemptions.isEmpty ? 0 : redemptions.length * 2 - 1,
+            ),
+          ),
+        ),
+        loading: () => const SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
+        error: (err, _) => SliverFillRemaining(child: Center(child: Text('Error: $err'))),
+      );
+    }
   }
 
-  Widget _buildRewardCard(Map<String, dynamic> reward) {
+  Widget _buildRewardCard(Reward reward) {
     return Container(
       height: 109.h,
       width: 369.w,
@@ -474,9 +457,35 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                   height: 68.w,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(17.r),
-                    image: DecorationImage(
-                      image: AssetImage(reward['image']),
+                    color: const Color(0xFFF5F3F3),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(17.r),
+                    child: Image.network(
+                      reward.imageUrl,
                       fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: const Color(0xFFF5F3F3),
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: const Color(0xFF8B88B5),
+                            size: 24.sp,
+                          ),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -488,7 +497,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        reward['title'],
+                        reward.title,
                         style: GoogleFonts.poppins(
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w400,
@@ -498,7 +507,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        reward['subtitle'],
+                        reward.partner,
                         style: GoogleFonts.lexendDeca(
                           fontSize: 11.sp,
                           color: const Color(0xFF8B88B5),
@@ -512,7 +521,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                           Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
                           SizedBox(width: 4.w),
                           Text(
-                            reward['points'],
+                            reward.requiredPoints.toString(),
                             style: GoogleFonts.lexendDeca(
                               fontSize: 14.sp,
                               fontWeight: FontWeight.w600,
@@ -561,7 +570,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               ),
             ),
           ),
-          if (reward['manual'] == true)
+          if (reward.requiresApproval == true)
             Positioned(
               right: 9.w,
               top: 9.h,
@@ -586,8 +595,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  Widget _buildRedemptionCard(Map<String, dynamic> item) {
-    if (item['status'] == 'pending') {
+  Widget _buildRedemptionCard(Redemption redemption) {
+    if (redemption.status == 'pending') {
       return Container(
         width: 372.w,
         padding: EdgeInsets.all(22.w),
@@ -604,7 +613,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                crossAxisAlignment: CrossAxisAlignment.start,
                children: [
                  Text(
-                   item['title'],
+                   redemption.reward.title,
                    style: GoogleFonts.lexendDeca(
                      fontSize: 14.sp,
                      fontWeight: FontWeight.w600,
@@ -613,7 +622,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                  ),
                  SizedBox(height: 4.h),
                  Text(
-                   item['date'],
+                   'Requested on ${DateFormat('MMM d, yyyy').format(redemption.createdAt)}',
                    style: GoogleFonts.poppins(
                      fontSize: 11.sp,
                      color: const Color(0xFF818181),
@@ -625,7 +634,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                      Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
                      SizedBox(width: 3.w),
                      Text(
-                       item['points'],
+                       '${redemption.pointsDeducted} points',
                        style: GoogleFonts.poppins(
                          fontSize: 13.sp,
                          fontWeight: FontWeight.w500,
@@ -650,7 +659,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                    SizedBox(width: 8.w),
                    Expanded(
                      child: Text(
-                       item['message'],
+                       'Your request is being reviewed. You\'ll be notified once approved.',
                        style: GoogleFonts.poppins(
                          fontSize: 12.sp,
                          color: const Color(0xFFDC931F),
@@ -688,7 +697,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                crossAxisAlignment: CrossAxisAlignment.start,
                children: [
                  Text(
-                   item['title'],
+                   redemption.reward.title,
                    style: GoogleFonts.lexendDeca(
                      fontSize: 14.sp,
                      fontWeight: FontWeight.w600,
@@ -697,7 +706,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                  ),
                  SizedBox(height: 4.h),
                  Text(
-                   item['date'],
+                   'Redeemed on ${DateFormat('MMM d, yyyy').format(redemption.createdAt)}',
                    style: GoogleFonts.poppins(
                      fontSize: 11.sp,
                      color: const Color(0xFF818181),
@@ -709,7 +718,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                      Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
                      SizedBox(width: 3.w),
                      Text(
-                       item['points'],
+                       '${redemption.pointsDeducted} points',
                        style: GoogleFonts.poppins(
                          fontSize: 13.sp,
                          fontWeight: FontWeight.w500,
@@ -720,108 +729,111 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                  ),
                ],
              ),
-             SizedBox(height: 16.h),
-             CustomPaint(
-               foregroundPainter: DashedRectPainter(
-                 color: const Color(0xFFF7A1BA), 
-                 strokeWidth: 1.0, 
-                 gap: 5.0,
-                 borderRadius: 13.r,
-               ),
-               child: Container(
-                 height: 52.h,
-                 padding: EdgeInsets.symmetric(horizontal: 16.w),
-                 decoration: BoxDecoration(
-                   color: Colors.white,
-                   borderRadius: BorderRadius.circular(13.r),
+             if (redemption.couponCode != null) ...[
+               SizedBox(height: 16.h),
+               CustomPaint(
+                 foregroundPainter: DashedRectPainter(
+                   color: const Color(0xFFF7A1BA), 
+                   strokeWidth: 1.0, 
+                   gap: 5.0,
+                   borderRadius: 13.r,
                  ),
-                 child: Row(
-                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                   children: [
-                     Column(
-                       crossAxisAlignment: CrossAxisAlignment.start,
-                       mainAxisAlignment: MainAxisAlignment.center,
-                       children: [
-                         Text(
-                           'Your Coupon Code',
+                 child: Container(
+                   height: 52.h,
+                   padding: EdgeInsets.symmetric(horizontal: 16.w),
+                   decoration: BoxDecoration(
+                     color: Colors.white,
+                     borderRadius: BorderRadius.circular(13.r),
+                   ),
+                   child: Row(
+                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                     children: [
+                       Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         mainAxisAlignment: MainAxisAlignment.center,
+                         children: [
+                           Text(
+                             'Your Coupon Code',
+                             style: GoogleFonts.poppins(
+                               fontSize: 11.sp,
+                               fontWeight: FontWeight.w400,
+                               color: const Color(0xFF818181),
+                             ),
+                           ),
+                           Text(
+                             redemption.couponCode!,
+                             style: GoogleFonts.lexendDeca(
+                               fontSize: 14.sp,
+                               fontWeight: FontWeight.w600,
+                               color: Colors.black,
+                             ),
+                           ),
+                         ],
+                       ),
+                       Container(
+                         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                         decoration: BoxDecoration(
+                           color: const Color(0xFFF7A1BA).withOpacity(0.15),
+                           borderRadius: BorderRadius.circular(6.r),
+                         ),
+                         child: Text(
+                           'Copy',
                            style: GoogleFonts.poppins(
                              fontSize: 11.sp,
-                             fontWeight: FontWeight.w400,
-                             color: const Color(0xFF818181),
-                           ),
-                         ),
-                         Text(
-                           item['code'],
-                           style: GoogleFonts.lexendDeca(
-                             fontSize: 14.sp,
                              fontWeight: FontWeight.w600,
-                             color: Colors.black,
+                             color: const Color(0xFFF83A71),
                            ),
                          ),
-                       ],
-                     ),
-                     Container(
-                       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                       decoration: BoxDecoration(
-                         color: const Color(0xFFF7A1BA).withOpacity(0.15),
-                         borderRadius: BorderRadius.circular(6.r),
                        ),
-                       child: Text(
-                         'Copy',
-                         style: GoogleFonts.poppins(
-                           fontSize: 11.sp,
-                           fontWeight: FontWeight.w600,
-                           color: const Color(0xFFF83A71),
-                         ),
-                       ),
-                     ),
-                   ],
+                     ],
+                   ),
                  ),
                ),
-             ),
+             ],
           ],
         ),
       );
     }
   }
 
-  void _showConfirmRedemptionDialog(BuildContext context, Map<String, dynamic> reward) {
+  void _showConfirmRedemptionDialog(BuildContext context, Reward reward) {
     showDialog(
       context: context,
       builder: (context) {
         return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22.r),
-          ),
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(horizontal: 20.w),
           child: Container(
-            width: 330.w,
-            padding: EdgeInsets.all(22.w),
+            width: 372.w,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(22.r),
               boxShadow: [
-                 BoxShadow(
-                   color: Colors.black.withOpacity(0.25),
-                   blurRadius: 6.2,
-                   offset: const Offset(0, 4),
-                 ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 6.2,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Confirm Redemption',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                Padding(
+                  padding: EdgeInsets.only(left: 21.w, top: 21.h),
+                  child: Text(
+                    'Confirm Redemption',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
                   ),
                 ),
                 SizedBox(height: 20.h),
                 Container(
+                  margin: EdgeInsets.symmetric(horizontal: 21.w),
                   padding: EdgeInsets.all(16.w),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFAF5FE),
@@ -856,15 +868,17 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  reward['title'],
+                                  reward.title,
                                   style: GoogleFonts.poppins(
                                     fontSize: 15.sp,
                                     fontWeight: FontWeight.w500,
                                     color: Colors.black,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  reward['subtitle'],
+                                  reward.partner,
                                   style: GoogleFonts.poppins(
                                     fontSize: 12.sp,
                                     fontWeight: FontWeight.w400,
@@ -876,44 +890,45 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                           ),
                         ],
                       ),
-                       SizedBox(height: 12.h),
-                       Container(
-                         height: 1,
-                         color: Colors.black.withOpacity(0.1),
-                       ),
-                       SizedBox(height: 12.h),
-                       Row(
-                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                         children: [
-                           Text(
-                             'Points Required',
-                             style: GoogleFonts.poppins(
-                               fontSize: 11.sp,
-                               fontWeight: FontWeight.w400,
-                               color: const Color(0xFF8B88B5),
-                             ),
-                           ),
-                           Row(
-                             children: [
-                               Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
-                               SizedBox(width: 4.w),
-                               Text(
-                                 reward['points'],
-                                 style: GoogleFonts.poppins(
-                                   fontSize: 16.sp,
-                                   fontWeight: FontWeight.w600,
-                                   color: Colors.black,
-                                 ),
-                               ),
-                             ],
-                           ),
-                         ],
-                       ),
+                      SizedBox(height: 12.h),
+                      Container(
+                        height: 1,
+                        color: Colors.black.withOpacity(0.1),
+                      ),
+                      SizedBox(height: 12.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Points Required',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFF8B88B5),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
+                              SizedBox(width: 4.w),
+                              Text(
+                                reward.requiredPoints.toString(),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
                 SizedBox(height: 16.h),
                 Container(
+                  margin: EdgeInsets.symmetric(horizontal: 21.w),
                   padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF9FAFB),
@@ -922,102 +937,150 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                       Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           Text(
-                             'Current Balance',
-                             style: GoogleFonts.poppins(
-                               fontSize: 11.sp,
-                               fontWeight: FontWeight.w400,
-                               color: Colors.black,
-                             ),
-                           ),
-                           Text(
-                             'After Redemption',
-                             style: GoogleFonts.poppins(
-                               fontSize: 11.sp,
-                               fontWeight: FontWeight.w400,
-                               color: Colors.black,
-                             ),
-                           ),
-                         ],
-                       ),
-                       Column(
-                         crossAxisAlignment: CrossAxisAlignment.end,
-                         children: [
-                           Text(
-                             '12,450 pts',
-                             style: GoogleFonts.poppins(
-                               fontSize: 11.sp,
-                               fontWeight: FontWeight.w500,
-                               color: Colors.black,
-                             ),
-                           ),
-                           Text(
-                             '10,450 pts',
-                             style: GoogleFonts.poppins(
-                               fontSize: 11.sp,
-                               fontWeight: FontWeight.w500,
-                               color: const Color(0xFFF83A71),
-                             ),
-                           ),
-                         ],
-                       ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Current Balance',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Text(
+                            'After Redemption',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final user = ref.read(userProfileProvider).value;
+                          final points = user?.points ?? 0;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${NumberFormat('#,###').format(points)} pts',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              Text(
+                                '${NumberFormat('#,###').format(max(0, points - reward.requiredPoints))} pts',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFFF83A71),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
                 SizedBox(height: 24.h),
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          height: 37.h,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF3F4F6), // Updated bg color
-                            borderRadius: BorderRadius.circular(9.r),
-                            border: Border.all(color: const Color(0xFF900EBF)),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Cancel',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF838383),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(21.w, 0, 21.w, 21.h),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            height: 37.h,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(9.r),
+                              border: Border.all(color: const Color(0xFF900EBF)),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF838383),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                           // Handle redeem logic
-                           Navigator.pop(context);
+                      SizedBox(width: 12.w),
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final user = ref.watch(userProfileProvider).value;
+                          final points = user?.points ?? 0;
+                          final canRedeem = points >= reward.requiredPoints;
+
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: canRedeem ? () async {
+                                Navigator.pop(context); // Close dialog
+                                
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Processing redemption...')),
+                                );
+
+                                try {
+                                  await ref.read(rewardRepositoryProvider).redeemReward(reward.id);
+                                  
+                                  ref.invalidate(userProfileProvider);
+                                  ref.invalidate(myRedemptionsProvider);
+
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Reward redeemed successfully!'),
+                                        backgroundColor: Color(0xFF22D198),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Failed to redeem: ${e.toString()}'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              } : null,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                height: 37.h,
+                                decoration: BoxDecoration(
+                                  color: canRedeem ? const Color(0xFF900EBF) : Colors.grey.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(9.r),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Confirm Redeem',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: canRedeem ? Colors.white : Colors.white.withOpacity(0.6),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
                         },
-                        child: Container(
-                          height: 37.h,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF900EBF),
-                            borderRadius: BorderRadius.circular(9.r),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Confirm Redeem',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),

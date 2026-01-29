@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "43041503211",
+    "project_id": "tryd-app-1d997",
+    "storage_bucket": "tryd-app-1d997.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:43041503211:android:cdfe664117d3b8515a8bae",
+        "android_client_info": {
+          "package_name": "tryd.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEm-uQWlfbzgzLVJCd5U045r2L88cd7VU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
