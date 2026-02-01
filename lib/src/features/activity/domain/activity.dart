@@ -7,6 +7,7 @@ class Activity {
   final double averagePace;
   final double averageBPM;
   final DateTime date;
+  final String? syncStatus; // 'pending', 'synced'
 
   Activity({
     required this.id,
@@ -17,6 +18,7 @@ class Activity {
     this.averagePace = 0.0,
     this.averageBPM = 0.0,
     required this.date,
+    this.syncStatus,
   });
 
   factory Activity.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class Activity {
       averagePace: (json['averagePace'] as num?)?.toDouble() ?? 0.0,
       averageBPM: (json['averageBPM'] as num?)?.toDouble() ?? 0.0,
       date: json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
+      syncStatus: json['syncStatus'],
     );
   }
 
@@ -42,6 +45,7 @@ class Activity {
       'averagePace': averagePace,
       'averageBPM': averageBPM,
       'date': date.toIso8601String(),
+      if (syncStatus != null) 'syncStatus': syncStatus,
     };
   }
 }

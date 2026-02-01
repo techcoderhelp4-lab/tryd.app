@@ -53,5 +53,7 @@
 	<string>This app needs access to location when open to track your run route.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>This app needs access to location when in the background to track your run route.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Tryd needs access to your music library to play songs during your run.</string>
 </dict>
 </plist>

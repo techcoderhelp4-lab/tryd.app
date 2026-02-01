@@ -390,7 +390,15 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
   }
 
   Widget _buildWeeklyChart(List<DailyStat> dailyStats) {
-    const maxDistance = 5.0; // Fixed max for scale flexibility
+    // Calculate max distance dynamically for better scaling
+    double maxDistance = 5.0;
+    for (var stat in dailyStats) {
+      if (stat.distance > maxDistance) {
+        maxDistance = stat.distance;
+      }
+    }
+    maxDistance = (maxDistance * 1.2).ceilToDouble(); // Add 20% headroom
+    if (maxDistance == 0) maxDistance = 5.0;
     final now = DateTime.now();
     
     // Generate day labels and values for the current week (Sunday to Saturday)
@@ -507,9 +515,9 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('5', style: _chartLabelStyle()),
-                    Text('3', style: _chartLabelStyle()),
-                    Text('1', style: _chartLabelStyle()),
+                    Text('${maxDistance.toInt()}', style: _chartLabelStyle()),
+                    Text('${(maxDistance * 0.6).toInt()}', style: _chartLabelStyle()),
+                    Text('${(maxDistance * 0.2).toInt()}', style: _chartLabelStyle()),
                     Text('0 km', style: _chartLabelStyle()),
                   ],
                 ),

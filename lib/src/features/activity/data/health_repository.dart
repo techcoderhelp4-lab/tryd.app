@@ -117,6 +117,26 @@ class HealthRepository {
     }
   }
 
+  Future<bool> saveRunToHealth({
+    required DateTime startTime,
+    required DateTime endTime,
+    required double totalDistanceMeters,
+    required double totalEnergyBurned, // kcal
+  }) async {
+    try {
+      return await _health.writeWorkoutData(
+        activityType: HealthWorkoutActivityType.RUNNING,
+        start: startTime,
+        end: endTime,
+        totalDistance: totalDistanceMeters.toInt(),
+        totalEnergyBurned: totalEnergyBurned.toInt(), 
+      );
+    } catch (e) {
+      print("Error saving to health: $e");
+      return false;
+    }
+  }
+
   Future<void> installHealthConnect() async {
     await _health.installHealthConnect();
   }

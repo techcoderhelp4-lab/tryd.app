@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:intl_phone_field/country_picker_dialog.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../widgets/gradient_button.dart';
 import '../data/auth_repository.dart';
@@ -166,8 +167,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -181,24 +180,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
           SafeArea(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.084),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 136),
-                    _buildLogo(),
-                    const SizedBox(height: 52),
-                    _buildTitle(),
-                    const SizedBox(height: 48),
-                    _buildInputFields(),
-                    const SizedBox(height: 18),
-                    _buildSignInButton(),
-                    const SizedBox(height: 48),
-                    _buildSignUpSection(),
-                  ],
-                ),
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 450),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 24.w),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(height: 40.h),
+                              _buildLogo(),
+                              SizedBox(height: 40.h),
+                              _buildTitle(),
+                              SizedBox(height: 48.h),
+                              _buildInputFields(),
+                              SizedBox(height: 18.h),
+                              _buildSignInButton(),
+                              SizedBox(height: 48.h),
+                              _buildSignUpSection(),
+                              SizedBox(height: 20.h),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -209,8 +224,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildLogo() {
     return Image.asset(
       'assets/images/logo-full.png',
-      width: 201,
-      height: 80,
+      width: 201.w,
+      height: 80.h,
       fit: BoxFit.contain,
       filterQuality: FilterQuality.high,
       isAntiAlias: true,
@@ -222,7 +237,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       'Enter your mobile number\nto login account.',
       textAlign: TextAlign.center,
       style: GoogleFonts.lexendDeca(
-        fontSize: 24,
+        fontSize: 20.sp,
         fontWeight: FontWeight.w600,
         height: 1.25,
         color: _primaryTextColor,
@@ -234,7 +249,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Column(
       children: [
         Container(
-          height: 72,
+          height: 72.h,
           decoration: BoxDecoration(
             color: _inputBgColor,
             borderRadius: BorderRadius.circular(17),
@@ -248,7 +263,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 8), 
+            padding: EdgeInsets.symmetric(horizontal: 27.w, vertical: 8.h), 
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -256,7 +271,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Text(
                   'Mobile No',
                   style: GoogleFonts.lexendDeca(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.w400,
                     height: 1.25,
                     color: _labelColor,
@@ -271,7 +286,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     decoration: InputDecoration(
                       hintText: '12456 65324',
                       hintStyle: GoogleFonts.poppins(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.w400,
                         color: _labelColor,
                       ),
@@ -284,24 +299,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     initialCountryCode: 'KW', 
                     showDropdownIcon: true,
                     dropdownIconPosition: IconPosition.trailing,
-                    flagsButtonPadding: const EdgeInsets.only(right: 8),
+                    flagsButtonPadding: EdgeInsets.only(right: 8.w),
                     pickerDialogStyle: PickerDialogStyle(
                       backgroundColor: Colors.white,
-                      padding: const EdgeInsets.all(20),
+                      padding: EdgeInsets.all(20.w),
                       countryCodeStyle: GoogleFonts.poppins(
-                        fontSize: 16, 
+                        fontSize: 16.sp, 
                         fontWeight: FontWeight.w400,
                         color: _inputTextColor,
                       ),
                       countryNameStyle: GoogleFonts.poppins(
-                        fontSize: 16, 
+                        fontSize: 16.sp, 
                         fontWeight: FontWeight.w400,
                         color: _inputTextColor,
                       ),
                       searchFieldInputDecoration: InputDecoration(
                         hintText: 'Search Country',
                         hintStyle: GoogleFonts.poppins(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w400,
                           color: _labelColor,
                         ),
@@ -311,18 +326,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                         prefixIcon: const Icon(Icons.search, color: _labelColor),
                       ),
                     ),
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.w400,
                       color: _inputTextColor,
                       height: 1.5,
                     ),
                     dropdownTextStyle: GoogleFonts.poppins(
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.w400,
                       color: _inputTextColor,
                     ),
@@ -350,7 +365,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: _isOtpSent
               ? Column(
                   children: [
-                    const SizedBox(height: 18),
+                    SizedBox(height: 18.h),
                     _buildInputField(
                       label: 'Enter OTP',
                       placeholder: '• • • • •',
@@ -358,7 +373,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       obscureText: true,
                       isOTP: true,
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12.h),
                     _buildTimerAndResend(),
                   ],
                 )
@@ -388,7 +403,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Text(
             'Change Number',
             style: GoogleFonts.poppins(
-              fontSize: 14,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w500,
               color: _labelColor,
               decoration: TextDecoration.underline,
@@ -399,7 +414,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Text(
             'Resend OTP in 0:${_otpTimeRemaining.toString().padLeft(2, '0')}',
             style: GoogleFonts.poppins(
-              fontSize: 14,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w400,
               color: _labelColor,
             ),
@@ -410,7 +425,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Text(
               'Resend OTP',
               style: GoogleFonts.poppins(
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w500,
                 color: _linkColor,
                 decoration: TextDecoration.underline,
@@ -430,7 +445,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool isOTP = false,
   }) {
     return Container(
-      height: 72,
+      height: 72.h,
       decoration: BoxDecoration(
         color: _inputBgColor,
         borderRadius: BorderRadius.circular(17),
@@ -444,7 +459,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 13),
+        padding: EdgeInsets.symmetric(horizontal: 27.w, vertical: 13.h),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -452,7 +467,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             Text(
               label,
               style: GoogleFonts.lexendDeca(
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.w400,
                 height: 1.25,
                 color: _labelColor,
@@ -463,7 +478,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               obscureText: obscureText,
               obscuringCharacter: '•',
               style: GoogleFonts.poppins(
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w400,
                 height: 1.5,
                 color: _inputTextColor,
@@ -471,7 +486,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               decoration: InputDecoration(
                 hintText: placeholder,
                 hintStyle: GoogleFonts.poppins(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.w400,
                   height: 1.5,
                   color: _labelColor,
@@ -560,7 +575,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         Text(
           "Don't have an account?  ",
           style: GoogleFonts.poppins(
-            fontSize: 14,
+            fontSize: 14.sp,
             fontWeight: FontWeight.w500,
             height: 1.14,
             color: _labelColor,
@@ -577,7 +592,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Text(
             'Sign up',
             style: GoogleFonts.poppins(
-              fontSize: 14,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w500,
               height: 1.14,
               color: _linkColor,

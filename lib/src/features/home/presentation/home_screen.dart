@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../../../../../../widgets/custom_bottom_navigation.dart';
+import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../activity/presentation/running_screen.dart';
 import '../../activity/presentation/activity_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
@@ -311,19 +311,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildBannerCard() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22.r),
-      child: SizedBox(
-        width: double.infinity,
-        height: 200.h,
-        child: Image.asset(
-          'assets/images/banner.png',
-          fit: BoxFit.cover,
-          semanticLabel: 'Promotional Banner',
-          errorBuilder: (context, error, stackTrace) => Container(
-            color: const Color(0xFFEEEEEE),
-            child: const Center(
-              child: Icon(Icons.broken_image),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: AspectRatio(
+        // Using a standard aspect ratio for banners (approx 2.1:1 based on design)
+        aspectRatio: 334 / 160,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22.r),
+          child: Image.asset(
+            'assets/images/banner.png',
+            fit: BoxFit.cover,
+            semanticLabel: 'Promotional Banner',
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: const Color(0xFFEEEEEE),
+              child: const Center(
+                child: Icon(Icons.broken_image, color: Colors.grey),
+              ),
             ),
           ),
         ),
@@ -415,9 +428,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildStatsGrid(Map<String, dynamic> data) {
     final steps = data['steps']?.toString() ?? '0';
-    final calories = data['calories']?.toString() ?? '0';
-    final duration = data['duration'] ?? '0:00'; // Assuming backend returns formatted str or handle minutes
-    final bpm = data['bpm']?.toString() ?? '0'; // Placeholder as BPM is usually real-time or avg
+    final calories = (data['calories'] ?? data['caloriesBurned'] ?? 0).toString();
+    
+    // Duration formatting: convert seconds to minutes if it's an integer
+    String duration = '0';
+    final rawDuration = data['duration'];
+    if (rawDuration is int) {
+      duration = (rawDuration ~/ 60).toString();
+    } else {
+      duration = rawDuration?.toString() ?? '0';
+    }
+    
+    final bpm = data['bpm']?.toString() ?? '0';
 
     return SizedBox(
       height: 294.h,

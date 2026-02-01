@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../widgets/gradient_button.dart';
 import 'package:tryd/src/features/auth/data/auth_repository.dart';
 import "../../home/presentation/home_screen.dart";
@@ -126,8 +127,6 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -141,26 +140,42 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
             ),
           ),
           SafeArea(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.084),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 136),
-                    _buildLogo(),
-                    const SizedBox(height: 52),
-                    _buildTitle(),
-                    const SizedBox(height: 30),
-                    _buildSubtitle(),
-                    const SizedBox(height: 44),
-                    _buildOtpField(),
-                    const SizedBox(height: 18),
-                    _buildVerifyButton(),
-                    const SizedBox(height: 48),
-                    _buildResendSection(),
-                  ],
-                ),
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 450),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 24.w),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(height: 40.h),
+                              _buildLogo(),
+                              SizedBox(height: 40.h),
+                              _buildTitle(),
+                              SizedBox(height: 18.h),
+                              _buildSubtitle(),
+                              SizedBox(height: 44.h),
+                              _buildOtpField(),
+                              SizedBox(height: 18.h),
+                              _buildVerifyButton(),
+                              SizedBox(height: 48.h),
+                              _buildResendSection(),
+                              SizedBox(height: 20.h),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -171,8 +186,8 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   Widget _buildLogo() {
     return Image.asset(
       'assets/images/logo-full.png',
-      width: 201,
-      height: 80,
+      width: 201.w,
+      height: 80.h,
       fit: BoxFit.contain,
       filterQuality: FilterQuality.high,
       isAntiAlias: true,
@@ -184,7 +199,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
       'Mobile verification has\nsuccessfully done',
       textAlign: TextAlign.center,
       style: GoogleFonts.lexendDeca(
-        fontSize: 24,
+        fontSize: 20.sp,
         fontWeight: FontWeight.w600,
         height: 1.25,
         color: _primaryTextColor,
@@ -197,7 +212,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
       'We have send the OTP on ${widget.phoneNumber}\nwill apply auto to the fields',
       textAlign: TextAlign.center,
       style: GoogleFonts.poppins(
-        fontSize: 14,
+        fontSize: 14.sp,
         fontWeight: FontWeight.w400,
         height: 1.5,
         color: _labelColor,
@@ -207,7 +222,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
 
   Widget _buildOtpField() {
     return Container(
-      height: 72,
+      height: 72.h,
       decoration: BoxDecoration(
         color: _inputBgColor,
         borderRadius: BorderRadius.circular(17),
@@ -234,7 +249,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
 
   Widget _buildOtpDigitBox(int index) {
     return SizedBox(
-      width: 50,
+      width: 50.w,
       child: TextField(
         controller: _otpControllers[index],
         focusNode: _otpFocusNodes[index],
@@ -242,7 +257,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         keyboardType: TextInputType.number,
         maxLength: 1,
         style: GoogleFonts.poppins(
-          fontSize: 20,
+          fontSize: 20.sp,
           fontWeight: FontWeight.w400,
           height: 1.5,
           color: _inputTextColor,
@@ -262,10 +277,10 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
 
   Widget _buildDivider() {
     return Container(
-      width: 1,
-      height: 32,
+      width: 1.w,
+      height: 32.h,
       color: _dividerColor,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: EdgeInsets.symmetric(horizontal: 10.w),
     );
   }
 
@@ -285,7 +300,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
             Text(
               "If you didn't receive a code!  ",
               style: GoogleFonts.poppins(
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w500,
                 height: 1.14,
                 color: _labelColor,
@@ -308,7 +323,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
               child: Text(
                 'Resend',
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.w500,
                   height: 1.14,
                   color: _linkColor,
@@ -317,13 +332,13 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: 24.h),
         GestureDetector(
           onTap: () => Navigator.of(context).pop(),
           child: Text(
             'Change Number',
             style: GoogleFonts.poppins(
-              fontSize: 14,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w500,
               color: _labelColor,
               decoration: TextDecoration.underline,

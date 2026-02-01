@@ -4,6 +4,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_constants.dart';
 import '../../../../core/network/api_client.dart';
+import '../../activity/data/activity_repository.dart';
+import '../../activity/domain/activity.dart';
 import '../../auth/domain/user.dart';
 
 part 'user_repository.g.dart';
@@ -22,9 +24,9 @@ class UserRepository {
         // Fallback to mock data for development if API is unreachable
         return User(
           id: '1',
-          name: 'Livia Vaccaro',
-          email: 'livia.vaccaro@example.com',
-          profilePicture: 'https://i.pravatar.cc/300',
+          name: 'User',
+          email: 'user@example.com',
+          profilePicture: null,
         );
       }
       rethrow;
@@ -62,7 +64,7 @@ class UserRepository {
     }
   }
 
-  Future<Map<String, dynamic>> getActivitySummary({String period = 'week'}) async {
+  Future<Map<String, dynamic>> getActivitySummary({String period = 'week', Ref? ref}) async {
     try {
       final response = await _dio.get(
         ApiConstants.activitySummary,
@@ -70,7 +72,27 @@ class UserRepository {
       );
       return response.data;
     } catch (e) {
-      rethrow;
+      if (ref != null) {
+        // Fallback to local calculation using ActivityRepository
+        final activityRepo = ref.read(activityRepositoryProvider);
+        final stats = await activityRepo.getActivityStats(period: period);
+        
+        // Match the Map structure expected by the Home Screen
+        return {
+          'distance': stats.totalDistance,
+          'duration': stats.totalDuration,
+          'calories': stats.totalCalories,
+          'steps': (stats.totalDistance * 1312).toInt(), // More realistic heuristic (avg steps per km)
+          'bpm': stats.averageBPM,
+        };
+      }
+      return {
+        'distance': 0.0,
+        'duration': 0,
+        'calories': 0.0,
+        'steps': 0,
+        'bpm': 0.0,
+      };
     }
   }
 }
@@ -89,5 +111,5 @@ Future<User> userProfile(UserProfileRef ref) {
 
 final activitySummaryProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, period) {
   final repository = ref.watch(userRepositoryProvider);
-  return repository.getActivitySummary(period: period);
+  return repository.getActivitySummary(period: period, ref: ref);
 });

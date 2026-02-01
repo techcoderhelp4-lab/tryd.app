@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:intl_phone_field/country_picker_dialog.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../widgets/gradient_button.dart';
 import '../data/auth_repository.dart';
 import 'otp_verification_screen.dart';
+import 'login_screen.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -122,8 +124,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -137,26 +137,42 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             ),
           ),
           SafeArea(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.084),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 136),
-                    _buildLogo(),
-                    const SizedBox(height: 52),
-                    _buildTitle(),
-                    const SizedBox(height: 18),
-                    _buildSubtitle(),
-                    const SizedBox(height: 18),
-                    _buildInputFields(),
-                    const SizedBox(height: 18),
-                    _buildSignUpButton(),
-                    const SizedBox(height: 48),
-                    _buildSignInSection(),
-                  ],
-                ),
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 450),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 24.w),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(height: 40.h),
+                              _buildLogo(),
+                              SizedBox(height: 40.h),
+                              _buildTitle(),
+                              SizedBox(height: 18.h),
+                              _buildSubtitle(),
+                              SizedBox(height: 18.h),
+                              _buildInputFields(),
+                              SizedBox(height: 18.h),
+                              _buildSignUpButton(),
+                              SizedBox(height: 48.h),
+                              _buildSignInSection(),
+                              SizedBox(height: 20.h),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -167,8 +183,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   Widget _buildLogo() {
     return Image.asset(
       'assets/images/logo-full.png',
-      width: 201,
-      height: 80,
+      width: 201.w,
+      height: 80.h,
       fit: BoxFit.contain,
       filterQuality: FilterQuality.high,
       isAntiAlias: true,
@@ -180,7 +196,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       'Enter your mobile number\nto create account.',
       textAlign: TextAlign.center,
       style: GoogleFonts.lexendDeca(
-        fontSize: 24,
+        fontSize: 20.sp,
         fontWeight: FontWeight.w600,
         height: 1.25,
         color: _primaryTextColor,
@@ -193,7 +209,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       'We will send you one time\npassword (OTP)',
       textAlign: TextAlign.center,
       style: GoogleFonts.poppins(
-        fontSize: 14,
+        fontSize: 14.sp,
         fontWeight: FontWeight.w400,
         height: 1.5,
         color: _labelColor,
@@ -203,7 +219,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Widget _buildInputFields() {
     return Container(
-      height: 72,
+      height: 72.h,
       decoration: BoxDecoration(
         color: _inputBgColor,
         borderRadius: BorderRadius.circular(17),
@@ -217,7 +233,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 8), 
+        padding: EdgeInsets.symmetric(horizontal: 27.w, vertical: 8.h), 
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -225,13 +241,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             Text(
               'Mobile Number',
               style: GoogleFonts.lexendDeca(
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.w400,
                 height: 1.25,
                 color: _labelColor,
               ),
             ),
-            const SizedBox(height: 2),
+            SizedBox(height: 2.h),
             Expanded(
               child: IntlPhoneField(
                 controller: _phoneController,
@@ -240,37 +256,37 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 decoration: InputDecoration(
                   hintText: '12456 65324',
                   hintStyle: GoogleFonts.poppins(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w400,
                     color: _labelColor,
                   ),
                   border: InputBorder.none,
                   isDense: true,
-                  contentPadding: const EdgeInsets.only(top: 4),
+                  contentPadding: EdgeInsets.only(top: 4.h),
                   counterText: '',
                   errorStyle: const TextStyle(height: 0),
                 ),
                 initialCountryCode: 'KW', 
                 showDropdownIcon: true,
                 dropdownIconPosition: IconPosition.trailing,
-                flagsButtonPadding: const EdgeInsets.only(right: 8),
+                flagsButtonPadding: EdgeInsets.only(right: 8.w),
                 pickerDialogStyle: PickerDialogStyle(
                   backgroundColor: Colors.white,
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(20.w),
                   countryCodeStyle: GoogleFonts.poppins(
-                    fontSize: 16, 
+                    fontSize: 16.sp, 
                     fontWeight: FontWeight.w400,
                     color: _inputTextColor,
                   ),
                   countryNameStyle: GoogleFonts.poppins(
-                    fontSize: 16, 
+                    fontSize: 16.sp, 
                     fontWeight: FontWeight.w400,
                     color: _inputTextColor,
                   ),
                   searchFieldInputDecoration: InputDecoration(
                     hintText: 'Search Country',
                     hintStyle: GoogleFonts.poppins(
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       fontWeight: FontWeight.w400,
                       color: _labelColor,
                     ),
@@ -280,18 +296,18 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                     prefixIcon: const Icon(Icons.search, color: _labelColor),
                   ),
                 ),
                 style: GoogleFonts.poppins(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w400,
                   color: _inputTextColor,
                   height: 1.25,
                 ),
                 dropdownTextStyle: GoogleFonts.poppins(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w400,
                   color: _inputTextColor,
                 ),
@@ -321,7 +337,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     required bool obscureText,
   }) {
     return Container(
-      height: 72,
+      height: 72.h,
       decoration: BoxDecoration(
         color: _inputBgColor,
         borderRadius: BorderRadius.circular(17),
@@ -335,7 +351,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 13),
+        padding: EdgeInsets.symmetric(horizontal: 27.w, vertical: 13.h),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -343,7 +359,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             Text(
               label,
               style: GoogleFonts.lexendDeca(
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.w400,
                 height: 1.25,
                 color: _labelColor,
@@ -354,7 +370,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               obscureText: obscureText,
               obscuringCharacter: '•',
               style: GoogleFonts.poppins(
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w400,
                 height: 1.5,
                 color: _inputTextColor,
@@ -362,7 +378,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               decoration: InputDecoration(
                 hintText: placeholder,
                 hintStyle: GoogleFonts.poppins(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.w400,
                   height: 1.5,
                   color: _labelColor,
@@ -393,7 +409,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         Text(
           'If you have an account?  ',
           style: GoogleFonts.poppins(
-            fontSize: 14,
+            fontSize: 14.sp,
             fontWeight: FontWeight.w500,
             height: 1.14,
             color: _labelColor,
@@ -401,12 +417,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         ),
         GestureDetector(
           onTap: () {
-            Navigator.of(context).pop();
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+            );
           },
           child: Text(
             'Sign In',
             style: GoogleFonts.poppins(
-              fontSize: 14,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w500,
               height: 1.14,
               color: _linkColor,

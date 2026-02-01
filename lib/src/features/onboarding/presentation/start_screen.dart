@@ -34,10 +34,28 @@ class StartScreen extends StatelessWidget {
           SafeArea(
             child: Column(
               children: [
-                const Spacer(flex: 53),
+                const Spacer(flex: 42),
                 Expanded(
-                  flex: 47,
-                  child: _buildContentSection(context, screenWidth),
+                  flex: 58,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 450),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24.w),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildHeadline(),
+                            SizedBox(height: 10.h),
+                            _buildSubtitle(),
+                            SizedBox(height: 32.h),
+                            _buildButton(context),
+                            SizedBox(height: 30.h),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -47,24 +65,9 @@ class StartScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildContentSection(BuildContext context, double screenWidth) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 0.082.sw),
-      child: Column(
-        children: [
-          SizedBox(height: 16.h),
-          _buildHeadline(),
-          SizedBox(height: 35.h),
-          _buildSubtitle(),
-          SizedBox(height: 40.h),
-          _buildButton(context),
-          SizedBox(height: 16.h),
-          _buildLoginLink(context),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
+  // _buildContentSection is no longer needed as independent widget since we moved it inline for better Spacer access
+  // or we can keep it if we structure it right, but inline inside SliverFillRemaining is easier for the Spacer.
+  // We will keep helper methods for headline, subtitle etc.
 
   Widget _buildHeadline() {
     return Text(
