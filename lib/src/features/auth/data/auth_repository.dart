@@ -17,7 +17,6 @@ class AuthRepository {
     required String email,
     required String password,
     required String phoneNumber,
-    required String gender,
   }) async {
     try {
       final response = await _dio.post(
@@ -27,7 +26,6 @@ class AuthRepository {
           'email': email,
           'password': password,
           'phoneNumber': phoneNumber,
-          'gender': gender,
         },
       );
 
@@ -74,13 +72,18 @@ class AuthRepository {
     } finally {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('auth_token');
+      await prefs.remove('workoutHistory');
+      await prefs.remove('activityHistory');
     }
   }
-  Future<bool> checkUserExists(String phoneNumber) async {
+  Future<bool> checkUserExists({String? phoneNumber, String? email}) async {
     try {
       final response = await _dio.post(
         ApiConstants.checkUserExists,
-        data: {'phoneNumber': phoneNumber},
+        data: {
+          if (phoneNumber != null) 'phoneNumber': phoneNumber,
+          if (email != null) 'email': email,
+        },
       );
       return response.data['exists'] == true;
     } catch (e) {
@@ -88,22 +91,22 @@ class AuthRepository {
     }
   }
 
-  Future<void> sendOtp(String phoneNumber) async {
+  Future<void> sendOtp(String email) async {
     try {
       await _dio.post(
         ApiConstants.sendOtp,
-        data: {'phoneNumber': phoneNumber},
+        data: {'email': email},
       );
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<AuthResponse> verifyOtp(String phoneNumber, String otp) async {
+  Future<AuthResponse> verifyOtp(String email, String otp) async {
     try {
       final response = await _dio.post(
         ApiConstants.verifyOtp,
-        data: {'phoneNumber': phoneNumber, 'otp': otp},
+        data: {'email': email, 'otp': otp},
       );
       
       final authResponse = AuthResponse.fromJson(response.data);
@@ -120,11 +123,11 @@ class AuthRepository {
     }
   }
 
-  Future<AuthResponse> verifyOtpLogin(String phoneNumber, String otp) async {
+  Future<AuthResponse> verifyOtpLogin(String email, String otp) async {
     try {
       final response = await _dio.post(
         ApiConstants.verifyOtpLogin,
-        data: {'phoneNumber': phoneNumber, 'otp': otp},
+        data: {'email': email, 'otp': otp},
       );
       
       final authResponse = AuthResponse.fromJson(response.data);

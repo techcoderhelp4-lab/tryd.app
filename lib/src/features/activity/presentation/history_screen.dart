@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,6 +14,7 @@ import 'running_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
 import 'workout_screen.dart';
 import '../../club/presentation/club_screen.dart';
+import '../../../../widgets/skeleton_loading.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -26,6 +28,25 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ── Responsive Scale ──────────────────────────────────
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isTablet = screenWidth > 600;
+
+    const double smallScale  = 0.85;
+    const double mediumScale = 0.98;
+    const double largeScale  = 1.05;
+    const double tabletScale = 1.30;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
+
     final workoutHistoryAsync = ref.watch(workoutHistoryProvider);
 
     return Scaffold(
@@ -44,26 +65,26 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           SafeArea(
             child: Column(
               children: [
-                const SizedBox(height: 28),
-                _buildHeader(context),
-                const SizedBox(height: 52),
+                SizedBox(height: 15.0 * scale),
+                _buildHeader(context, isTablet, scale),
+                SizedBox(height: 30.0 * scale),
                 Expanded(
                   child: workoutHistoryAsync.when(
                     data: (history) => history.isEmpty 
-                      ? Center(child: Text("No workouts yet", style: GoogleFonts.lexend(color: Colors.grey)))
+                      ? Center(child: Text("No workouts yet", style: GoogleFonts.lexend(color: Colors.grey, fontSize: 14.0 * scale)))
                       : ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 15),
+                          padding: EdgeInsets.symmetric(horizontal: 20.0 * scale),
                           itemCount: history.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 15),
+                          separatorBuilder: (_, __) => SizedBox(height: 15.0 * scale),
                           itemBuilder: (context, index) {
-                            return _buildHistoryCard(history[index]);
+                            return _buildHistoryCard(history[index], isTablet, scale);
                           },
                         ),
-                    loading: () => const Center(child: CircularProgressIndicator()),
+                    loading: () => HistorySkeletonLoading(scale: scale, isTablet: isTablet),
                     error: (e, _) => Center(child: Text("Error: $e")),
                   ),
                 ),
-                const SizedBox(height: 140),
+                SizedBox(height: 120.0 * scale),
               ],
             ),
           ),
@@ -101,23 +122,27 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, bool isTablet, double scale) {
+    final horizontalPadding = 30.0 * scale;
+    final iconContainerSize = 45.0 * scale;
+    final arrowSize = 24.0 * scale;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 26),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
-              width: 40,
-              height: 40,
+              width: iconContainerSize,
+              height: iconContainerSize,
               alignment: Alignment.center,
               child: Transform.scale(
                 scaleX: -1,
-                child: const CustomArrowIcon(
-                  size: 24,
-                  color: Color(0xFF130F26),
+                child: CustomArrowIcon(
+                  size: arrowSize,
+                  color: const Color(0xFF130F26),
                 ),
               ),
             ),
@@ -125,90 +150,105 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           Text(
             'History',
             style: GoogleFonts.lexendDeca(
-              fontSize: 19,
+              fontSize: 19.0 * scale,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF24252C),
             ),
           ),
-          const SizedBox(width: 40), // Spacer for alignment
+          SizedBox(width: iconContainerSize), // Spacer for alignment
         ],
       ),
     );
   }
 
-  Widget _buildHistoryCard(Workout workout) {
+  String _formatDay(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    if (date.year == today.year && date.month == today.month && date.day == today.day) {
+      return 'Today';
+    } else if (date.year == yesterday.year && date.month == yesterday.month && date.day == yesterday.day) {
+      return 'Yesterday';
+    }
+    return DateFormat('dd MMM yyyy').format(date);
+  }
+
+  Widget _buildHistoryCard(Workout workout, bool isTablet, double scale) {
+    final padding = 18.0 * scale;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
-          color: const Color(0xFFE8ECF4).withOpacity(0.49),
+          color: const Color(0xFFE8ECF4).withValues(alpha: 0.49),
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(22.0 * scale),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: EdgeInsets.all(padding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const CustomCalendarIcon(
-                  size: 24,
-                  color: Color(0xFFF83A71),
+                CustomCalendarIcon(
+                  size: 24.0 * scale,
+                  color: const Color(0xFFF83A71),
                 ),
-                const SizedBox(width: 7),
+                SizedBox(width: 7 * scale),
                 Text(
-                  DateFormat('dd MMM yyyy').format(workout.date),
+                  _formatDay(workout.date),
                   style: GoogleFonts.poppins(
-                    fontSize: 19,
+                    fontSize: 19.0 * scale,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF221F48),
-                    height: 22 / 19,
+                    height: 1.15,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
-            _buildStatsRow(workout),
+            SizedBox(height: 18.0 * scale),
+            _buildStatsRow(workout, isTablet, scale),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatsRow(Workout workout) {
+  Widget _buildStatsRow(Workout workout, bool isTablet, double scale) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        _buildStatItem('Work', '${workout.workDuration ?? 0}s'),
-        _buildStatItem('Rest', '${workout.restDuration ?? 0}s'),
-        _buildStatItem('Ex', '${workout.exercises ?? 0}'),
-        _buildStatItem('Rounds', '${workout.rounds ?? 0}'),
+        _buildStatItem('Work', '${workout.workDuration ?? 0}s', isTablet, scale),
+        _buildStatItem('Rest', '${workout.restDuration ?? 0}s', isTablet, scale),
+        _buildStatItem('Ex', '${workout.exercises ?? 0}', isTablet, scale),
+        _buildStatItem('Rounds', '${workout.rounds ?? 0}', isTablet, scale),
       ],
     );
   }
 
-  Widget _buildStatItem(String label, String value) {
+  Widget _buildStatItem(String label, String value, bool isTablet, double scale) {
     return Column(
       children: [
         Text(
           label,
           style: GoogleFonts.roboto(
-            fontSize: 14,
+            fontSize: 14.0 * scale,
             fontWeight: FontWeight.w400,
             color: const Color(0xFF221F48),
-            height: 31 / 14,
+            height: 2.2,
           ),
         ),
         Text(
           value,
           style: GoogleFonts.roboto(
-            fontSize: 24,
+            fontSize: 24.0 * scale,
             fontWeight: FontWeight.w700,
             color: const Color(0xFF221F48),
-            height: 31 / 24,
+            height: 1.3,
           ),
         ),
       ],

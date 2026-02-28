@@ -1,9 +1,11 @@
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../../../widgets/custom_arrow_icon.dart';
 import '../../../../widgets/custom_calendar_icon.dart';
@@ -30,19 +32,66 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ── Responsive Scale ──────────────────────────────────
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isTablet = screenWidth > 600;
+
+    final double smallScale  = 0.85;
+    final double mediumScale = 0.98;
+    final double largeScale  = 1.05;
+    final double tabletScale = 1.30;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
+    
     final workoutHistoryAsync = ref.watch(workoutHistoryProvider);
     final activityListAsync = ref.watch(activityListProvider);
     
-    final period = _selectedFilter == 'W' ? 'week' : _selectedFilter == 'M' ? 'month' : 'week';
+    final period = _selectedFilter == 'W' ? 'week' 
+                 : _selectedFilter == 'M' ? 'month' 
+                 : _selectedFilter == 'Y' ? 'year' 
+                 : 'all';
     final statsAsync = ref.watch(activityStatsProvider(period));
 
-    // Combine data for list
-    final List<dynamic> allActivities = [];
-    if (workoutHistoryAsync.value != null) allActivities.addAll(workoutHistoryAsync.value!);
-    if (activityListAsync.value != null) allActivities.addAll(activityListAsync.value!);
+    // Use unified list from activityListProvider AND workoutHistoryProvider
+    final List<dynamic> allItems = [];
+    if (activityListAsync.value != null) {
+      allItems.addAll(activityListAsync.value!);
+    }
+    if (workoutHistoryAsync.value != null) {
+      allItems.addAll(workoutHistoryAsync.value!);
+    }
+    
+    // Deduplicate by ID
+    final seenIds = <String>{};
+    allItems.retainWhere((a) => seenIds.add(a.id));
+    
+    allItems.sort((a, b) => b.date.compareTo(a.date));
 
-    // Sort by date descending
-    allActivities.sort((a, b) => b.date.compareTo(a.date));
+    // Filter by period
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    final allActivities = allItems.where((a) {
+      if (_selectedFilter == 'All') return true;
+      final date = a.date as DateTime;
+      
+      if (_selectedFilter == 'W') {
+        return date.isAfter(today.subtract(const Duration(days: 7)));
+      } else if (_selectedFilter == 'M') {
+        return date.isAfter(today.subtract(const Duration(days: 30)));
+      } else if (_selectedFilter == 'Y') {
+        return date.isAfter(today.subtract(const Duration(days: 365)));
+      }
+      return true;
+    }).toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -62,56 +111,89 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
           SafeArea(
             child: Column(
               children: [
-                SizedBox(height: 28.h),
-                _buildHeader(context),
-                SizedBox(height: 30.h),
+                SizedBox(height: 15.0 * scale),
+                _buildHeader(context, isTablet, scale),
+                SizedBox(height: 20.0 * scale),
                 Expanded(
                   child: SingleChildScrollView(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 15.w),
+                      padding: EdgeInsets.symmetric(horizontal: 20.0 * scale),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Filter tabs
-                          _buildFilterTabs(),
-                          SizedBox(height: 30.h),
+                          _buildFilterTabs(isTablet, scale),
+                          SizedBox(height: 20.0 * scale),
                           
-                          statsAsync.when(
-                            data: (stats) => Column(
-                              children: [
-                                _buildWeekCard(stats),
-                                SizedBox(height: 22.h),
-                                _buildWeeklyChart(stats.dailyStats),
-                              ],
-                            ),
-                            loading: () => const Center(child: CircularProgressIndicator()),
+                            statsAsync.when(
+                              data: (stats) => Column(
+                                children: [
+                                  _buildWeekCard(stats, isTablet, scale),
+                                  SizedBox(height: 16.0 * scale),
+                                  _buildWeeklyChart(stats.dailyStats, isTablet, scale),
+                                ],
+                              ),
+                              loading: () => _buildStatsSkeleton(isTablet, scale),
                             error: (e, _) => Center(child: Text("Error loading stats: $e")),
                           ),
                           
-                          SizedBox(height: 22.h),
+                          SizedBox(height: 20.0 * scale),
                           // Recent Activities heading
                           Text(
                             'Recent Activities',
                             style: GoogleFonts.lexendDeca(
-                              fontSize: 18.sp,
+                              fontSize: 18.0 * scale,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF221F48),
                             ),
                           ),
-                          SizedBox(height: 22.h),
+                          SizedBox(height: 16.0 * scale),
                           // Activity List
-                          ...allActivities.map((activity) {
-                            return Padding(
-                              padding: EdgeInsets.only(bottom: 22.h),
-                              child: _buildActivityItem(activity),
-                            );
-                          }),
-                          if (allActivities.isEmpty && !activityListAsync.isLoading)
-                             Center(child: Padding(
-                               padding: EdgeInsets.all(20.h),
-                               child: Text("No recent activities", style: GoogleFonts.lexend(color: Colors.grey)),
-                             )),
-                          SizedBox(height: 140.h),
+                          activityListAsync.when(
+                            data: (activities) {
+                              final bool isBackgroundLoading = activityListAsync.isRefreshing || activityListAsync.isReloading;
+                              
+                              if (allActivities.isEmpty) {
+                                if (isBackgroundLoading || workoutHistoryAsync.isRefreshing) {
+                                  return Column(
+                                    children: List.generate(3, (index) => Padding(
+                                      padding: EdgeInsets.only(bottom: 16.0 * scale),
+                                      child: _buildActivitySkeleton(scale),
+                                    )),
+                                  );
+                                }
+                                return Center(child: Padding(
+                                  padding: EdgeInsets.all(20.0 * scale),
+                                  child: Text("No recent activities", style: GoogleFonts.lexend(color: Colors.grey, fontSize: 14.0 * scale)),
+                                ));
+                              }
+
+                              return Column(
+                                children: [
+                                  if (isBackgroundLoading && activities.isEmpty)
+                                     ...List.generate(3, (index) => Padding(
+                                      padding: EdgeInsets.only(bottom: 16.0 * scale),
+                                      child: _buildActivitySkeleton(scale),
+                                    ))
+                                  else
+                                    ...allActivities.map((activity) {
+                                      return Padding(
+                                        padding: EdgeInsets.only(bottom: 16.0 * scale),
+                                        child: _buildActivityItem(activity, isTablet, scale),
+                                      );
+                                    }),
+                                ],
+                              );
+                            },
+                            loading: () => Column(
+                              children: List.generate(3, (index) => Padding(
+                                padding: EdgeInsets.only(bottom: 16.0 * scale),
+                                child: _buildActivitySkeleton(scale),
+                              )),
+                            ),
+                            error: (e, _) => Center(child: Text("Error loading activities: $e")),
+                          ),
+                          SizedBox(height: 120.0 * scale),
                         ],
                       ),
                     ),
@@ -157,9 +239,13 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
 
 
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, bool isTablet, double scale) {
+    final horizontalPadding = 30.0 * scale;
+    final iconContainerSize = 45.0 * scale;
+    final arrowSize = 24.0 * scale;
+
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 26.w),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -171,13 +257,13 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
               );
             },
             child: Container(
-              width: 40.w,
-              height: 40.h,
+              width: iconContainerSize,
+              height: iconContainerSize,
               alignment: Alignment.center,
               child: Transform.scale(
                 scaleX: -1,
                 child: CustomArrowIcon(
-                  size: 24.sp,
+                  size: arrowSize,
                   color: const Color(0xFF130F26),
                 ),
               ),
@@ -186,21 +272,24 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
           Text(
             'Activity',
             style: GoogleFonts.lexendDeca(
-              fontSize: 19.sp,
+              fontSize: 19.0 * scale,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF24252C),
             ),
           ),
-          SizedBox(width: 40.w), // Spacer for alignment
+          SizedBox(width: iconContainerSize), // Spacer for alignment
         ],
       ),
     );
   }
 
-  Widget _buildFilterTabs() {
+  Widget _buildFilterTabs(bool isTablet, double scale) {
+    final height = 60.0 * scale;
+    final horizontalPadding = 17.0 * scale;
+
     return Container(
       width: double.infinity,
-      height: 57.h,
+      height: height,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
@@ -208,51 +297,56 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             offset: const Offset(0, 4),
             blurRadius: 32,
           ),
         ],
-        borderRadius: BorderRadius.circular(15.r),
+        borderRadius: BorderRadius.circular(15.0 * scale),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 17.w),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildFilterButton('W'),
-            _buildFilterButton('M'),
-            _buildFilterButton('Y'),
-            _buildFilterButton('All'),
+            _buildFilterButton('W', isTablet, scale),
+            _buildFilterButton('M', isTablet, scale),
+            _buildFilterButton('Y', isTablet, scale),
+            _buildFilterButton('All', isTablet, scale),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFilterButton(String text) {
+  Widget _buildFilterButton(String text, bool isTablet, double scale) {
     final isSelected = _selectedFilter == text;
+    final width = 64.0 * scale;
+    final height = 40.0 * scale;
+    final fontSize = 14.0 * scale;
+
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         setState(() {
           _selectedFilter = text;
         });
       },
       child: SizedBox(
-        width: 63.w,
-        height: 40.h,
+        width: width,
+        height: height,
         child: isSelected
             ? ClipPath(
                 clipper: ButtonShapeClipper(),
                 child: Container(
-                  width: 63.w,
-                  height: 40.h,
+                  width: width,
+                  height: height,
                   color: const Color(0xFF900EBF),
                   alignment: Alignment.center,
                   child: Text(
                     text,
                     style: GoogleFonts.poppins(
-                      fontSize: 14.sp,
+                      fontSize: fontSize,
                       fontWeight: FontWeight.w400,
                       color: Colors.white,
                     ),
@@ -264,7 +358,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                 child: Text(
                   text,
                   style: GoogleFonts.poppins(
-                    fontSize: 14.sp,
+                    fontSize: fontSize,
                     fontWeight: FontWeight.w400,
                     color: Colors.black,
                   ),
@@ -274,43 +368,48 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  Widget _buildWeekCard(ActivityStats stats) {
+  Widget _buildWeekCard(ActivityStats stats, bool isTablet, double scale) {
     // Format duration (seconds to MM:SS)
     final duration = Duration(seconds: stats.totalDuration);
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     final timeStr = '$minutes:${seconds.toString().padLeft(2, '0')}';
+    final cardHeight = 220.0 * scale;
+    final hPadding = 18.0 * scale;
 
     return Container(
       width: double.infinity,
-      height: 205.h,
+      height: cardHeight,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
-          color: const Color(0xFFE8ECF4).withOpacity(0.49),
+          color: const Color(0xFFE8ECF4).withValues(alpha: 0.49),
         ),
-        borderRadius: BorderRadius.circular(22.r),
+        borderRadius: BorderRadius.circular(22.0 * scale),
       ),
       child: Stack(
         children: [
           // Header with calendar icon and "This Week"
           Positioned(
-            left: 18.w,
-            top: 22.h,
+            left: hPadding,
+            top: 22.0 * scale,
             child: Row(
               children: [
                 CustomCalendarIcon(
-                  size: 24.sp,
+                  size: 24.0 * scale,
                   color: const Color(0xFFF83A71),
                 ),
-                SizedBox(width: 7.w),
+                SizedBox(width: 7.0 * scale),
                 Text(
-                  _selectedFilter == 'W' ? 'This Week' : _selectedFilter == 'M' ? 'This Month' : 'All Activities',
+                  _selectedFilter == 'W' ? 'This Week' 
+                  : _selectedFilter == 'M' ? 'This Month' 
+                  : _selectedFilter == 'Y' ? 'This Year'
+                  : 'All Activities',
                   style: GoogleFonts.poppins(
-                    fontSize: 19.sp,
+                    fontSize: 19.0 * scale,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF221F48),
-                    height: 22 / 19,
+                    height: 1.15,
                   ),
                 ),
               ],
@@ -318,43 +417,43 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
           ),
           // Big number
           Positioned(
-            left: 17.w,
-            top: 76.h,
+            left: hPadding - 1,
+            top: 76.0 * scale,
             child: Text(
               stats.totalDistance.toStringAsFixed(2),
               style: GoogleFonts.poppins(
-                fontSize: 51.sp,
+                fontSize: 51.0 * scale,
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFF221F48),
-                height: 22 / 51,
+                height: 1.0,
               ),
             ),
           ),
           // Kilometers text
           Positioned(
-            left: 159.w,
-            top: 80.h,
+            left: 159.0 * scale,
+            top: 80.0 * scale,
             child: Text(
               'Kilometers',
               style: GoogleFonts.roboto(
-                fontSize: 14.sp,
+                fontSize: 14.0 * scale,
                 fontWeight: FontWeight.w400,
                 color: const Color(0xFF221F48),
-                height: 31 / 14,
+                height: 2.2,
               ),
             ),
           ),
           // Stats row
           Positioned(
-            left: 21.w,
-            top: 126.h,
+            left: hPadding + 3,
+            bottom: 25.0 * scale,
             child: Row(
               children: [
-                _buildStatColumn('Count', stats.activityCount.toString()),
-                SizedBox(width: 50.w),
-                _buildStatColumn('Avg pace', stats.averagePace.toStringAsFixed(2)),
-                SizedBox(width: 50.w),
-                _buildStatColumn('Time', timeStr),
+                _buildStatColumn('Count', stats.activityCount.toString(), isTablet, scale),
+                SizedBox(width: 50.0 * scale),
+                _buildStatColumn('Avg pace', _formatPace(stats.averagePace), isTablet, scale),
+                SizedBox(width: 50.0 * scale),
+                _buildStatColumn('Time', timeStr, isTablet, scale),
               ],
             ),
           ),
@@ -363,7 +462,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  Widget _buildStatColumn(String label, String value) {
+  Widget _buildStatColumn(String label, String value, bool isTablet, double scale) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -371,16 +470,16 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         Text(
           label,
           style: GoogleFonts.roboto(
-            fontSize: 14.sp,
+            fontSize: 14.0 * scale,
             fontWeight: FontWeight.w400,
             color: const Color(0xFF221F48),
           ),
         ),
-        SizedBox(height: 2.h),
+        SizedBox(height: 2.0 * scale),
         Text(
           value,
           style: GoogleFonts.poppins(
-            fontSize: 18.sp,
+            fontSize: 18.0 * scale,
             fontWeight: FontWeight.w600,
             color: const Color(0xFF221F48),
           ),
@@ -389,48 +488,44 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  Widget _buildWeeklyChart(List<DailyStat> dailyStats) {
-    // Calculate max distance dynamically for better scaling
-    double maxDistance = 5.0;
+  Widget _buildWeeklyChart(List<DailyStat> dailyStats, bool isTablet, double scale) {
+    final dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    final List<double> weeklyData = List.filled(7, 0.0);
+
     for (var stat in dailyStats) {
-      if (stat.distance > maxDistance) {
-        maxDistance = stat.distance;
+      try {
+        final statDate = DateTime.parse(stat.date);
+        final dayIndex = statDate.weekday % 7;
+        if (dayIndex < 7) {
+          // Aggregate distance for same day of week (works for week/month/year)
+          weeklyData[dayIndex] += stat.distance;
+        }
+      } catch (e) {
+        debugPrint("Error parsing stat date: ${stat.date}");
+      }
+    }
+
+    // Calculate max distance from aggregated data for correct scaling
+    double maxDistance = 5.0;
+    for (var dist in weeklyData) {
+      if (dist > maxDistance) {
+        maxDistance = dist;
       }
     }
     maxDistance = (maxDistance * 1.2).ceilToDouble(); // Add 20% headroom
     if (maxDistance == 0) maxDistance = 5.0;
-    final now = DateTime.now();
-    
-    // Generate day labels and values for the current week (Sunday to Saturday)
-    final dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    final List<double> weeklyData = List.filled(7, 0.0);
-    
-    // Calculate start of week (Sunday)
-    final daysSinceSunday = now.weekday % 7;
-    final startOfWeek = now.subtract(Duration(days: daysSinceSunday));
-    final startDate = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-
-    for (var stat in dailyStats) {
-      final statDate = DateTime.parse(stat.date);
-      if (statDate.isAfter(startDate.subtract(const Duration(seconds: 1)))) {
-        final dayIndex = statDate.weekday % 7;
-        if (dayIndex < 7) {
-          weeklyData[dayIndex] = stat.distance;
-        }
-      }
-    }
 
     return Container(
       width: double.infinity,
-      height: 205.h,
+      height: 205.0 * scale,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
-          color: const Color(0xFFE8ECF4).withOpacity(0.49),
+          color: const Color(0xFFE8ECF4).withValues(alpha: 0.49),
         ),
-        borderRadius: BorderRadius.circular(22.r),
+        borderRadius: BorderRadius.circular(22.0 * scale),
       ),
-      padding: EdgeInsets.fromLTRB(16.w, 20.h, 16.w, 10.h),
+      padding: EdgeInsets.fromLTRB(16.0 * scale, 20.0 * scale, 16.0 * scale, 10.0 * scale),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -449,7 +544,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                           children: List.generate(4, (index) {
                             return Container(
                               width: double.infinity,
-                              height: 1.h,
+                              height: 1.0 * scale,
                               color: const Color(0xFFE8ECF4),
                             );
                           }),
@@ -465,7 +560,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                             final heightFactor = (dist / maxDistance).clamp(0.0, 1.0);
                             
                             return SizedBox(
-                              width: 16.w,
+                              width: 16.0 * scale,
                               child: Stack(
                                 alignment: Alignment.bottomCenter,
                                 children: [
@@ -475,7 +570,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                                       child: Container(
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFF83A71),
-                                          borderRadius: BorderRadius.circular(4.r),
+                                          borderRadius: BorderRadius.circular(4.0 * scale),
                                         ),
                                       ),
                                     ),
@@ -488,16 +583,16 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: 8.h),
+                SizedBox(height: 8.0 * scale),
                 // X-axis labels
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(dayLabels.length, (index) {
                      return SizedBox(
-                       width: 16.w,
+                       width: 16.0 * scale,
                        child: Text(
                          dayLabels[index],
-                         style: _chartLabelStyle(),
+                         style: _chartLabelStyle(isTablet, scale),
                          textAlign: TextAlign.center,
                        ),
                      );
@@ -506,7 +601,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
               ],
             ),
           ),
-          SizedBox(width: 12.w),
+          SizedBox(width: 12.0 * scale),
           // Right side: Y-axis labels
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -515,16 +610,16 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('${maxDistance.toInt()}', style: _chartLabelStyle()),
-                    Text('${(maxDistance * 0.6).toInt()}', style: _chartLabelStyle()),
-                    Text('${(maxDistance * 0.2).toInt()}', style: _chartLabelStyle()),
-                    Text('0 km', style: _chartLabelStyle()),
+                    Text('${maxDistance.toInt()}', style: _chartLabelStyle(isTablet, scale)),
+                    Text('${(maxDistance * 0.6).toInt()}', style: _chartLabelStyle(isTablet, scale)),
+                    Text('${(maxDistance * 0.2).toInt()}', style: _chartLabelStyle(isTablet, scale)),
+                    Text('0 km', style: _chartLabelStyle(isTablet, scale)),
                   ],
                 ),
               ),
               // Spacer to align with chart area
-              SizedBox(height: 8.h),
-              Text('', style: _chartLabelStyle()),
+              SizedBox(height: 8.0 * scale),
+              Text('', style: _chartLabelStyle(isTablet, scale)),
             ],
           ),
         ],
@@ -532,12 +627,12 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  TextStyle _chartLabelStyle() {
+  TextStyle _chartLabelStyle(bool isTablet, double scale) {
     return GoogleFonts.roboto(
-      fontSize: 14.sp,
+      fontSize: 14.0 * scale,
       fontWeight: FontWeight.w400,
       color: const Color(0xFF221F48),
-      height: 31 / 14,
+      height: 2.2,
     );
   }
 
@@ -548,18 +643,20 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
-  Widget _buildActivityItem(dynamic activity) {
+  Widget _buildActivityItem(dynamic activity, bool isTablet, double scale) {
     String day = '';
     String km = '';
     String pace = '';
     String time = '';
 
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
     final date = activity.date;
 
-    if (date.year == now.year && date.month == now.month && date.day == now.day) {
+    if (date.year == today.year && date.month == today.month && date.day == today.day) {
       day = 'Today';
-    } else if (date.year == now.year && date.month == now.month && date.day == now.day - 1) {
+    } else if (date.year == yesterday.year && date.month == yesterday.month && date.day == yesterday.day) {
       day = 'Yesterday';
     } else {
       day = DateFormat('EEEE').format(date); // Sunday, Monday...
@@ -589,6 +686,8 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
       kilometers: km,
       avgPace: pace,
       time: time,
+      isTablet: isTablet,
+      scale: scale,
     );
   }
 
@@ -597,37 +696,42 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     required String kilometers,
     required String avgPace,
     required String time,
+    required bool isTablet,
+    required double scale,
   }) {
+    final cardHeight = 140.0 * scale;
+    final hPadding = 18.0 * scale;
+
     return Container(
       width: double.infinity,
-      height: 126.h,
+      height: cardHeight,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
-          color: const Color(0xFFE8ECF4).withOpacity(0.49),
+          color: const Color(0xFFE8ECF4).withValues(alpha: 0.49),
         ),
-        borderRadius: BorderRadius.circular(22.r),
+        borderRadius: BorderRadius.circular(22.0 * scale),
       ),
       child: Stack(
         children: [
           // Header with calendar icon and day name
           Positioned(
-            left: 18.w,
-            top: 22.h,
+            left: hPadding,
+            top: 22.0 * scale,
             child: Row(
               children: [
                 CustomCalendarIcon(
-                  size: 24.sp,
+                  size: 24.0 * scale,
                   color: const Color(0xFFF83A71),
                 ),
-                SizedBox(width: 7.w),
+                SizedBox(width: 7.0 * scale),
                 Text(
                   day,
                   style: GoogleFonts.poppins(
-                    fontSize: 18.sp,
+                    fontSize: 18.0 * scale,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF221F48),
-                    height: 22 / 18,
+                    height: 1.2,
                   ),
                 ),
               ],
@@ -635,15 +739,15 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
           ),
           // Stats row
           Positioned(
-            left: 21.w,
-            top: 52.h,
+            left: hPadding + 3,
+            bottom: 25.0 * scale,
             child: Row(
               children: [
-                _buildActivityStat(kilometers.contains('Ex') ? 'Exercises' : 'Kilometers', kilometers),
-                SizedBox(width: 56.w),
-                _buildActivityStat(avgPace.contains('Rnds') ? 'Rounds' : 'Avg pace', avgPace),
-                SizedBox(width: 56.w),
-                _buildActivityStat('Time', time),
+                _buildActivityStat(kilometers.contains('Ex') ? 'Exercises' : 'Kilometers', kilometers, isTablet, scale),
+                SizedBox(width: 56.0 * scale),
+                _buildActivityStat(avgPace.contains('Rnds') ? 'Rounds' : 'Avg pace', avgPace, isTablet, scale),
+                SizedBox(width: 56.0 * scale),
+                _buildActivityStat('Time', time, isTablet, scale),
               ],
             ),
           ),
@@ -652,7 +756,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  Widget _buildActivityStat(String label, String value) {
+  Widget _buildActivityStat(String label, String value, bool isTablet, double scale) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -660,21 +764,56 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         Text(
           label,
           style: GoogleFonts.roboto(
-            fontSize: 12.sp,
+            fontSize: 12.0 * scale,
             fontWeight: FontWeight.w400,
             color: const Color(0xFF8B88B5),
           ),
         ),
-        SizedBox(height: 2.h),
+        SizedBox(height: 2.0 * scale),
         Text(
           value,
           style: GoogleFonts.poppins(
-            fontSize: 16.sp,
+            fontSize: 16.0 * scale,
             fontWeight: FontWeight.w600,
             color: const Color(0xFF221F48),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatsSkeleton(bool isTablet, double scale) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[200]!,
+      highlightColor: Colors.grey[50]!,
+      child: Column(
+        children: [
+          // Week card skeleton
+          _buildSkeletonBox(height: 220.0 * scale, borderRadius: 22.0 * scale),
+          SizedBox(height: 16.0 * scale),
+          // Chart skeleton
+          _buildSkeletonBox(height: 205.0 * scale, borderRadius: 22.0 * scale),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivitySkeleton(double scale) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[200]!,
+      highlightColor: Colors.grey[50]!,
+      child: _buildSkeletonBox(height: 140.0 * scale, borderRadius: 22.0 * scale),
+    );
+  }
+
+  Widget _buildSkeletonBox({required double height, required double borderRadius}) {
+    return Container(
+      width: double.infinity,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
     );
   }
 }

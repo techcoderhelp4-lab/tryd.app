@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../challenges/data/challenge_repository.dart';
 import '../../challenges/domain/challenge.dart';
 import 'package:intl/intl.dart';
+import '../../../../widgets/skeleton_loading.dart';
 
 class ClubScreen extends ConsumerStatefulWidget {
   const ClubScreen({super.key});
@@ -26,8 +28,61 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isTablet = screenWidth > 600;
+
+    // ── Responsive Scale ──────────────────────────────────
+    // Change these 4 values to control ALL component sizes:
+    //   small  → phones with height < 680px
+    //   medium → phones with height 680–850px
+    //   large  → phones with height > 850px
+    //   tablet → devices with width > 600px
+    const double smallScale  = 0.82;
+    const double mediumScale = 0.95;
+    const double largeScale  = 1.05;
+    const double tabletScale = 1.20;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
+
+    final horizontalPadding = 16.0 * scale;
+    final heroHeight = 330.0 * scale;
+    final titleFontSize = 22.0 * scale;
+    final subtitleFontSize = 13.0 * scale;
+    final sectionTitleSize = 18.0 * scale;
+    final bottomNavSpacing = 140.0 * scale;
+
     return Scaffold(
       backgroundColor: Colors.white,
+      extendBody: true,
+      bottomNavigationBar: CustomBottomNavigation(
+        currentIndex: 4,
+        onTap: (index) {
+          if (index == 4) return;
+          
+          Widget? page;
+          switch (index) {
+            case 0: page = const HomeScreen(); break;
+            case 1: page = const RunningScreen(); break;
+            case 2: page = const RewardsScreen(); break;
+            case 3: page = const WorkoutScreen(); break;
+          }
+          
+          if (page != null) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => page!),
+            );
+          }
+        },
+      ),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -42,18 +97,24 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
           bottom: false,
           child: Stack(
             children: [
-              SingleChildScrollView(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 15),
+              RefreshIndicator(
+                color: const Color(0xFF900EBF),
+                onRefresh: () async {
+                  await ref.read(challengeRepositoryProvider).fetchAndSyncChallenges(force: true);
+                  ref.invalidate(challengesListProvider);
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  child: Column(
+                    children: [
+                    SizedBox(height: 15.0 * scale),
                     // Hero Image
                     Container(
                       width: double.infinity,
-                      height: 325,
+                      height: heroHeight,
                       margin: const EdgeInsets.symmetric(horizontal: 0),
                       child: Stack(
                         children: [
-                          // Challenges image
                           Positioned.fill(
                             child: Image.asset(
                               'assets/images/challenges.png',
@@ -67,46 +128,48 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    SizedBox(height: 30.0 * scale),
                     // Title
                     Text(
                       'Challenges',
                       style: GoogleFonts.lexendDeca(
-                        fontSize: 24,
+                        fontSize: titleFontSize,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF1B2D51),
-                        height: 30 / 24,
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    SizedBox(height: 18.0 * scale),
                     // Subtitle
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(horizontal: (isTablet ? 30.0 : 30.0) * scale),
                       child: Text(
                         'Join Challenge and surprise points waiting for you once you finish the challenge.',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.poppins(
-                          fontSize: 14,
+                          fontSize: subtitleFontSize,
                           fontWeight: FontWeight.w400,
                           color: const Color(0xFF1B2D51),
-                          height: 21 / 14,
+                          height: 1.5,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 22),
+                    SizedBox(height: 22.0 * scale),
                     // Tab Buttons
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 22),
-                      child: _buildTabButtons(),
+                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      child: _buildTabButtons(isTablet, scale),
                     ),
-                    const SizedBox(height: 23),
+                    SizedBox(height: 23.0 * scale),
                     // Content based on selected tab
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 22),
+                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                       child: ref.watch(challengesListProvider).when(
                         data: (challenges) {
+                          final now = DateTime.now();
                           final myChallenges = challenges.where((c) => c.isJoined).toList();
-                          final availableChallenges = challenges.where((c) => !c.isJoined).toList();
+                          final activeChallenges = myChallenges.where((c) => c.endDate.isAfter(now)).toList();
+                          final expiredChallenges = myChallenges.where((c) => !c.endDate.isAfter(now)).toList();
+                          final availableChallenges = challenges.where((c) => !c.isJoined && c.endDate.isAfter(now)).toList();
 
                           if (_selectedTab == 'My Challenges') {
                             return Column(
@@ -115,52 +178,54 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                                 Text(
                                   'My Challenges',
                                   style: GoogleFonts.lexendDeca(
-                                    fontSize: 18,
+                                    fontSize: sectionTitleSize,
                                     fontWeight: FontWeight.w600,
                                     color: const Color(0xFF1B2D51),
-                                    height: 22 / 18,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                if (myChallenges.isEmpty)
+                                SizedBox(height: 10.0 * scale),
+                                if (activeChallenges.isEmpty)
                                   Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 20),
                                     child: Center(
                                       child: Text(
-                                        'No joined challenges yet.',
+                                        'No active challenges.',
                                         style: GoogleFonts.poppins(color: Colors.grey),
                                       ),
                                     ),
                                   )
                                 else
-                                  ...myChallenges.map((challenge) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 23),
+                                  ...activeChallenges.map((challenge) => Padding(
+                                    padding: EdgeInsets.only(bottom: 12.0 * scale),
                                     child: _buildChallengeCard(
                                       challenge: challenge,
                                       isActive: true,
+                                      isTablet: isTablet,
+                                      scale: scale,
                                     ),
                                   )),
-                                
-                                // Previous Challenge Section (Static or mock for now as per design)
-                                Text(
-                                  'Previous Challenge',
-                                  style: GoogleFonts.lexendDeca(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF1B2D51),
-                                    height: 22 / 18,
+
+                                if (expiredChallenges.isNotEmpty) ...[
+                                  SizedBox(height: 20.0 * scale),
+                                  Text(
+                                    'Previous Challenges',
+                                    style: GoogleFonts.lexendDeca(
+                                      fontSize: sectionTitleSize,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF1B2D51),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 8),
-                                _buildChallengeCardMock(
-                                  title: 'Spring Sprint 100 KM Challenge',
-                                  subtitle: 'Ended 30 September 2025',
-                                  progress: '39.46/40 km',
-                                  kmBadge: '100',
-                                  badgeColor: const Color(0xFF96AAD2),
-                                  badgeTextColor: Colors.white,
-                                  isActive: false,
-                                ),
+                                  SizedBox(height: 10.0 * scale),
+                                  ...expiredChallenges.map((challenge) => Padding(
+                                    padding: EdgeInsets.only(bottom: 12.0 * scale),
+                                    child: _buildChallengeCard(
+                                      challenge: challenge,
+                                      isActive: false,
+                                      isTablet: isTablet,
+                                      scale: scale,
+                                    ),
+                                  )),
+                                ],
                               ],
                             );
                           } else {
@@ -178,19 +243,14 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                                   )
                                 else
                                   ...availableChallenges.map((challenge) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 17),
-                                    child: _buildJoinChallengeCard(challenge),
+                                    padding: EdgeInsets.only(bottom: 12.0 * scale),
+                                    child: _buildJoinChallengeCard(challenge, isTablet, scale),
                                   )),
                               ],
                             );
                           }
                         },
-                        loading: () => const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(40.0),
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
+                        loading: () => ClubSkeletonLoading(scale: scale, isTablet: isTablet),
                         error: (err, stack) => Center(
                           child: Padding(
                             padding: const EdgeInsets.all(40.0),
@@ -209,37 +269,12 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 140),
+                    SizedBox(height: bottomNavSpacing),
                   ],
                 ),
               ),
-              // Bottom Navigation
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: CustomBottomNavigation(
-                  currentIndex: 4,
-                  onTap: (index) {
-                    if (index == 4) return;
-                    
-                    Widget? page;
-                    switch (index) {
-                      case 0: page = const HomeScreen(); break;
-                      case 1: page = const RunningScreen(); break;
-                      case 2: page = const RewardsScreen(); break;
-                      case 3: page = WorkoutScreen(); break;
-                    }
-                    
-                    if (page != null) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => page!),
-                      );
-                    }
-                  },
-                ),
               ),
+
             ],
           ),
         ),
@@ -247,10 +282,16 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
     );
   }
 
-  Widget _buildTabButtons() {
+
+  Widget _buildTabButtons(bool isTablet, double scale) {
+    final containerHeight = (isTablet ? 50.0 : 50.0) * scale;
+    final buttonHeight = (isTablet ? 36.0 : 36.0) * scale;
+    final fontSize = (isTablet ? 12.0 : 13.0) * scale;
+    final borderRadius = (isTablet ? 12.0 : 12.0) * scale;
+
     return Container(
       width: double.infinity,
-      height: 57,
+      height: containerHeight,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: const Color(0xFFF5F3F3)),
@@ -261,10 +302,10 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
             blurRadius: 32,
           ),
         ],
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 8.5),
+        padding: EdgeInsets.symmetric(horizontal: 17.0 * scale, vertical: 8.5 * scale),
         child: Row(
           children: [
             Expanded(
@@ -272,13 +313,12 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                   ? GradientButton(
                       text: 'My Challenges',
                       onPressed: () {},
-                      height: 40,
+                      height: buttonHeight,
                       showIcon: false,
                       textStyle: GoogleFonts.poppins(
-                        fontSize: 14,
+                        fontSize: fontSize,
                         fontWeight: FontWeight.w400,
                         color: Colors.white,
-                        height: 21 / 14,
                       ),
                     )
                   : GestureDetector(
@@ -288,15 +328,14 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                         });
                       },
                       child: Container(
-                        height: 40,
+                        height: buttonHeight,
                         alignment: Alignment.center,
                         child: Text(
                           'My Challenges',
                           style: GoogleFonts.poppins(
-                            fontSize: 14,
+                            fontSize: fontSize,
                             fontWeight: FontWeight.w400,
                             color: Colors.black,
-                            height: 21 / 14,
                           ),
                         ),
                       ),
@@ -307,13 +346,12 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                   ? GradientButton(
                       text: 'Join a Challenge',
                       onPressed: () {},
-                      height: 40,
+                      height: buttonHeight,
                       showIcon: false,
                       textStyle: GoogleFonts.poppins(
-                        fontSize: 14,
+                        fontSize: fontSize,
                         fontWeight: FontWeight.w400,
                         color: Colors.white,
-                        height: 21 / 14,
                       ),
                     )
                   : GestureDetector(
@@ -323,15 +361,14 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                         });
                       },
                       child: Container(
-                        height: 40,
+                        height: buttonHeight,
                         alignment: Alignment.center,
                         child: Text(
                           'Join a Challenge',
                           style: GoogleFonts.poppins(
-                            fontSize: 14,
+                            fontSize: fontSize,
                             fontWeight: FontWeight.w400,
                             color: Colors.black,
-                            height: 21 / 14,
                           ),
                         ),
                       ),
@@ -343,22 +380,52 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
     );
   }
 
+  String _challengeDateLabel(Challenge challenge, bool isActive) {
+    final now = DateTime.now();
+    final daysLeft = challenge.endDate.difference(now).inDays;
+
+    if (!isActive) {
+      // Expired
+      return 'Ended ${DateFormat('dd MMM yyyy').format(challenge.endDate)}';
+    } else if (now.isBefore(challenge.startDate)) {
+      // Upcoming
+      final daysToStart = challenge.startDate.difference(now).inDays;
+      return 'Starts in $daysToStart days  •  ${challenge.targetKm.toStringAsFixed(0)} KM';
+    } else {
+      // Active
+      return '$daysLeft days left  •  ${challenge.targetKm.toStringAsFixed(0)} KM';
+    }
+  }
+
   Widget _buildChallengeCard({
     required Challenge challenge,
     required bool isActive,
+    required bool isTablet,
+    required double scale,
   }) {
+    final cardHeight = (isTablet ? 98.0 : 104.0) * scale;
+    final borderRadius = (isTablet ? 12.0 : 12.0) * scale;
+    final titleFontSize = (isTablet ? 12.0 : 13.0) * scale;
+    final descFontSize = (isTablet ? 10.0 : 10.5) * scale;
+    final progressFontSize = (isTablet ? 11.0 : 12.0) * scale;
+    final badgeHeight = (isTablet ? 40.0 : 45.0) * scale;
+    final badgeWidth = 42.0 * scale;
+    final badgeNumSize = 17.0 * scale;
+    final badgeLabelSize = 10.0 * scale;
+
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => MyChallengeScreen(challenge: challenge),
           ),
         );
+        ref.invalidate(challengesListProvider);
       },
       child: Container(
         width: double.infinity,
-        height: isActive ? 104 : 102,
+        constraints: BoxConstraints(minHeight: cardHeight),
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: const Color(0xFFF5F3F3)),
@@ -369,315 +436,141 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
               blurRadius: 32,
             ),
           ],
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(borderRadius),
         ),
-        child: Stack(
-          children: [
-            // Title
-            Positioned(
-              left: 16,
-              top: isActive ? 21 : 20,
-              child: SizedBox(
-                width: 220,
-                child: Text(
-                  challenge.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.lexendDeca(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF24252C),
-                    height: 18 / 14,
-                  ),
-                ),
-              ),
-            ),
-            // Subtitle
-            Positioned(
-              left: 16,
-              top: isActive ? 43 : 42,
-              child: SizedBox(
-                width: 220,
-                child: Text(
-                  challenge.description,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.lexendDeca(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF6E6A7C),
-                    height: 14 / 11,
-                  ),
-                ),
-              ),
-            ),
-            // Location icon
-            const Positioned(
-              left: 14,
-              top: 69,
-              child: Icon(
-                Icons.location_on,
-                color: Color(0xFFAB94FF),
-                size: 16,
-              ),
-            ),
-            // Progress text
-            Positioned(
-              left: 36,
-              top: 69,
-              child: Text(
-                '${challenge.targetKm.toStringAsFixed(0)} KM Challenge',
-                style: GoogleFonts.lexendDeca(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF24252C),
-                  height: 16 / 13,
-                ),
-              ),
-            ),
-            // KM Badge
-            Positioned(
-              right: 11,
-              top: 17,
-              child: Container(
-                width: 43,
-                height: 39,
-                decoration: BoxDecoration(
-                  color: isActive ? const Color(0xFFFFE4F2) : const Color(0xFF96AAD2),
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: Stack(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0 * scale, vertical: 12.0 * scale),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // "100" text
-                    Positioned(
-                      left: 5,
-                      top: 1,
-                      child: Text(
-                        challenge.targetKm.toStringAsFixed(0),
-                        style: GoogleFonts.lexendDeca(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: isActive ? const Color(0xFFF83A71) : Colors.white,
-                          height: 22 / 18,
-                        ),
+                    Text(
+                      challenge.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.lexendDeca(
+                        fontSize: titleFontSize,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF24252C),
                       ),
                     ),
-                    // "KM" text
-                    Positioned(
-                      left: 14,
-                      top: 24,
-                      child: Text(
-                        'KM',
-                        style: GoogleFonts.roboto(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: isActive ? const Color(0xFFF83A71) : Colors.white,
-                          height: 13 / 11,
-                        ),
+                    SizedBox(height: 4.0 * scale),
+                    Text(
+                      challenge.description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.lexendDeca(
+                        fontSize: descFontSize,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFF6E6A7C),
                       ),
+                    ),
+                    SizedBox(height: 10.0 * scale),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          color: const Color(0xFFAB94FF),
+                          size: 16.0 * scale,
+                        ),
+                        SizedBox(width: 6.0 * scale),
+                        Expanded(
+                          child: Text(
+                            _challengeDateLabel(challenge, isActive),
+                            style: GoogleFonts.lexendDeca(
+                              fontSize: progressFontSize,
+                              fontWeight: FontWeight.w400,
+                              color: isActive ? const Color(0xFF24252C) : const Color(0xFF8B88B5),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ),
-            // View Icon
-            if (isActive)
-              Positioned(
-                right: 13,
-                top: 65,
-                child: Container(
-                  width: 23,
-                  height: 23,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
+              SizedBox(width: 8.0 * scale),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: badgeWidth,
+                    height: badgeHeight,
+                    decoration: BoxDecoration(
+                      color: isActive ? const Color(0xFFFFE4F2) : const Color(0xFF96AAD2),
+                      borderRadius: BorderRadius.circular(7.0 * scale),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          challenge.targetKm.toStringAsFixed(0),
+                          style: GoogleFonts.lexendDeca(
+                            fontSize: badgeNumSize,
+                            fontWeight: FontWeight.w600,
+                            color: isActive ? const Color(0xFFF83A71) : Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'KM',
+                          style: GoogleFonts.roboto(
+                            fontSize: badgeLabelSize,
+                            fontWeight: FontWeight.w500,
+                            color: isActive ? const Color(0xFFF83A71) : Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.visibility,
-                    color: Color(0xFF9260F4),
-                    size: 23,
-                  ),
-                ),
+                  if (isActive) ...[
+                     SizedBox(height: 4.0 * scale),
+                     Icon(
+                      Icons.visibility,
+                      color: const Color(0xFF9260F4),
+                      size: 20.0 * scale,
+                    ),
+                  ],
+                ],
               ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildChallengeCardMock({
-    required String title,
-    required String subtitle,
-    required String progress,
-    required String kmBadge,
-    required Color badgeColor,
-    required Color badgeTextColor,
-    required bool isActive,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MyChallengeScreen(
-              challenge: Challenge(
-                id: 'mock',
-                title: title,
-                description: subtitle,
-                startDate: DateTime.now(),
-                endDate: DateTime.now().add(const Duration(days: 7)),
-                targetKm: double.tryParse(kmBadge) ?? 100,
-                rewardPoints: 1000,
-                isJoined: true,
-              ),
-            ),
+            ],
           ),
-        );
-      },
-      child: Container(
-        width: double.infinity,
-        height: isActive ? 104 : 102,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFF5F3F3)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              offset: const Offset(0, 4),
-              blurRadius: 32,
-            ),
-          ],
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Stack(
-          children: [
-            // Title
-            Positioned(
-              left: 16,
-              top: isActive ? 21 : 20,
-              child: SizedBox(
-                width: 220,
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.visible,
-                  style: GoogleFonts.lexendDeca(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF24252C),
-                    height: 18 / 14,
-                  ),
-                ),
-              ),
-            ),
-            // Subtitle
-            Positioned(
-              left: 16,
-              top: isActive ? 43 : 42,
-              child: SizedBox(
-                width: 220,
-                child: Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.visible,
-                  style: GoogleFonts.lexendDeca(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF6E6A7C),
-                    height: 14 / 11,
-                  ),
-                ),
-              ),
-            ),
-            // Location icon
-            const Positioned(
-              left: 14,
-              top: 69,
-              child: Icon(
-                Icons.location_on,
-                color: Color(0xFFAB94FF),
-                size: 16,
-              ),
-            ),
-            // Progress text
-            Positioned(
-              left: 36,
-              top: 69,
-              child: Text(
-                progress,
-                style: GoogleFonts.lexendDeca(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF24252C),
-                  height: 16 / 13,
-                ),
-              ),
-            ),
-            // KM Badge
-            Positioned(
-              right: 11,
-              top: 17,
-              child: Container(
-                width: 43,
-                height: 39,
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: Stack(
-                  children: [
-                    // "100" text
-                    Positioned(
-                      left: 5,
-                      top: 1,
-                      child: Text(
-                        kmBadge,
-                        style: GoogleFonts.lexendDeca(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: badgeTextColor,
-                          height: 22 / 18,
-                        ),
-                      ),
-                    ),
-                    // "KM" text
-                    Positioned(
-                      left: 14,
-                      top: 24,
-                      child: Text(
-                        'KM',
-                        style: GoogleFonts.roboto(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: badgeTextColor,
-                          height: 13 / 11,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 
-  Widget _buildJoinChallengeCard(Challenge challenge) {
-    final timeLeft = challenge.endDate.difference(DateTime.now()).inDays;
-    
+  Widget _buildJoinChallengeCard(Challenge challenge, bool isTablet, double scale) {
+    final now = DateTime.now();
+    final isUpcoming = challenge.startDate.isAfter(now);
+    final timeLeft = challenge.endDate.difference(now).inDays;
+    final cardHeight = (isTablet ? 230.0 : 250.0) * scale;
+    final imageHeight = (isTablet ? 110.0 : 125.0) * scale;
+    final titleFontSize = (isTablet ? 12.0 : 13.5) * scale;
+    final descFontSize = (isTablet ? 10.0 : 10.5) * scale;
+    final badgeWidth = (isTablet ? 40.0 : 43.0) * scale;
+    final badgeHeight = (isTablet ? 40.0 : 45.0) * scale;
+    final badgeNumSize = (isTablet ? 16.0 : 17.0) * scale;
+    final badgeLabelSize = (isTablet ? 9.0 : 10.0) * scale;
+    final footerFontSize = (isTablet ? 10.0 : 10.5) * scale;
+
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ChallengeDetailScreen(challengeId: challenge.id),
           ),
         );
+        ref.invalidate(challengesListProvider);
       },
       child: Container(
         width: double.infinity,
-        height: 260,
+        constraints: BoxConstraints(minHeight: cardHeight),
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: const Color(0xFFF5F3F3)),
@@ -693,46 +586,35 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image at top
             Padding(
-              padding: const EdgeInsets.all(11),
+              padding: EdgeInsets.all(11.0 * scale),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
                 child: challenge.imageUrl != null && challenge.imageUrl!.startsWith('http')
                   ? Image.network(
                       challenge.imageUrl!,
-                      height: 130,
+                      height: imageHeight,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Image.asset(
                         'assets/images/running.png',
-                        height: 130,
+                        height: imageHeight,
                         width: double.infinity,
                         fit: BoxFit.cover,
                       ),
                     )
                   : Image.asset(
                       challenge.imageUrl ?? 'assets/images/running.png',
-                      height: 130,
+                      height: imageHeight,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 130,
-                        width: double.infinity,
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.broken_image),
-                      ),
                     ),
               ),
             ),
-            const SizedBox(height: 8),
-            // Content area
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: EdgeInsets.symmetric(horizontal: 14.0 * scale),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title and subtitle
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -742,64 +624,50 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.lexendDeca(
-                            fontSize: 14,
+                            fontSize: titleFontSize,
                             fontWeight: FontWeight.w500,
                             color: const Color(0xFF24252C),
-                            height: 18 / 14,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4.0 * scale),
                         Text(
                           challenge.description,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.lexendDeca(
-                            fontSize: 11,
+                            fontSize: descFontSize,
                             fontWeight: FontWeight.w400,
                             color: const Color(0xFF6E6A7C),
-                            height: 13 / 11,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  // KM Badge
+                  SizedBox(width: 8.0 * scale),
                   Container(
-                    width: 45.72,
-                    height: 41.47,
+                    width: badgeWidth,
+                    height: badgeHeight,
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFE4F2),
                       borderRadius: BorderRadius.circular(7.44),
                     ),
-                    child: Stack(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // "100" text
-                        Positioned(
-                          left: 5.32,
-                          top: 2.13,
-                          child: Text(
-                            challenge.targetKm.toStringAsFixed(0),
-                            style: GoogleFonts.lexendDeca(
-                              fontSize: 19.14,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFFF83A71),
-                              height: 24 / 19.14,
-                            ),
+                        Text(
+                          challenge.targetKm.toStringAsFixed(0),
+                          style: GoogleFonts.lexendDeca(
+                            fontSize: badgeNumSize,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFFF83A71),
                           ),
                         ),
-                        // "KM" text
-                        Positioned(
-                          left: 14.89,
-                          top: 24.45,
-                          child: Text(
-                            'KM',
-                            style: GoogleFonts.roboto(
-                              fontSize: 11.70,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFFF83A71),
-                              height: 14 / 11.70,
-                            ),
+                        Text(
+                          'KM',
+                          style: GoogleFonts.roboto(
+                            fontSize: badgeLabelSize,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFFF83A71),
                           ),
                         ),
                       ],
@@ -808,37 +676,33 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            // Time info with clock icon and eye button
+            SizedBox(height: 12.0 * scale),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: EdgeInsets.symmetric(horizontal: 14.0 * scale),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.access_time,
-                    color: Color(0xFFAB94FF),
-                    size: 14,
+                    color: const Color(0xFFAB94FF),
+                    size: isTablet ? 12.0 : 14.0,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      '${timeLeft >= 0 ? timeLeft : 0} Days remaining  |  ${NumberFormat.compact().format(challenge.rewardPoints)} pts you will win',
+                      isUpcoming
+                          ? 'Starts in ${challenge.startDate.difference(now).inDays} days  |  ${NumberFormat.compact().format(challenge.rewardPoints)} pts you will win'
+                          : '$timeLeft Days remaining  |  ${NumberFormat.compact().format(challenge.rewardPoints)} pts you will win',
                       style: GoogleFonts.lexendDeca(
-                        fontSize: 11,
+                        fontSize: footerFontSize,
                         fontWeight: FontWeight.w400,
                         color: const Color(0xFF8B88B5),
-                        height: 15 / 11,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(
-                      Icons.visibility,
-                      color: Color(0xFF9260F4),
-                      size: 20,
-                    ),
+                  Icon(
+                    Icons.visibility,
+                    color: const Color(0xFF9260F4),
+                    size: isTablet ? 16.0 : 20.0,
                   ),
                 ],
               ),

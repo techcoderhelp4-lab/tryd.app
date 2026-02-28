@@ -1,11 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_constants.dart';
 import '../domain/app_notification.dart';
-
-part 'notification_repository.g.dart';
 
 class NotificationRepository {
   final Dio _dio;
@@ -17,11 +14,18 @@ class NotificationRepository {
         ApiConstants.notifications,
         queryParameters: {'page': page, 'limit': limit},
       );
-      
-      final List<dynamic> data = response.data['notifications'] ?? response.data['data'] ?? response.data;
+
+      final dynamic rawData = response.data;
+      final List<dynamic> data;
+      if (rawData is List) {
+        data = rawData;
+      } else if (rawData is Map) {
+        data = rawData['notifications'] ?? rawData['data'] ?? [];
+      } else {
+        data = [];
+      }
       return data.map((json) => AppNotification.fromJson(json)).toList();
     } catch (e) {
-      // Return empty list on error for now, or rethrow if important
       return [];
     }
   }
@@ -48,28 +52,27 @@ class NotificationRepository {
   }
 }
 
-@riverpod
-NotificationRepository notificationRepository(NotificationRepositoryRef ref) {
+// ── Manual providers (keepAlive — no re-fetch on revisit) ──
+
+final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   final dio = ref.watch(apiClientProvider);
   return NotificationRepository(dio);
-}
+});
 
-@riverpod
-Future<List<AppNotification>> notificationsList(NotificationsListRef ref) {
+final notificationsListProvider = FutureProvider<List<AppNotification>>((ref) {
   final repository = ref.watch(notificationRepositoryProvider);
   return repository.getNotifications();
-}
+});
 
-@riverpod
-Future<int> unreadNotificationCount(UnreadNotificationCountRef ref) {
+final unreadNotificationCountProvider = FutureProvider<int>((ref) {
   final repository = ref.watch(notificationRepositoryProvider);
-  
+
   // Refresh every 30 seconds
   final timer = Stream.periodic(const Duration(seconds: 30)).listen((_) {
     ref.invalidateSelf();
   });
-  
+
   ref.onDispose(() => timer.cancel());
-  
+
   return repository.getUnreadCount();
-}
+});

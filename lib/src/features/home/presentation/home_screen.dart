@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
+import '../../../../widgets/skeleton_loading.dart';
 import '../../activity/presentation/running_screen.dart';
 import '../../activity/presentation/activity_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
@@ -14,6 +14,9 @@ import '../../profile/data/user_repository.dart';
 import '../../auth/domain/user.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../notifications/data/notification_repository.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../onboarding/presentation/start_screen.dart';
+import '../../auth/presentation/controllers/auth_controller.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -27,110 +30,267 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    final size = MediaQuery.of(context).size;
+    final screenHeight = size.height;
+    final screenWidth = size.width;
+    final isTablet = screenWidth > 600;
+
+    // ── Responsive Scale ──────────────────────────────────
+    // Change these 4 values to control ALL component sizes:
+    //   small  → phones with height < 680px
+    //   medium → phones with height 680–850px
+    //   large  → phones with height > 850px
+    //   tablet → devices with width > 600px
+    const double smallScale  = 0.65;
+    const double mediumScale = 0.78;
+    const double largeScale  = 0.80;
+    const double tabletScale = 1.05;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
+
     final userAsync = ref.watch(userProfileProvider);
     final activityAsync = ref.watch(activitySummaryProvider('month'));
+    final horizontalPadding = (isTablet ? 16.0 : 15.0) * scale;
+    final bottomPadding = (isTablet ? 100.0 : 140.0) * scale;
 
     return Scaffold(
       backgroundColor: Colors.white,
+      extendBody: true,
+      bottomNavigationBar: CustomBottomNavigation(
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          if (index == 0) return;
+
+          Widget? page;
+          switch (index) {
+            case 1: page = const RunningScreen(); break;
+            case 2: page = const RewardsScreen(); break;
+            case 3: page = const WorkoutScreen(); break;
+            case 4: page = const ClubScreen(); break;
+          }
+
+          if (page != null) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => page!),
+            );
+          }
+        },
+      ),
       body: SafeArea(
         bottom: false,
-        child: Stack(
-          children: [
-            userAsync.when(
-              data: (user) => SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildHeader(screenWidth, user),
-                    SizedBox(height: 9.h),
-                    Divider(
-                      height: 1,
-                      thickness: 1,
-                      color: Colors.black.withOpacity(0.1),
-                    ),
-                    SizedBox(height: 8.h),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.037),
-                      child: Column(
-                        children: [
-                          _buildPointsCard(user.points ?? 0),
-                          SizedBox(height: 8.h),
-                        ],
+        child: RefreshIndicator(
+          color: const Color(0xFF900EBF),
+          onRefresh: () async {
+            ref.invalidate(userProfileProvider);
+            ref.invalidate(activitySummaryProvider('month'));
+            await Future.wait([
+              ref.read(userProfileProvider.future),
+              ref.read(activitySummaryProvider('month').future),
+            ]);
+          },
+          child: Stack(
+            children: [
+              userAsync.when(
+                data: (user) => SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  child: Column(
+                    children: [
+                      _buildHeader(context, horizontalPadding, user, isTablet, scale),
+                      SizedBox(height: (isTablet ? 10.0 : 12.0) * scale),
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: Colors.black.withOpacity(0.1),
                       ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.only(right: 0.037.sw),
-                      child: _buildBannerCard(),
-                    ),
-                    activityAsync.when(
-                      data: (activityData) => Padding(
-                        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.037),
+                      SizedBox(height: 8.0 * scale),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                         child: Column(
                           children: [
-                            SizedBox(height: 8.h),
-                            _buildCurrentMonthCard(activityData),
-                            SizedBox(height: 16.h),
-                            _buildStatsGrid(activityData),
-                            SizedBox(height: 140.h),
+                            _buildPointsCard(context, user.points ?? 0, isTablet, scale),
+                            SizedBox(height: 8.0 * scale),
                           ],
                         ),
                       ),
-                      loading: () => const Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child:  Center(child: CircularProgressIndicator()),
+                      Padding(
+                        padding: EdgeInsets.only(right: horizontalPadding),
+                        child: _buildBannerCard(horizontalPadding, isTablet, scale),
                       ),
-                      error: (err, stack) => Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Text('Failed to load stats', style: GoogleFonts.poppins(color: Colors.red)),
+                      activityAsync.when(
+                        data: (activityData) => Padding(
+                          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                          child: Column(
+                            children: [
+                              SizedBox(height: 8.0 * scale),
+                              _buildCurrentMonthCard(context, activityData, isTablet, scale),
+                              SizedBox(height: (isTablet ? 12.0 : 16.0) * scale),
+                              _buildStatsGrid(context, activityData, isTablet, scale),
+                              SizedBox(height: bottomPadding),
+                            ],
+                          ),
+                        ),
+                        loading: () => Padding(
+                          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                          child: Column(
+                            children: [
+                              SizedBox(height: 8.0 * scale),
+                              // Current month skeleton
+                              SkeletonBox(
+                                width: double.infinity,
+                                height: (isTablet ? 70.0 : 80.0) * scale,
+                                borderRadius: (isTablet ? 12.0 : 15.0) * scale,
+                              ),
+                              SizedBox(height: (isTablet ? 12.0 : 16.0) * scale),
+                              // Stats grid skeleton
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        SkeletonBox(width: double.infinity, height: 152.0 * scale, borderRadius: 15.0 * scale),
+                                        SizedBox(height: 12.0 * scale),
+                                        SkeletonBox(width: double.infinity, height: 130.0 * scale, borderRadius: 15.0 * scale),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(width: 10.0 * scale),
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        SkeletonBox(width: double.infinity, height: 130.0 * scale, borderRadius: 15.0 * scale),
+                                        SizedBox(height: 12.0 * scale),
+                                        SkeletonBox(width: double.infinity, height: 152.0 * scale, borderRadius: 15.0 * scale),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        error: (err, stack) => Padding(
+                          padding: EdgeInsets.all(isTablet ? 30.0 : 20.0),
+                          child: Text('Failed to load stats', style: GoogleFonts.poppins(color: Colors.red)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                loading: () => Stack(
+                  children: [
+                    HomeSkeletonLoading(scale: scale, isTablet: isTablet),
+                    Positioned(
+                      top: (isTablet ? 20.0 : 32.0) * scale,
+                      right: horizontalPadding,
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          try {
+                            await ref.read(authControllerProvider.notifier).logout();
+                            if (context.mounted) {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (_) => const StartScreen()),
+                                (route) => false,
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Logout failed: $e')),
+                              );
+                            }
+                          }
+                        },
+                        icon: Icon(Icons.logout, size: 18.0 * scale, color: const Color(0xFFF83A71)),
+                        label: Text('Logout', style: GoogleFonts.poppins(
+                          fontSize: 13.0 * scale,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFF83A71),
+                        )),
                       ),
                     ),
                   ],
                 ),
+                error: (err, stack) => Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Text('Error: $err', 
+                          style: GoogleFonts.poppins(color: Colors.red), 
+                          textAlign: TextAlign.center
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => ref.invalidate(userProfileProvider),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF900EBF),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text('Retry', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () async {
+                          try {
+                            await ref.read(authControllerProvider.notifier).logout();
+                            if (context.mounted) {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (_) => const StartScreen()),
+                                (route) => false,
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Logout failed: $e'))
+                              );
+                            }
+                          }
+                        },
+                        child: Text('Log Out', 
+                          style: GoogleFonts.poppins(
+                            color: const Color(0xFFF83A71),
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline
+                          )
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(
-                child: Text('Something went wrong', style: GoogleFonts.poppins(color: Colors.red)),
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: CustomBottomNavigation(
-                currentIndex: _selectedIndex,
-                onTap: (index) {
-                  if (index == 0) return;
-                  
-                  Widget? page;
-                  switch (index) {
-                    case 1: page = const RunningScreen(); break;
-                    case 2: page = const RewardsScreen(); break;
-                    case 3: page = const WorkoutScreen(); break;
-                    case 4: page = const ClubScreen(); break;
-                  }
-
-                  if (page != null) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => page!),
-                    );
-                  }
-                },
-              ),
-            ),
-          ],
+  
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(double screenWidth, User user) {
+
+  Widget _buildHeader(BuildContext context, double horizontalPadding, User user, bool isTablet, double scale) {
+    final avatarSize = (isTablet ? 45.0 : 50.0) * scale;
+    final topPadding = (isTablet ? 12.0 : 18.0) * scale;
+    final bottomPadding = (isTablet ? 8.0 : 12.0) * scale;
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        0.037.sw,
-        24.h,
-        0.037.sw,
-        15.h,
+        horizontalPadding,
+        topPadding,
+        horizontalPadding,
+        bottomPadding,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -143,8 +303,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             },
             child: Container(
-              width: 46.w,
-              height: 46.h,
+              width: avatarSize,
+              height: avatarSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: const Color(0xFFCCCCCC),
@@ -157,43 +317,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-          SizedBox(width: 16.w),
+          SizedBox(width: (isTablet ? 12.0 : 16.0) * scale),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'Hello!',
                   style: GoogleFonts.lexendDeca(
-                    fontSize: 14.sp,
+                    fontSize: 16.0 * scale,
                     fontWeight: FontWeight.w400,
-                    height: 1.29,
                     color: const Color(0xFF24252C),
                   ),
                 ),
-                SizedBox(height: 4.h),
+                const SizedBox(height: 2.0),
                 Text(
                   user.name,
                   style: GoogleFonts.lexendDeca(
-                    fontSize: 19.sp,
+                    fontSize: 22.0 * scale,
                     fontWeight: FontWeight.w600,
-                    height: 1.26,
                     color: const Color(0xFF24252C),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          SizedBox(width: 8.w),
-          _buildNotificationBell(),
+          SizedBox(width: 8.0 * scale),
+          _buildNotificationBell(context, isTablet, scale),
         ],
       ),
     );
   }
 
-  Widget _buildNotificationBell() {
+  Widget _buildNotificationBell(BuildContext context, bool isTablet, double scale) {
     final unreadCountAsync = ref.watch(unreadNotificationCountProvider);
-    
+    final iconSize = (isTablet ? 32.0 : 36.0) * scale;
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -202,39 +364,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       },
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 4.w),
+        padding: EdgeInsets.symmetric(horizontal: 4.0 * scale),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             Icon(
               Icons.notifications_none_rounded,
-              size: 30.sp,
+              size: iconSize,
               color: const Color(0xFF24252C),
             ),
             unreadCountAsync.when(
               data: (count) {
                 if (count == 0) return const SizedBox.shrink();
                 return Positioned(
-                  right: -2.w,
-                  top: -2.h,
+                  right: -1.0,
+                  top: -1.0,
                   child: Container(
-                    padding: EdgeInsets.all(4.w),
+                    padding: const EdgeInsets.all(3.0),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF83A71),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 1.5),
                     ),
                     constraints: BoxConstraints(
-                      minWidth: 16.w,
-                      minHeight: 16.w,
+                      minWidth: (isTablet ? 20.0 : 22.0) * scale,
+                      minHeight: (isTablet ? 20.0 : 22.0) * scale,
                     ),
                     child: Center(
                       child: Text(
                         count > 9 ? '9+' : count.toString(),
                         style: GoogleFonts.lexendDeca(
-                          fontSize: 9.sp,
+                          fontSize: 11.5 * scale,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
+                          height: 1.0,
                         ),
                       ),
                     ),
@@ -250,71 +413,76 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildPointsCard(int points) {
-    return SizedBox(
-      height: 66.h,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
-        child: Row(
-          children: [
-            Container(
-              width: 43.41.w,
-              height: 44.86.h,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFD66B),
-                borderRadius: BorderRadius.circular(15.92.r),
-              ),
-              child: Center(
-                child: SvgPicture.asset(
-                  'assets/images/crown_icon.svg',
-                  width: 25.32.w,
-                  height: 21.71.h,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
+  Widget _buildPointsCard(BuildContext context, int points, bool isTablet, double scale) {
+    final cardHeight = (isTablet ? 60.0 : 66.0) * scale;
+    final iconContainerSize = (isTablet ? 38.0 : 44.0) * scale;
+    final borderRadius = (isTablet ? 14.0 : 16.0) * scale;
+    final horizontalPadding = (isTablet ? 12.0 : 14.0) * scale;
+
+    return Container(
+      constraints: BoxConstraints(minHeight: cardHeight),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: (isTablet ? 8.0 : 11.0) * scale),
+      child: Row(
+        children: [
+          Container(
+            width: iconContainerSize,
+            height: iconContainerSize,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFD66B),
+              borderRadius: BorderRadius.circular(borderRadius),
+            ),
+            child: Center(
+              child: SvgPicture.asset(
+                'assets/images/crown_icon.svg',
+                width: (isTablet ? 20.0 : 25.0) * scale,
+                height: (isTablet ? 18.0 : 22.0) * scale,
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
                 ),
               ),
             ),
-            SizedBox(width: 14.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
+          ),
+          SizedBox(width: (isTablet ? 12.0 : 14.0) * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
                     points.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
                     style: GoogleFonts.poppins(
-                      fontSize: 24.sp,
+                      fontSize: 24.0 * scale,
                       fontWeight: FontWeight.w600,
-                      height: 0.92,
                       color: const Color(0xFF221F48),
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    'Your Available Points',
-                    style: GoogleFonts.lexendDeca(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w400,
-                      height: 1,
-                      color: const Color(0xFF221F48),
-                    ),
+                ),
+                SizedBox(height: (isTablet ? 1.0 : 4.0) * scale),
+                Text(
+                  'Your Available Points',
+                  style: GoogleFonts.lexendDeca(
+                    fontSize: 14.0 * scale,
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF221F48),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildBannerCard() {
+  Widget _buildBannerCard(double horizontalPadding, bool isTablet, double scale) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22.r),
+        borderRadius: BorderRadius.circular((isTablet ? 18.0 : 22.0) * scale),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -324,10 +492,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       child: AspectRatio(
-        // Using a standard aspect ratio for banners (approx 2.1:1 based on design)
-        aspectRatio: 334 / 160,
+        aspectRatio: isTablet ? (334 / 140) : (334 / 160),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(22.r),
+          borderRadius: BorderRadius.circular((isTablet ? 18.0 : 22.0) * scale),
           child: Image.asset(
             'assets/images/banner.png',
             fit: BoxFit.cover,
@@ -344,9 +511,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildCurrentMonthCard(Map<String, dynamic> data) {
+  Widget _buildCurrentMonthCard(BuildContext context, Map<String, dynamic> data, bool isTablet, double scale) {
     final distance = data['distance']?.toStringAsFixed(2) ?? '0.00';
-    
+    final cardHeight = (isTablet ? 70.0 : 80.0) * scale;
+    final iconSize = (isTablet ? 38.0 : 43.0) * scale;
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -355,14 +524,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       },
       child: Container(
-        height: 80.h,
-        padding: EdgeInsets.symmetric(horizontal: 19.w, vertical: 14.h),
+        constraints: BoxConstraints(minHeight: cardHeight),
+        padding: EdgeInsets.symmetric(horizontal: (isTablet ? 14.0 : 19.0) * scale, vertical: (isTablet ? 10.0 : 14.0) * scale),
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(
             color: const Color(0xFFF5F3F3).withOpacity(0.62),
           ),
-          borderRadius: BorderRadius.circular(15.r),
+          borderRadius: BorderRadius.circular((isTablet ? 12.0 : 15.0) * scale),
           boxShadow: [
             BoxShadow(
               offset: const Offset(0, 4),
@@ -374,41 +543,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: Row(
           children: [
             Container(
-              width: 43.w,
-              height: 43.h,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEDE4FF),
-                borderRadius: BorderRadius.circular(22.r),
+              width: iconSize,
+              height: iconSize,
+              decoration: const BoxDecoration(
+                color: Color(0xFFEDE4FF),
+                shape: BoxShape.circle,
               ),
               child: Center(
                 child: SvgPicture.asset(
                   'assets/images/runner_icon.svg',
-                  width: 16.w,
-                  height: 23.h,
+                  width: (isTablet ? 14.0 : 16.0) * scale,
+                  height: (isTablet ? 20.0 : 23.0) * scale,
                 ),
               ),
             ),
-            SizedBox(width: 14.w),
+            SizedBox(width: (isTablet ? 12.0 : 14.0) * scale),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     'Current Month',
                     style: GoogleFonts.poppins(
-                      fontSize: 13.sp,
+                      fontSize: 13.0 * scale,
                       fontWeight: FontWeight.w400,
-                      height: 1.54,
                       color: const Color(0xFF24252C),
                     ),
                   ),
                   Text(
                     '$distance km',
                     style: GoogleFonts.poppins(
-                      fontSize: 19.sp,
+                      fontSize: 19.0 * scale,
                       fontWeight: FontWeight.w700,
-                      height: 1.16,
                       color: const Color(0xFF221F48),
                     ),
                   ),
@@ -418,7 +586,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Icon(
               Icons.visibility,
               color: const Color(0xFF900EBF),
-              size: 23.sp,
+              size: (isTablet ? 20.0 : 23.0) * scale,
             ),
           ],
         ),
@@ -426,11 +594,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildStatsGrid(Map<String, dynamic> data) {
+  Widget _buildStatsGrid(BuildContext context, Map<String, dynamic> data, bool isTablet, double scale) {
     final steps = data['steps']?.toString() ?? '0';
-    final calories = (data['calories'] ?? data['caloriesBurned'] ?? 0).toString();
-    
-    // Duration formatting: convert seconds to minutes if it's an integer
+    final rawCalories = (data['calories'] ?? data['caloriesBurned'] ?? 0);
+    final calories = rawCalories is num ? rawCalories.toStringAsFixed(1) : rawCalories.toString();
+
     String duration = '0';
     final rawDuration = data['duration'];
     if (rawDuration is int) {
@@ -438,100 +606,87 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } else {
       duration = rawDuration?.toString() ?? '0';
     }
-    
-    final bpm = data['bpm']?.toString() ?? '0';
 
-    return SizedBox(
-      height: 294.h,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final cardWidth = (constraints.maxWidth - 10.w) / 2;
+    final rawBpm = data['bpm'];
+    final bpm = (rawBpm == null || rawBpm == 0 || rawBpm == 0.0) ? '--' : rawBpm.toString();
 
-          return Stack(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
             children: [
-              Positioned(
-                left: 0,
-                top: 0,
-                width: cardWidth,
-                child: _buildStatCard(
-                  backgroundColor: const Color(0xFFEBF9FC),
-                  iconBackgroundColor: const Color(0xFFD0F5FD),
-                  svgIcon: 'assets/images/footsteps_icon.svg',
-                  svgWidth: 21.w,
-                  svgHeight: 21.h,
-                  iconColor: const Color(0xFF34CDFD),
-                  value: steps,
-                  label: 'Steps Count',
-                  height: 152.h,
-                  iconTopPadding: 22.h,
-                  leftPadding: 25.w,
-                  valueLabelGap: 5.h,
-                ),
+              _buildStatCard(
+                context: context,
+                backgroundColor: const Color(0xFFEBF9FC),
+                iconBackgroundColor: const Color(0xFFD0F5FD),
+                svgIcon: 'assets/images/footsteps_icon.svg',
+                iconColor: const Color(0xFF34CDFD),
+                value: steps,
+                label: 'Steps Count',
+                height: 152.0 * scale,
+                iconTopPadding: 22.0 * scale,
+                isTablet: isTablet,
+                scale: scale,
               ),
-              Positioned(
-                right: 0,
-                top: 0,
-                width: cardWidth,
-                child: _buildStatCard(
-                  backgroundColor: const Color(0xFFFFF8E8),
-                  iconBackgroundColor: const Color(0xFFFFE8BA),
-                  svgIcon: 'assets/images/fire_icon.svg',
-                  svgWidth: 16.w,
-                  svgHeight: 21.h,
-                  iconColor: const Color(0xFFFEB720),
-                  value: calories,
-                  label: 'Burned Calories',
-                  height: 130.h,
-                  iconTopPadding: 15.h,
-                  leftPadding: 25.w,
-                  valueLabelGap: 3.h,
-                ),
-              ),
-              Positioned(
-                left: 0,
-                top: 164.h,
-                width: cardWidth,
-                child: _buildStatCard(
-                  backgroundColor: const Color(0xFFEFEAFC),
-                  iconBackgroundColor: const Color(0xFFCDC0F4),
-                  svgIcon: 'assets/images/clock_icon.svg',
-                  svgWidth: 24.w,
-                  svgHeight: 24.h,
-                  iconColor: const Color(0xFF5D37E5),
-                  value: duration,
-                  label: 'Durations',
-                  suffix: 'mins',
-                  height: 130.h,
-                  iconTopPadding: 16.h,
-                  leftPadding: 25.w,
-                  valueLabelGap: 3.h,
-                ),
-              ),
-              Positioned(
-                right: 0,
-                top: 142.h,
-                width: cardWidth,
-                child: _buildStatCard(
-                  backgroundColor: const Color(0xFFFFECEB),
-                  iconBackgroundColor: const Color(0xFFFBC7C1),
-                  icon: Icons.favorite,
-                  iconColor: const Color(0xFFFE413D),
-                  value: bpm,
-                  label: 'Average BPM',
-                  height: 152.h,
-                  iconTopPadding: 23.h,
-                  leftPadding: 25.w,
-                  valueLabelGap: 5.h,
-                ),
+              SizedBox(height: 12.0 * scale),
+              _buildStatCard(
+                context: context,
+                backgroundColor: const Color(0xFFEFEAFC),
+                iconBackgroundColor: const Color(0xFFCDC0F4),
+                svgIcon: 'assets/images/clock_icon.svg',
+                iconColor: const Color(0xFF5D37E5),
+                value: duration,
+                label: 'Durations',
+                suffix: 'mins',
+                height: 130.0 * scale,
+                iconTopPadding: 16.0 * scale,
+                isTablet: isTablet,
+                scale: scale,
               ),
             ],
-          );
-        },
-      ),
+          ),
+        ),
+        SizedBox(width: 10.0 * scale),
+        Expanded(
+          child: Column(
+            children: [
+              _buildStatCard(
+                context: context,
+                backgroundColor: const Color(0xFFFFF8E8),
+                iconBackgroundColor: const Color(0xFFFFE8BA),
+                svgIcon: 'assets/images/fire_icon.svg',
+                iconColor: const Color(0xFFFEB720),
+                value: calories,
+                label: 'Burned Calories',
+                height: 130.0 * scale,
+                iconTopPadding: 15.0 * scale,
+                isTablet: isTablet,
+                scale: scale,
+              ),
+              SizedBox(height: 12.0 * scale),
+              _buildStatCard(
+                context: context,
+                backgroundColor: const Color(0xFFFFECEB),
+                iconBackgroundColor: const Color(0xFFFBC7C1),
+                icon: Icons.favorite,
+                iconColor: const Color(0xFFFE413D),
+                value: bpm,
+                label: 'Average BPM',
+                height: 152.0 * scale,
+                iconTopPadding: 23.0 * scale,
+                isTablet: isTablet,
+                scale: scale,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildStatCard({
+    required BuildContext context,
     required Color backgroundColor,
     required Color iconBackgroundColor,
     IconData? icon,
@@ -541,31 +696,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required String label,
     required double height,
     required double iconTopPadding,
-    required double leftPadding,
-    required double valueLabelGap,
+    required bool isTablet,
+    required double scale,
     String? suffix,
     double? svgWidth,
     double? svgHeight,
   }) {
+    final iconContainerSize = 43.0 * scale;
+    final innerPaddingHorizontal = 20.0 * scale;
+    final innerPaddingBottom = 15.0 * scale;
+
     return Container(
       height: height,
+      width: double.infinity,
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(15.r),
+        borderRadius: BorderRadius.circular(15.0 * scale),
       ),
       child: Padding(
-        padding: EdgeInsets.only(
-          left: leftPadding,
-          top: iconTopPadding,
-          right: 15.w,
-          bottom: 15.h,
-        ),
+        padding: EdgeInsets.fromLTRB(innerPaddingHorizontal, iconTopPadding, 15.0 * scale, innerPaddingBottom),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 43.w,
-              height: 43.h,
+              width: iconContainerSize,
+              height: iconContainerSize,
               decoration: BoxDecoration(
                 color: iconBackgroundColor,
                 shape: BoxShape.circle,
@@ -574,39 +729,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: svgIcon != null
                     ? SvgPicture.asset(
                         svgIcon,
-                        width: svgWidth ?? 21.w,
-                        height: svgHeight ?? 21.h,
+                        width: svgWidth ?? 21.0 * scale,
+                        height: svgHeight ?? 21.0 * scale,
+                        colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
                       )
                     : Icon(
                         icon!,
                         color: iconColor,
-                        size: 21.sp,
+                        size: 21.0 * scale,
                       ),
               ),
             ),
             const Spacer(),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  value,
-                  style: GoogleFonts.poppins(
-                    fontSize: 19.sp,
-                    fontWeight: FontWeight.w700,
-                    height: 22 / 19,
-                    color: Colors.black,
+                Flexible(
+                  child: Text(
+                    value,
+                    style: GoogleFonts.poppins(
+                      fontSize: 19.0 * scale,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black,
+                      height: 1.1,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (suffix != null) ...[
-                  SizedBox(width: 9.w),
+                  SizedBox(width: 4.0 * scale),
                   Padding(
-                    padding: EdgeInsets.only(bottom: 3.h),
+                    padding: EdgeInsets.only(bottom: 2.0 * scale),
                     child: Text(
                       suffix,
                       style: GoogleFonts.poppins(
-                        fontSize: 13.sp,
+                        fontSize: 13.0 * scale,
                         fontWeight: FontWeight.w400,
-                        height: 15 / 13,
                         color: const Color(0xFF8B88B5),
                       ),
                     ),
@@ -614,15 +773,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ],
             ),
-            SizedBox(height: valueLabelGap),
+            SizedBox(height: 4.0 * scale),
             Text(
               label,
               style: GoogleFonts.poppins(
-                fontSize: 15.sp,
+                fontSize: 16.0 * scale,
                 fontWeight: FontWeight.w400,
-                height: 15 / 15,
                 color: const Color(0xFF8B88B5),
+                height: 1.1,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

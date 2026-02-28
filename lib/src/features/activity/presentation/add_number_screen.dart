@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../widgets/custom_exercises_icon.dart';
 import '../../../../widgets/custom_rounds_icon.dart';
 import '../../../../widgets/custom_arrow_icon.dart';
@@ -10,7 +9,6 @@ import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../home/presentation/home_screen.dart';
 import 'running_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
-import 'workout_screen.dart';
 import '../../club/presentation/club_screen.dart';
 
 class AddNumberScreen extends StatefulWidget {
@@ -35,7 +33,7 @@ class AddNumberScreen extends StatefulWidget {
 
 class _AddNumberScreenState extends State<AddNumberScreen> {
   late int value;
-  int _selectedIndex = 3;
+  final int _selectedIndex = 3;
 
   @override
   void initState() {
@@ -57,6 +55,25 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ── Responsive Scale ──────────────────────────────────
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isTablet = screenWidth > 600;
+
+    const double smallScale  = 0.85;
+    const double mediumScale = 0.98;
+    const double largeScale  = 1.05;
+    const double tabletScale = 1.30;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -73,21 +90,27 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
           ),
           
           SafeArea(
+            bottom: false,
             child: Column(
               children: [
-                const SizedBox(height: 28),
-                _buildTopBar(),
+                SizedBox(height: 10.0 * scale),
+                _buildTopBar(isTablet, scale),
                 Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      SizedBox(height: 50.h),
-                      _buildIconDisplay(),
-                      SizedBox(height: 60.h),
-                      _buildNumberSelector(),
-                      SizedBox(height: 60.h),
-                      _buildContinueButton(),
-                    ],
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 120.0 * scale),
+                      child: Column(
+                        children: [
+                          SizedBox(height: (isTablet ? 70.0 : 50.0) * scale),
+                          _buildIconDisplay(scale),
+                          SizedBox(height: (isTablet ? 70.0 : 60.0) * scale),
+                          _buildNumberSelector(scale),
+                          SizedBox(height: (isTablet ? 90.0 : 70.0) * scale),
+                          _buildContinueButton(scale),
+                          SizedBox(height: 20.0 * scale),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -129,23 +152,23 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(bool isTablet, double scale) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 26.w),
+      padding: EdgeInsets.symmetric(horizontal: (isTablet ? 20.0 : 26.0) * scale),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
-              width: 40,
-              height: 40,
+              width: 40.0 * scale,
+              height: 40.0 * scale,
               alignment: Alignment.center,
               child: Transform.scale(
                 scaleX: -1,
-                child: const CustomArrowIcon(
-                  size: 24,
-                  color: Color(0xFF130F26),
+                child: CustomArrowIcon(
+                  size: 24.0 * scale,
+                  color: const Color(0xFF130F26),
                 ),
               ),
             ),
@@ -153,44 +176,44 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
           Text(
             widget.title,
             style: GoogleFonts.lexendDeca(
-              fontSize: 19.sp,
+              fontSize: 19.0 * scale,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF24252C),
             ),
           ),
-          SizedBox(width: 40.w),
+          SizedBox(width: 40.0 * scale),
         ],
       ),
     );
   }
 
-  Widget _buildIconDisplay() {
+  Widget _buildIconDisplay(double scale) {
     final bool isExercises = widget.iconType == 'exercises';
 
     return Container(
-      width: 148.w, // Matches AddTimeScreen sizes
-      height: 148.w,
+      width: 148.0 * scale, // Matches AddTimeScreen sizes
+      height: 148.0 * scale,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
           color: const Color(0xFFFFD66B),
-          width: 2,
+          width: 2.0 * scale,
         ),
       ),
       child: Container(
-        margin: EdgeInsets.all(12.w),
-        decoration: BoxDecoration(
+        margin: EdgeInsets.all(12.0 * scale),
+        decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: const Color(0xFF900EBF),
+          color: Color(0xFF900EBF),
         ),
         child: Center(
           child: isExercises
               ? CustomExercisesIcon(
-                  size: 60.sp, // Reduced size
+                  size: 60.0 * scale, // Reduced size
                   color: Colors.white,
                 )
               : CustomRoundsIcon(
-                  size: 60.sp, // Reduced size
+                  size: 60.0 * scale, // Reduced size
                   color: Colors.white,
                 ),
         ),
@@ -198,7 +221,7 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
     );
   }
 
-  Widget _buildNumberSelector() {
+  Widget _buildNumberSelector(double scale) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -213,24 +236,24 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
             child: Text(
               '-',
               style: GoogleFonts.lexendDeca(
-                fontSize: 60.sp,
+                fontSize: 60.0 * scale,
                 fontWeight: FontWeight.w300,
                 color: Colors.white,
               ),
             ),
           ),
         ),
-        SizedBox(width: 40.w),
+        SizedBox(width: 40.0 * scale),
         // Number without background container
         Text(
           value.toString().padLeft(2, '0'),
           style: GoogleFonts.lexendDeca(
-            fontSize: 56.sp,
+            fontSize: 56.0 * scale,
             fontWeight: FontWeight.w600,
             color: const Color(0xFF1B2D51),
           ),
         ),
-        SizedBox(width: 40.w),
+        SizedBox(width: 40.0 * scale),
         GestureDetector(
           onTap: _increment,
           child: ShaderMask(
@@ -242,7 +265,7 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
             child: Text(
               '+',
               style: GoogleFonts.lexendDeca(
-                fontSize: 60.sp,
+                fontSize: 60.0 * scale,
                 fontWeight: FontWeight.w300,
                 color: Colors.white,
               ),
@@ -253,14 +276,15 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
     );
   }
 
-  Widget _buildContinueButton() {
+  Widget _buildContinueButton(double scale) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 36.w),
+      padding: EdgeInsets.symmetric(horizontal: 36.0 * scale),
       child: GradientButton(
         text: 'Continue',
         onPressed: () {
           Navigator.pop(context, value);
         },
+        height: 58.0 * scale,
       ),
     );
   }

@@ -23,14 +23,21 @@ class AppNotification {
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
+    DateTime? parsedDate;
+    try {
+      if (json['createdAt'] != null) {
+        parsedDate = DateTime.parse(json['createdAt'].toString());
+      }
+    } catch (_) {}
+
     return AppNotification(
       id: (json['id'] ?? json['_id'] ?? '').toString(),
-      title: json['title'] ?? 'Notification',
-      message: json['message'] ?? '',
-      type: json['type'] ?? 'system',
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
-      isRead: json['isRead'] ?? false,
-      data: json['data'] as Map<String, dynamic>?,
+      title: json['title']?.toString() ?? 'Notification',
+      message: json['message']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'system',
+      createdAt: parsedDate ?? DateTime.now(),
+      isRead: json['isRead'] == true || json['isRead'] == 1,
+      data: json['data'] is Map ? Map<String, dynamic>.from(json['data'] as Map) : null,
     );
   }
 

@@ -10,8 +10,8 @@ Dio apiClient(ApiClientRef ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: ApiConstants.baseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -19,21 +19,24 @@ Dio apiClient(ApiClientRef ref) {
     ),
   );
 
+  // Cache SharedPreferences to avoid disk I/O on every request
+  SharedPreferences? cachedPrefs;
+
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString('auth_token');
-        
+        cachedPrefs ??= await SharedPreferences.getInstance();
+        final token = cachedPrefs!.getString('auth_token');
+
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
-        
+
         return handler.next(options);
       },
       onError: (DioException e, handler) {
           if (e.response?.statusCode == 401) {
-             // Handle 401: Maybe clear token. 
+             // Handle 401: Maybe clear token.
           }
           return handler.next(e);
       },

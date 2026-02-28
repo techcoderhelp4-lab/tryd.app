@@ -6,6 +6,7 @@ class Redemption {
   final int pointsDeducted;
   final String status;
   final String? couponCode;
+  final String? adminNote;
   final DateTime createdAt;
 
   Redemption({
@@ -14,6 +15,7 @@ class Redemption {
     required this.pointsDeducted,
     required this.status,
     this.couponCode,
+    this.adminNote,
     required this.createdAt,
   });
 
@@ -24,6 +26,7 @@ class Redemption {
       pointsDeducted: json['pointsDeducted'] ?? 0,
       status: json['status'] ?? 'pending',
       couponCode: json['couponCode'],
+      adminNote: json['adminNote'],
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
     );
   }
@@ -35,6 +38,7 @@ class Redemption {
       'pointsDeducted': pointsDeducted,
       'status': status,
       'couponCode': couponCode,
+      'adminNote': adminNote,
       'createdAt': createdAt.toIso8601String(),
     };
   }

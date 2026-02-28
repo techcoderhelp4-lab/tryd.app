@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'dart:math' as math;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tryd/src/features/home/presentation/home_screen.dart';
@@ -28,6 +29,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+    FlutterNativeSplash.remove();
     _controller = AnimationController(
       vsync: this,
       duration: _animationDuration,
@@ -59,10 +61,12 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _navigateToNextScreen() async {
+    // Preload token in parallel with splash display
+    final prefsFuture = SharedPreferences.getInstance();
     await Future.delayed(_displayDuration);
     if (!mounted) return;
 
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await prefsFuture;
     final token = prefs.getString('auth_token');
 
     if (mounted) {
@@ -95,6 +99,25 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isTablet = screenWidth > 600;
+
+    // Responsive scales aligned with recent UI polish
+    const double smallScale  = 0.78;
+    const double mediumScale = 0.88;
+    const double largeScale  = 0.90;
+    const double tabletScale = 1.20;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -104,7 +127,6 @@ class _SplashScreenState extends State<SplashScreen>
             begin: _calculateGradientBegin(_gradientAngleDegrees),
             end: _calculateGradientEnd(_gradientAngleDegrees),
             colors: const [_gradientStartColor, _gradientEndColor],
-            stops: const [0.0078, 0.9922],
           ),
         ),
         child: Center(
@@ -121,7 +143,7 @@ class _SplashScreenState extends State<SplashScreen>
             },
             child: Image.asset(
               'assets/images/logo-full-white.png',
-              width: 0.55.sw,
+              width: (screenWidth * _logoWidthRatio) * scale,
               fit: BoxFit.contain,
               filterQuality: FilterQuality.high,
               isAntiAlias: true,

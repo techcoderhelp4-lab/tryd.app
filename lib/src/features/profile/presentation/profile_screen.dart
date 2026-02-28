@@ -10,14 +10,33 @@ import '../../activity/presentation/activity_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
 import '../../activity/presentation/workout_screen.dart';
 import '../../auth/data/auth_repository.dart';
-import '../../auth/presentation/login_screen.dart';
+import '../../auth/presentation/auth_screen.dart';
 import '../../onboarding/presentation/start_screen.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../activity/presentation/running_screen.dart';
 import '../../club/presentation/club_screen.dart';
+import '../../settings/presentation/settings_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import '../data/user_repository.dart';
+import '../../notifications/data/real_time_notification_service.dart';
 import 'dart:io';
+import 'dart:math' as math;
+import '../../auth/presentation/controllers/auth_controller.dart';
+
+// Responsive helper extension to cap values for larger screens
+extension ResponsiveDouble on num {
+  /// Responsive font size - scales with screen but caps at max
+  double get rsp => math.min(sp, toDouble() * 1.2);
+  
+  /// Responsive width - scales but caps at 1.5x base value
+  double get rw => math.min(w, toDouble() * 1.3);
+  
+  /// Responsive height - scales but caps at 1.3x base value
+  double get rh => math.min(h, toDouble() * 1.2);
+  
+  /// Responsive radius - scales but caps
+  double get rr => math.min(r, toDouble() * 1.2);
+}
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -29,7 +48,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int _selectedIndex = 4; // Profile is at index 4
   bool _showAvatar = true;
-  double _topPadding = 130.0;
+  double _dragProgress = 0.0;
   bool _isUploading = false;
 
   void _onSheetDrag(double extent) {
@@ -40,14 +59,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     // Calculate progress (0.0 to 1.0)
     final progress = ((extent - minSize) / (maxSize - minSize)).clamp(0.0, 1.0);
-    
-    // Calculate top padding: 130 when closed (0.72), 30 when open (0.87)
-    final padding = 130.0 - (100.0 * progress);
 
-    setState(() {
-      _showAvatar = extent < threshold;
-      _topPadding = padding;
-    });
+    if (_dragProgress != progress || (_showAvatar != (extent < threshold))) {
+      setState(() {
+        _showAvatar = extent < threshold;
+        _dragProgress = progress;
+      });
+    }
   }
 
   Future<void> _pickAndUploadImage() async {
@@ -63,10 +81,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     try {
       await ref.read(userRepositoryProvider).uploadProfilePicture(File(image.path));
+      
+      // Invalidate and immediately refresh the provider
       ref.invalidate(userProfileProvider);
+      await ref.read(userProfileProvider.future);
+      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture updated!')),
+        ref.read(realTimeNotificationServiceProvider).showInAppBanner(
+          'Profile Updated!',
+          'Your profile picture has been successfully changed.',
         );
       }
     } catch (e) {
@@ -84,30 +107,159 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final controller = TextEditingController(text: currentName);
     final newName = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Name'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: "Enter your name"),
-          autofocus: true,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.0),
+          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Save'),
-          ),
-        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Edit Name',
+                    style: GoogleFonts.lexend(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF24252C),
+                    ),
+                  ),
+                  const SizedBox(height: 20.0),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12.0),
+                      border: Border.all(
+                        color: const Color(0xFFF5F3F3).withOpacity(0.62),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          offset: const Offset(0, 2),
+                          blurRadius: 8,
+                          spreadRadius: 0,
+                          color: const Color(0xFF000000).withOpacity(0.04),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Name',
+                            style: GoogleFonts.lexendDeca(
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.w500,
+                              height: 1.25,
+                              color: const Color(0xFF8B88B5),
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 8.0),
+                          TextField(
+                            controller: controller,
+                            autofocus: true,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16.0,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF24252C),
+                              height: 1.4,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Enter your name',
+                              hintStyle: GoogleFonts.poppins(
+                                fontSize: 16.0,
+                                fontWeight: FontWeight.w400,
+                                color: const Color(0xFF8B88B5).withOpacity(0.5),
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(color: Color(0xFFE5E7EB), height: 1, thickness: 1),
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => Navigator.pop(context),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20.0),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 18.0),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.lexend(
+                          fontSize: 16.0,
+                          color: const Color(0xFF8B88B5),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 56,
+                  color: const Color(0xFFE5E7EB),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => Navigator.pop(context, controller.text),
+                    borderRadius: const BorderRadius.only(
+                      bottomRight: Radius.circular(20.0),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 18.0),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Save',
+                        style: GoogleFonts.lexend(
+                          fontSize: 16.0,
+                          color: const Color(0xFF900EBF),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
 
     if (newName != null && newName.isNotEmpty && newName != currentName) {
       try {
         await ref.read(userRepositoryProvider).updateProfile({'name': newName});
+        
+        // Invalidate and immediately refresh the provider
         ref.invalidate(userProfileProvider);
+        await ref.read(userProfileProvider.future);
+        
+        if (mounted) {
+          ref.read(realTimeNotificationServiceProvider).showInAppBanner(
+            'Name Updated!',
+            'Your display name has been changed to $newName.',
+          );
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -124,9 +276,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     
-    final horizontalPadding = 14.w; // Based on 0.037 * screenWidth roughly
-    final avatarSize = screenWidth * 0.55;
-    final headerHeight = screenHeight * 0.32;
+    // ── Responsive Scale ──────────────────────────────────
+    final isTablet = screenWidth > 600;
+
+    const double smallScale  = 0.85;
+    const double mediumScale = 0.98;
+    const double largeScale  = 1.05;
+    const double tabletScale = 1.30;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
+
+    // Clamped horizontal padding
+    final horizontalPadding = 18.0 * scale;
+    
+    // Responsive avatar size - proportional for all devices
+    final avatarSize = 170.0 * scale;
+
+    // Responsive header height
+    final headerHeight = 240.0 * scale;
+
+    // Base top padding for content
+    final baseTopPadding = 90.0 * scale;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -134,7 +310,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         data: (user) => Stack(
           children: [
             // Background color
-            Container(color: const Color(0xFFF7F7FF)),
+            Container(color: const Color(0xFFF7E6EB)),
 
             // Pink header background
             Positioned(
@@ -150,195 +326,184 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // Navigation buttons in the header
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.only(top: 28),
-                child: _buildHeader(context),
+                padding: EdgeInsets.only(top: isTablet ? 8.0 * scale : 16.0 * scale),
+                child: _buildHeader(context, isTablet, scale),
               ),
             ),
 
-            // Draggable Bottom Sheet
-            NotificationListener<DraggableScrollableNotification>(
-              onNotification: (notification) {
-                _onSheetDrag(notification.extent);
-                return true;
-              },
-              child: DraggableScrollableSheet(
-                initialChildSize: 0.72,
-                minChildSize: 0.72,
-                maxChildSize: 0.87,
-                snap: true,
-                snapSizes: const [0.72, 0.87],
-                builder: (BuildContext context, ScrollController scrollController) {
-                  final avatarOffset = -(avatarSize / 2);
-                  return Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      // White Sheet Container
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(33),
-                            topRight: Radius.circular(33),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              offset: const Offset(0, -4),
-                              blurRadius: 20,
-                            ),
-                          ],
+            // Fixed Bottom Sheet (No Dragging)
+            DraggableScrollableSheet(
+              initialChildSize: 0.72,
+              minChildSize: 0.72,
+              maxChildSize: 0.72,
+              builder: (BuildContext context, ScrollController scrollController) {
+                final avatarOffset = -(avatarSize / 2);
+                final sheetRadius = 33.0 * scale;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // White Sheet Container
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(sheetRadius),
+                          topRight: Radius.circular(sheetRadius),
                         ),
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(33),
-                            topRight: Radius.circular(33),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            offset: const Offset(0, -3),
+                            blurRadius: 15,
                           ),
-                          child: ListView(
-                            controller: scrollController,
-                            padding: EdgeInsets.only(top: _topPadding),
-                            children: [
-                              // User Name
-                              Center(
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(sheetRadius),
+                          topRight: Radius.circular(sheetRadius),
+                        ),
+                        child: ListView(
+                          controller: scrollController,
+                          padding: EdgeInsets.only(top: baseTopPadding),
+                          children: [
+                            // User Name
+                            Center(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Flexible(
+                                    child: Text(
                                       user.name,
                                       style: GoogleFonts.lexendDeca(
-                                        fontSize: 19.sp,
+                                        fontSize: 18.0 * scale,
                                         fontWeight: FontWeight.w600,
                                         color: const Color(0xFF24252C),
                                       ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    IconButton(
-                                      icon: Icon(Icons.edit, size: 16.sp, color: const Color(0xFFF83A71)),
-                                      onPressed: () => _editName(user.name),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.edit, size: 16.0 * scale, color: const Color(0xFFF83A71)),
+                                    onPressed: () => _editName(user.name),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 20),
-                              
-                              // Menu items
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                                child: Column(
-                                  children: [
-                                    _buildMenuItem(
-                                      icon: Icons.emoji_events,
-                                      title: 'Achievements',
-                                      iconColor: const Color(0xFFF83A71),
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => const RewardsScreen()),
-                                      ),
+                            ),
+                            SizedBox(height: 20.0 * scale),
+                            
+                            // Menu items
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                              child: Column(
+                                children: [
+                                  _buildMenuItem(
+                                    icon: Icons.emoji_events,
+                                    title: 'My Rewards',
+                                    iconColor: const Color(0xFFF83A71),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const RewardsScreen()),
                                     ),
-                                    const SizedBox(height: 7),
-                                    _buildMenuItem(
-                                      icon: Icons.history,
-                                      title: 'Activity',
-                                      iconColor: const Color(0xFFF83A71),
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => const ActivityScreen()),
-                                      ),
+                                    scale: scale,
+                                  ),
+                                  SizedBox(height: 8.0 * scale),
+                                  _buildMenuItem(
+                                    icon: Icons.history,
+                                    title: 'Activity',
+                                    iconColor: const Color(0xFFF83A71),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const ActivityScreen()),
                                     ),
-                                    const SizedBox(height: 7),
-                                    _buildMenuItem(
-                                      icon: Icons.fitness_center,
-                                      title: 'My Workouts',
-                                      iconColor: const Color(0xFFF83A71),
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => const WorkoutScreen()),
-                                      ),
+                                    scale: scale,
+                                  ),
+                                  SizedBox(height: 8.0 * scale),
+                                  _buildMenuItem(
+                                    icon: Icons.fitness_center,
+                                    title: 'My Workouts',
+                                    iconColor: const Color(0xFFF83A71),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const WorkoutScreen()),
                                     ),
-                                    const SizedBox(height: 7),
-                                    _buildMenuItem(
-                                      icon: Icons.settings,
-                                      title: 'Settings',
-                                      iconColor: const Color(0xFFF83A71),
-                                      onTap: () {},
+                                    scale: scale,
+                                  ),
+                                  SizedBox(height: 8.0 * scale),
+                                  _buildMenuItem(
+                                    icon: Icons.settings,
+                                    title: 'Settings',
+                                    iconColor: const Color(0xFFF83A71),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
                                     ),
-                                  ],
-                                ),
+                                    scale: scale,
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 17),
-                              
-                              // Plan cards
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                                child: Column(
-                                  children: [
-                                    _buildFreePlanCard(),
-                                    const SizedBox(height: 17),
-                                    _buildPremiumPlanCard(),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 140), // Padding for bottom nav
-                            ],
-                          ),
+                            ),
+                            SizedBox(height: 120.0 * scale),
+                          ],
                         ),
                       ),
-                      
-                      // Avatar positioned at the top edge of the sheet
-                      if (_showAvatar)
-                        Positioned(
-                          top: avatarOffset,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: Stack(
-                              children: [
-                                _buildAvatar(avatarSize, user.profilePicture),
-                                if (_isUploading)
-                                  Positioned.fill(
-                                    child: Container(
-                                      decoration: const BoxDecoration(
-                                        color: Colors.black26,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Center(
-                                        child: CircularProgressIndicator(color: Colors.white),
-                                      ),
-                                    ),
+                    ),
+                    
+                    // Avatar positioned at the top edge of the sheet
+                    Positioned(
+                      top: avatarOffset,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Stack(
+                          children: [
+                            _buildAvatar(avatarSize, user.profilePicture),
+                            if (_isUploading)
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black26,
+                                    shape: BoxShape.circle,
                                   ),
-                                Positioned(
-                                  right: 15,
-                                  bottom: 15,
-                                  child: GestureDetector(
-                                    onTap: _pickAndUploadImage,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF900EBF),
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black26,
-                                            blurRadius: 10,
-                                            offset: Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Icon(
-                                        Icons.camera_alt,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(color: Colors.white),
                                   ),
                                 ),
-                              ],
+                              ),
+                            Positioned(
+                              right: 12.0 * scale,
+                              bottom: 12.0 * scale,
+                              child: GestureDetector(
+                                onTap: _pickAndUploadImage,
+                                child: Container(
+                                  padding: EdgeInsets.all(8.0 * scale),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF900EBF),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.white,
+                                    size: 18.0 * scale,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                    ],
+                      ),
+                    ),
+                  ],
                   );
                 },
               ),
-            ),
 
             // Bottom Navigation
             Positioned(
@@ -370,45 +535,45 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => _buildErrorView(err.toString()),
+        error: (err, stack) => _buildErrorView(err.toString(), scale),
       ),
     );
   }
 
-  Widget _buildErrorView(String message) {
+  Widget _buildErrorView(String message, double scale) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(24.w),
+      padding: EdgeInsets.all(24.0 * scale),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error_outline_rounded, color: const Color(0xFFFD3C6F), size: 64.sp),
-          SizedBox(height: 16.h),
+          Icon(Icons.error_outline_rounded, color: const Color(0xFFFD3C6F), size: 64.0 * scale),
+          SizedBox(height: 16.0 * scale),
           Text(
             'Something went wrong',
             style: GoogleFonts.lexendDeca(
-              fontSize: 20.sp,
+              fontSize: 20.0 * scale,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF24252C),
             ),
           ),
-          SizedBox(height: 8.h),
+          SizedBox(height: 8.0 * scale),
           Text(
             message,
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
-              fontSize: 14.sp,
+              fontSize: 14.0 * scale,
               color: const Color(0xFF8B88B5),
             ),
           ),
-          SizedBox(height: 24.h),
+          SizedBox(height: 24.0 * scale),
           ElevatedButton(
             onPressed: () => ref.invalidate(userProfileProvider),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF900EBF),
               foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              padding: EdgeInsets.symmetric(horizontal: 32.0 * scale, vertical: 12.0 * scale),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0 * scale)),
             ),
             child: const Text('Retry'),
           ),
@@ -417,9 +582,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, bool isTablet, double scale) {
+    // Responsive sizes for consistency
+    final padding = 26.0 * scale;
+    final iconContainerSize = 40.0 * scale;
+    final arrowSize = 28.0 * scale;
+    final titleSize = 19.0 * scale;
+    final logoutSize = 26.0 * scale;
+    
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 26),
+      padding: EdgeInsets.symmetric(horizontal: padding),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -431,14 +603,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               );
             },
             child: Container(
-              width: 40,
-              height: 40,
+              width: iconContainerSize,
+              height: iconContainerSize,
               alignment: Alignment.center,
               child: Transform.scale(
                 scaleX: -1,
-                child: const CustomArrowIcon(
-                  size: 30,
-                  color: Color(0xFF130F26),
+                child: CustomArrowIcon(
+                  size: arrowSize,
+                  color: const Color(0xFF130F26),
                 ),
               ),
             ),
@@ -446,24 +618,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Text(
             'Profile',
             style: GoogleFonts.lexendDeca(
-              fontSize: 19.sp,
+              fontSize: titleSize,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF24252C),
             ),
           ),
           GestureDetector(
             onTap: () async {
-              await ref.read(authRepositoryProvider).logout();
+              await ref.read(authControllerProvider.notifier).logout();
               if (context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  MaterialPageRoute(builder: (context) => const AuthScreen()),
                   (route) => false,
                 );
               }
             },
-            child: const Icon(
+            child: Icon(
               Icons.logout,
-              size: 27,
+              size: logoutSize,
               color: Colors.black,
             ),
           ),
@@ -515,51 +687,60 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required IconData icon,
     required String title,
     required Color iconColor,
+    required double scale,
     VoidCallback? onTap,
   }) {
+    // Responsive values for consistency
+    final height = 65.0 * scale;
+    final iconSize = 26.0 * scale;
+    final fontSize = 16.0 * scale;
+    final padding = 20.0 * scale;
+    final chevronSize = 10.0 * scale;
+    final radius = 15.0 * scale;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 72,
+        height: height,
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(
             color: const Color(0xFFF5F3F3).withOpacity(0.62),
           ),
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(radius),
           boxShadow: [
             BoxShadow(
-              offset: const Offset(0, 4),
-              blurRadius: 32,
+              offset: const Offset(0, 3),
+              blurRadius: 20,
               color: Colors.black.withOpacity(0.04),
             ),
           ],
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+        padding: EdgeInsets.symmetric(horizontal: padding),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
-                Icon(
+                  Icon(
                   icon,
-                  size: 28,
+                  size: iconSize,
                   color: iconColor,
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10.0 * scale),
                 Text(
                   title,
                   style: GoogleFonts.poppins(
-                    fontSize: 16.sp,
+                    fontSize: fontSize,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF1B2D51),
                   ),
                 ),
               ],
             ),
-            const CustomChevronIcon(
-              size: 10,
-              color: Color(0xFF24252C),
+            CustomChevronIcon(
+              size: chevronSize,
+              color: const Color(0xFF24252C),
             ),
           ],
         ),
@@ -567,62 +748,72 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildFreePlanCard() {
+  Widget _buildFreePlanCard(double scale) {
+    // Responsive values for consistency
+    final minHeight = 90.0 * scale;
+    final titleSize = 18.0 * scale;
+    final subtitleSize = 12.0 * scale;
+    final badgeFontSize = 12.0 * scale;
+    final padding = 14.0 * scale;
+    final radius = 15.0 * scale;
+    
     return Container(
-      height: 96,
+      constraints: BoxConstraints(minHeight: minHeight),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
           color: const Color(0xFFF5F3F3).withOpacity(0.62),
         ),
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
-            offset: const Offset(0, 4),
-            blurRadius: 32,
+            offset: const Offset(0, 3),
+            blurRadius: 20,
             color: Colors.black.withOpacity(0.04),
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: EdgeInsets.symmetric(horizontal: padding, vertical: padding),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Free Plan',
-                style: GoogleFonts.poppins(
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.w600,
-                  height: 1.1,
-                  color: const Color(0xFF1B2D51),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Free Plan',
+                  style: GoogleFonts.poppins(
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w600,
+                    height: 1.1,
+                    color: const Color(0xFF1B2D51),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'Basic tracking & community access',
-                style: GoogleFonts.poppins(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w400,
-                  height: 1.67,
-                  color: const Color(0xFF96AAD2),
+                const SizedBox(height: 2),
+                Text(
+                  'Basic tracking & community access',
+                  style: GoogleFonts.poppins(
+                    fontSize: subtitleSize,
+                    fontWeight: FontWeight.w400,
+                    height: 1.5,
+                    color: const Color(0xFF96AAD2),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            padding: EdgeInsets.symmetric(horizontal: 10.0 * scale, vertical: 6.0 * scale),
             decoration: BoxDecoration(
               color: const Color(0xFF22D198),
-              borderRadius: BorderRadius.circular(222),
+              borderRadius: BorderRadius.circular(100),
             ),
             child: Text(
               'Current',
               style: GoogleFonts.poppins(
-                fontSize: 12.sp,
+                fontSize: badgeFontSize,
                 fontWeight: FontWeight.w400,
                 height: 1.25,
                 color: Colors.white,
@@ -634,7 +825,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildPremiumPlanCard() {
+  Widget _buildPremiumPlanCard(double scale) {
+    // Responsive values for consistency
+    final titleSize = 18.0 * scale;
+    final subtitleSize = 13.0 * scale;
+    final buttonFontSize = 14.0 * scale;
+    final padding = 20.0 * scale;
+    final radius = 22.0 * scale;
+    final buttonWidth = 140.0 * scale;
+    final buttonHeight = 40.0 * scale;
+    final iconSize = 60.0 * scale;
+    
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -643,9 +844,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           end: Alignment(1.0, -0.07),
           colors: [Color(0xFF910EBF), Color(0xFFFD3C6F)],
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(radius),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 21, vertical: 21),
+      padding: EdgeInsets.symmetric(horizontal: padding, vertical: padding),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -655,35 +856,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Text(
                 'Premium Plan',
                 style: GoogleFonts.poppins(
-                  fontSize: 20.sp,
+                  fontSize: titleSize,
                   fontWeight: FontWeight.w600,
                   height: 1.1,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Advanced features & exclusive rewards',
-                style: GoogleFonts.poppins(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w400,
-                  height: 1.67,
-                  color: Colors.white,
+              const SizedBox(height: 3),
+              SizedBox(
+                width: 200, // Fixed max width for description
+                child: Text(
+                  'Advanced features & exclusive rewards',
+                  style: GoogleFonts.poppins(
+                    fontSize: subtitleSize,
+                    fontWeight: FontWeight.w400,
+                    height: 1.5,
+                    color: Colors.white,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 16.0 * scale),
               Container(
-                width: 145,
-                height: 42,
+                width: buttonWidth,
+                height: buttonHeight,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.46),
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(15.0 * scale),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   'Upgrade Now',
                   style: GoogleFonts.poppins(
-                    fontSize: 14.sp,
+                    fontSize: buttonFontSize,
                     fontWeight: FontWeight.w500,
                     height: 1.43,
                     color: Colors.white,
@@ -693,14 +899,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           ),
           Positioned(
-            right: -10,
-            bottom: -10,
+            right: -8,
+            bottom: -8,
             child: SvgPicture.asset(
               'assets/images/cup.svg',
-              width: 70,
-              height: 70,
+              width: iconSize,
+              height: iconSize,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(Icons.emoji_events, color: Colors.white, size: 50),
+              errorBuilder: (_, __, ___) => Icon(Icons.emoji_events, color: Colors.white, size: math.min(40.sp, 45.0)),
             ),
           ),
         ],

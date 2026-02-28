@@ -7,6 +7,7 @@ class Reward {
   final String partner;
   final String category;
   final bool requiresApproval;
+  final int? maxPerUser;
 
   Reward({
     required this.id,
@@ -17,6 +18,7 @@ class Reward {
     required this.partner,
     required this.category,
     this.requiresApproval = false,
+    this.maxPerUser,
   });
 
   factory Reward.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class Reward {
       partner: json['partner'] ?? '',
       category: json['category'] ?? '',
       requiresApproval: json['requiresApproval'] ?? false,
+      maxPerUser: json['maxPerUser'],
     );
   }
 
@@ -42,6 +45,7 @@ class Reward {
       'partner': partner,
       'category': category,
       'requiresApproval': requiresApproval,
+      'maxPerUser': maxPerUser,
     };
   }
 }

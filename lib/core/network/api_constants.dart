@@ -1,5 +1,6 @@
 class ApiConstants {
-  static const String baseUrl = 'http://192.168.0.58:4000/api'; 
+  static const String baseUrl = 'http://api.tryd-it.com:5003/api';
+  static const String socketUrl = 'http://api.tryd-it.com:5003';
 
   static const String login = '/users/login';
   static const String register = '/users/register';
@@ -18,6 +19,7 @@ class ApiConstants {
   static String challengeDetails(String id) => '/challenges/$id';
   static String joinChallenge(String id) => '/challenges/$id/join';
   static String challengeLeaderboard(String id) => '/challenges/$id/leaderboard';
+  static String challengeProgress(String id) => '/challenges/$id/progress';
 
   static const String rewards = '/rewards';
   static String redeemReward(String id) => '/rewards/$id/redeem';
@@ -34,4 +36,12 @@ class ApiConstants {
   static String notificationDelete(String id) => '/notifications/$id';
   
   static const String pushTokens = '/push-tokens';
+
+  // Notification Preferences
+  static const String notificationPreferences = '/notification-preferences';
+  static const String notificationPreferencesGlobal = '/notification-preferences/global';
+
+  // Account
+  static const String changePassword = '/users/change-password';
+  static const String deleteAccount = '/users/delete-account';
 }

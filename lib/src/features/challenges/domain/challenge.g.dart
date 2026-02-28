@@ -18,6 +18,7 @@ Challenge _$ChallengeFromJson(Map<String, dynamic> json) => Challenge(
   isJoined: json['isJoined'] as bool? ?? false,
   userProgress: (json['userProgress'] as num?)?.toDouble() ?? 0,
   progressPercentage: (json['progressPercentage'] as num?)?.toDouble() ?? 0,
+  participantCount: (json['participantCount'] as num?)?.toInt() ?? 0,
 );
 
 Map<String, dynamic> _$ChallengeToJson(Challenge instance) => <String, dynamic>{
@@ -32,4 +33,5 @@ Map<String, dynamic> _$ChallengeToJson(Challenge instance) => <String, dynamic>{
   'isJoined': instance.isJoined,
   'userProgress': instance.userProgress,
   'progressPercentage': instance.progressPercentage,
+  'participantCount': instance.participantCount,
 };

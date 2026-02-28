@@ -60,6 +60,9 @@ LeaderboardChallengeInfo _$LeaderboardChallengeInfoFromJson(
 ) => LeaderboardChallengeInfo(
   title: json['title'] as String,
   targetKm: (json['targetKm'] as num).toDouble(),
+  startDate: json['startDate'] == null
+      ? null
+      : DateTime.parse(json['startDate'] as String),
   endDate: json['endDate'] == null
       ? null
       : DateTime.parse(json['endDate'] as String),
@@ -72,6 +75,7 @@ Map<String, dynamic> _$LeaderboardChallengeInfoToJson(
 ) => <String, dynamic>{
   'title': instance.title,
   'targetKm': instance.targetKm,
+  'startDate': instance.startDate?.toIso8601String(),
   'endDate': instance.endDate?.toIso8601String(),
   'userProgress': instance.userProgress,
   'progressPercentage': instance.progressPercentage,

@@ -15,6 +15,7 @@ class Challenge {
   final bool isJoined;
   final double userProgress;
   final double progressPercentage;
+  final int participantCount;
 
   Challenge({
     required this.id,
@@ -28,6 +29,7 @@ class Challenge {
     this.isJoined = false,
     this.userProgress = 0,
     this.progressPercentage = 0,
+    this.participantCount = 0,
   });
 
   factory Challenge.fromJson(Map<String, dynamic> json) {
@@ -43,7 +45,21 @@ class Challenge {
       isJoined: json['isJoined'] ?? false,
       userProgress: (json['userProgress'] ?? json['completedKm'] ?? 0).toDouble(),
       progressPercentage: (json['progressPercentage'] ?? 0).toDouble(),
+      participantCount: _parseParticipantCount(json),
     );
   }
   Map<String, dynamic> toJson() => _$ChallengeToJson(this);
+
+  static int _parseParticipantCount(Map<String, dynamic> json) {
+    // Check participantCount first (number)
+    if (json['participantCount'] != null) {
+      return (json['participantCount'] as num).toInt();
+    }
+    // Check participants - could be a List or a number
+    final participants = json['participants'];
+    if (participants == null) return 0;
+    if (participants is List) return participants.length;
+    if (participants is num) return participants.toInt();
+    return 0;
+  }
 }

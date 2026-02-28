@@ -6,8 +6,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../widgets/gradient_button.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
+import '../../../../core/utils/responsive_utils.dart';
 import '../data/challenge_repository.dart';
 import '../domain/challenge.dart';
+import '../../notifications/data/real_time_notification_service.dart';
 import 'my_challenge_screen.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../activity/presentation/running_screen.dart';
@@ -23,6 +25,25 @@ class ChallengeDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final challengeAsync = ref.watch(challengeDetailsProvider(challengeId));
+
+    // ── Responsive Scale ──────────────────────────────────
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isTablet = screenWidth > 600;
+
+    const double smallScale  = 0.85;
+    const double mediumScale = 0.98;
+    const double largeScale  = 1.05;
+    const double tabletScale = 1.30;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
 
     return Scaffold(
       body: Stack(
@@ -49,23 +70,31 @@ class ChallengeDetailScreen extends ConsumerWidget {
                    Column(
                     children: [
                       // App bar
-                      _buildAppBar(context),
+                      _buildAppBar(context, scale),
                       
                       // Scrollable Content
                       Expanded(
-                        child: SingleChildScrollView(
-                          padding: EdgeInsets.symmetric(horizontal: 14.w),
-                          child: Column(
-                            children: [
-                              _buildChallengeHeroCard(challenge),
-                              SizedBox(height: 22.h),
-                              _buildWinPointsCard(challenge),
-                              SizedBox(height: 22.h),
-                              _buildDetailsCard(challenge),
-                              SizedBox(height: 20.h),
-                              _buildJoinButton(context, ref, challenge),
-                              SizedBox(height: 120.h), // Spacing for bottom nav
-                            ],
+                        child: RefreshIndicator(
+                          color: const Color(0xFF900EBF),
+                          onRefresh: () async {
+                            ref.invalidate(challengeDetailsProvider(challengeId));
+                            await ref.read(challengeDetailsProvider(challengeId).future);
+                          },
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                            padding: EdgeInsets.symmetric(horizontal: 14.0 * scale),
+                            child: Column(
+                              children: [
+                                _buildChallengeHeroCard(context, challenge, scale),
+                                SizedBox(height: 22.0 * scale),
+                                _buildWinPointsCard(context, challenge, scale),
+                                SizedBox(height: 22.0 * scale),
+                                _buildDetailsCard(context, challenge, scale),
+                                SizedBox(height: 20.0 * scale),
+                                _buildJoinButton(context, ref, challenge, scale),
+                                SizedBox(height: 120.0 * scale), // Spacing for bottom nav
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -109,12 +138,12 @@ class ChallengeDetailScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                    SizedBox(height: 16.h),
-                    Text('Error loading challenge', style: GoogleFonts.lexendDeca()),
+                     Icon(Icons.error_outline, color: Colors.red, size: 48.0 * scale),
+                    SizedBox(height: 16.0 * scale),
+                    Text('Error loading challenge', style: GoogleFonts.lexendDeca(fontSize: 14 * scale)),
                     TextButton(
                       onPressed: () => ref.refresh(challengeDetailsProvider(challengeId)),
-                      child: const Text('Retry'),
+                      child: Text('Retry', style: TextStyle(fontSize: 14 * scale)),
                     ),
                   ],
                 ),
@@ -126,17 +155,17 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildAppBar(BuildContext context, double scale) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 26.w, vertical: 28.h),
+      padding: EdgeInsets.symmetric(horizontal: 26.0 * scale, vertical: 28.0 * scale),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: SvgPicture.asset(
               'assets/images/back_arrow_icon.svg',
-              width: 24.w,
-              height: 24.h,
+              width: 24.0 * scale,
+              height: 24.0 * scale,
             ),
           ),
           Expanded(
@@ -144,35 +173,48 @@ class ChallengeDetailScreen extends ConsumerWidget {
               'Challenge Detail',
               textAlign: TextAlign.center,
               style: GoogleFonts.lexendDeca(
-                fontSize: 19.sp,
+                fontSize: 19.0 * scale,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF24252C),
-                height: 24 / 19,
+                height: 1.25,
               ),
             ),
           ),
-          SizedBox(width: 24.w), // Balance spacing
+          SizedBox(width: 24.0 * scale), // Balance spacing
         ],
       ),
     );
   }
 
-  Widget _buildChallengeHeroCard(Challenge challenge) {
+  Widget _buildChallengeHeroCard(BuildContext context, Challenge challenge, double scale) {
     final dateFormat = DateFormat('MMM d, yyyy');
-    final timeLeft = challenge.endDate.difference(DateTime.now()).inDays;
-    
+    final now = DateTime.now();
+    final timeLeft = challenge.endDate.difference(now).inDays;
+    final hasEnded = challenge.endDate.isBefore(now);
+    final isUpcoming = challenge.startDate.isAfter(now);
+
+    String timeLabel;
+    if (hasEnded) {
+      timeLabel = 'Challenge Ended';
+    } else if (isUpcoming) {
+      final daysToStart = challenge.startDate.difference(now).inDays;
+      timeLabel = 'Starts in $daysToStart Days';
+    } else {
+      timeLabel = '$timeLeft Days Left';
+    }
+
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15.r),
+        borderRadius: BorderRadius.circular(15.0 * scale),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 20 * scale,
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(15.r),
+        borderRadius: BorderRadius.circular(15.0 * scale),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -181,24 +223,24 @@ class ChallengeDetailScreen extends ConsumerWidget {
               ? Image.network(
                   challenge.imageUrl!,
                   width: double.infinity,
-                  height: 120.h,
+                  height: 120.0 * scale,
                   fit: BoxFit.cover,
                   errorBuilder: (_,__,___) => Image.asset(
                      'assets/images/running.png',
                      width: double.infinity,
-                     height: 120.h,
+                     height: 120.0 * scale,
                      fit: BoxFit.cover,
                   ),
                 )
               : Image.asset(
                   challenge.imageUrl ?? 'assets/images/running.png',
                   width: double.infinity,
-                  height: 120.h,
+                  height: 120.0 * scale,
                   fit: BoxFit.cover,
                   errorBuilder: (_,__,___) => Image.asset(
                      'assets/images/running.png',
                      width: double.infinity,
-                     height: 120.h,
+                     height: 120.0 * scale,
                      fit: BoxFit.cover,
                   ),
                 ),
@@ -212,7 +254,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
                   colors: [Color(0xFF910EBF), Color(0xFFFD3B6E)],
                 ),
               ),
-              padding: EdgeInsets.all(20.w),
+              padding: EdgeInsets.all(20.0 * scale),
               child: Row(
                 children: [
                   // Left content
@@ -224,67 +266,78 @@ class ChallengeDetailScreen extends ConsumerWidget {
                         Text(
                           challenge.title,
                           style: GoogleFonts.lexendDeca(
-                            fontSize: 22.sp,
+                            fontSize: 22.0 * scale,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                             height: 1.2,
                           ),
                         ),
-                        SizedBox(height: 8.h),
+                        SizedBox(height: 8.0 * scale),
                         // Badge
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                          padding: EdgeInsets.symmetric(horizontal: 10.0 * scale, vertical: 4.0 * scale),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF83A71).withOpacity(0.73),
-                            borderRadius: BorderRadius.circular(222.r),
+                            color: const Color(0xFFF83A71).withValues(alpha: 0.73),
+                            borderRadius: BorderRadius.circular(222.0 * scale),
                           ),
                           child: Text(
                             'You will win ${NumberFormat.compact().format(challenge.rewardPoints)} points',
                             style: GoogleFonts.poppins(
-                              fontSize: 11.sp,
+                              fontSize: 11.0 * scale,
                               fontWeight: FontWeight.w500,
                               color: Colors.white,
                             ),
                           ),
                         ),
-                        SizedBox(height: 12.h),
+                        SizedBox(height: 12.0 * scale),
                         // Date and Time
-                        Row(
+                        Wrap(
+                          spacing: 12.0 * scale,
+                          runSpacing: 6.0 * scale,
                           children: [
-                            Icon(Icons.calendar_today_rounded, color: Colors.white, size: 14.sp),
-                            SizedBox(width: 6.w),
-                            Text(
-                              dateFormat.format(challenge.startDate),
-                              style: GoogleFonts.poppins(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.white,
-                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.calendar_today_rounded, color: Colors.white, size: 14.0 * scale),
+                                SizedBox(width: 6.0 * scale),
+                                Text(
+                                  dateFormat.format(challenge.startDate),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.0 * scale,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 16.w),
-                            Icon(Icons.access_time_filled, color: Colors.white, size: 14.sp),
-                            SizedBox(width: 6.w),
-                            Text(
-                              '$timeLeft Days Left',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.white,
-                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.access_time_filled, color: Colors.white, size: 14.0 * scale),
+                                SizedBox(width: 6.0 * scale),
+                                Text(
+                                  timeLabel,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.0 * scale,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(width: 16.w),
+                  SizedBox(width: 16.0 * scale),
                   // KM Badge (Right side)
                   Container(
-                    width: 68.w,
-                    height: 93.h,
+                    width: 68.0 * scale,
+                    height: 93.0 * scale,
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF5392),
-                      borderRadius: BorderRadius.circular(19.43.r),
+                      borderRadius: BorderRadius.circular(19.43 * scale),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -292,7 +345,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
                         Text(
                           challenge.targetKm.toStringAsFixed(0),
                           style: GoogleFonts.poppins(
-                            fontSize: 22.96.sp,
+                            fontSize: 23.0 * scale,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
                             height: 1,
@@ -301,7 +354,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
                         Text(
                           'KM',
                           style: GoogleFonts.poppins(
-                            fontSize: 13.sp,
+                            fontSize: 13.0 * scale,
                             fontWeight: FontWeight.w400,
                             color: Colors.white,
                           ),
@@ -318,18 +371,18 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWinPointsCard(Challenge challenge) {
+  Widget _buildWinPointsCard(BuildContext context, Challenge challenge, double scale) {
     final dateFormat = DateFormat('d MMM');
     return Container(
       width: double.infinity,
-      height: 73.h,
+      constraints: BoxConstraints(minHeight: 73.0 * scale),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFF5F3F3).withOpacity(0.55)),
-        borderRadius: BorderRadius.circular(15.r),
+        border: Border.all(color: const Color(0xFFF5F3F3).withValues(alpha: 0.55)),
+        borderRadius: BorderRadius.circular(15.0 * scale),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 23.w, vertical: 15.h),
+        padding: EdgeInsets.symmetric(horizontal: 23.0 * scale, vertical: 15.0 * scale),
         child: Row(
           children: [
             Expanded(
@@ -340,37 +393,37 @@ class ChallengeDetailScreen extends ConsumerWidget {
                   Text(
                     'Win ${NumberFormat.compact().format(challenge.rewardPoints)} points',
                     style: GoogleFonts.lexendDeca(
-                      fontSize: 18.sp,
+                      fontSize: 18.0 * scale,
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
-                      height: 22 / 18,
+                      height: 1.22,
                     ),
                   ),
-                  SizedBox(height: 4.h),
+                  SizedBox(height: 4.0 * scale),
                   Text(
                     'Complete ${challenge.targetKm.toStringAsFixed(0)} km by ${dateFormat.format(challenge.endDate)}',
                     style: GoogleFonts.lexendDeca(
-                      fontSize: 11.sp,
+                      fontSize: 11.0 * scale,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF6E6A7C),
-                      height: 14 / 11,
+                      height: 1.25,
                     ),
                   ),
                 ],
               ),
             ),
             Container(
-              width: 41.w,
-              height: 41.h,
+              width: 41.0 * scale,
+              height: 41.0 * scale,
               decoration: BoxDecoration(
-                color: const Color(0xFF900EBF).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8.r),
+                color: const Color(0xFF900EBF).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8.0 * scale),
               ),
               child: Center(
                 child: SvgPicture.asset(
                   'assets/images/crown_icon.svg',
-                  width: 24.w,
-                  height: 24.h,
+                  width: 24.0 * scale,
+                  height: 24.0 * scale,
                   colorFilter: const ColorFilter.mode(
                     Color(0xFF900EBF),
                     BlendMode.srcIn,
@@ -384,18 +437,18 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetailsCard(Challenge challenge) {
+  Widget _buildDetailsCard(BuildContext context, Challenge challenge, double scale) {
     final dateFormat = DateFormat('d MMM');
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(22.w),
+      padding: EdgeInsets.all(22.0 * scale),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFF5F3F3).withOpacity(0.62)),
-        borderRadius: BorderRadius.circular(15.r),
+        border: Border.all(color: const Color(0xFFF5F3F3).withValues(alpha: 0.62)),
+        borderRadius: BorderRadius.circular(15.0 * scale),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             offset: const Offset(0, 4),
             blurRadius: 32,
           ),
@@ -403,31 +456,31 @@ class ChallengeDetailScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          _buildDetailRow('Total Distance', '${challenge.targetKm.toStringAsFixed(0)} Km'),
-          SizedBox(height: 7.h),
-          _buildDetailRow('Duration', '${dateFormat.format(challenge.startDate)}-${dateFormat.format(challenge.endDate)}'),
-          SizedBox(height: 7.h),
-          _buildDetailRow('Participants', '19,543 Runners'), // Mock data as it's not in the model
+          _buildDetailRow(context, 'Total Distance', '${challenge.targetKm.toStringAsFixed(0)} Km', scale),
+          SizedBox(height: 7.0 * scale),
+          _buildDetailRow(context, 'Duration', '${dateFormat.format(challenge.startDate)}-${dateFormat.format(challenge.endDate)}', scale),
+          SizedBox(height: 7.0 * scale),
+          _buildDetailRow(context, 'Participants', '${NumberFormat.decimalPattern().format(challenge.participantCount)} Runners', scale),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(BuildContext context, String label, String value, double scale) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
           style: GoogleFonts.poppins(
-            fontSize: 12.sp,
+            fontSize: 12.0 * scale,
             color: const Color(0xFF8B88B5),
           ),
         ),
         Text(
           value,
           style: GoogleFonts.lexendDeca(
-            fontSize: 14.sp,
+            fontSize: 14.0 * scale,
             fontWeight: FontWeight.w600,
             color: const Color(0xFF24252C),
           ),
@@ -436,46 +489,81 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildJoinButton(BuildContext context, WidgetRef ref, Challenge challenge) {
-    return GradientButton(
-      text: challenge.isJoined ? 'Go to Challenge' : 'Join Challenge',
-      onPressed: () async {
-        if (challenge.isJoined) {
+  Widget _buildJoinButton(BuildContext context, WidgetRef ref, Challenge challenge, double scale) {
+    final now = DateTime.now();
+    final hasEnded = challenge.endDate.isBefore(now);
+    final isUpcoming = challenge.startDate.isAfter(now);
+
+    // If already joined, always allow viewing
+    if (challenge.isJoined) {
+      return GradientButton(
+        text: 'Go to Challenge',
+        onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => MyChallengeScreen(challenge: challenge)),
           );
-          return;
-        }
+        },
+        height: 58.0 * scale,
+      );
+    }
 
+    // Challenge has ended - show disabled state
+    if (hasEnded) {
+      return GradientButton(
+        text: 'Challenge Ended',
+        onPressed: () {},
+        enabled: false,
+        disabledColor: const Color(0xFF96AAD2),
+        showIcon: false,
+        height: 58.0 * scale,
+      );
+    }
+
+    // Challenge hasn't started yet - show upcoming state
+    if (isUpcoming) {
+      final daysToStart = challenge.startDate.difference(now).inDays;
+      return GradientButton(
+        text: 'Starts in $daysToStart days',
+        onPressed: () {},
+        enabled: false,
+        disabledColor: const Color(0xFF900EBF),
+        showIcon: false,
+        height: 58.0 * scale,
+      );
+    }
+
+    // Active challenge - allow joining
+    return GradientButton(
+      text: 'Join Challenge',
+      onPressed: () async {
         try {
           await ref.read(challengeRepositoryProvider).joinChallenge(challenge.id);
-          
+
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Successfully joined challenge!')),
+            ref.read(realTimeNotificationServiceProvider).showInAppBanner(
+              'Challenge Joined!',
+              'You are now part of the ${challenge.title}. Let\'s go!',
             );
-            
+
             // Refresh challenges list and details
             ref.invalidate(challengesListProvider);
             ref.invalidate(challengeDetailsProvider(challenge.id));
 
-            // Navigate to My Challenge Screen
-             // Fetch updated challenge with isJoined = true locally for immediate nav or just assume
-             // We can create a joined copy
-             final joinedChallenge = Challenge(
-               id: challenge.id,
-               title: challenge.title,
-               description: challenge.description,
-               startDate: challenge.startDate,
-               endDate: challenge.endDate,
-               targetKm: challenge.targetKm,
-               rewardPoints: challenge.rewardPoints,
-               imageUrl: challenge.imageUrl,
-               isJoined: true,
-               userProgress: challenge.userProgress,
-               progressPercentage: challenge.progressPercentage,
-             );
+            final joinedChallenge = Challenge(
+              id: challenge.id,
+              title: challenge.title,
+              description: challenge.description,
+              startDate: challenge.startDate,
+              endDate: challenge.endDate,
+              targetKm: challenge.targetKm,
+              rewardPoints: challenge.rewardPoints,
+              imageUrl: challenge.imageUrl,
+              isJoined: true,
+              userProgress: challenge.userProgress,
+              progressPercentage: challenge.progressPercentage,
+              participantCount: challenge.participantCount + 1,
+            );
 
             Navigator.push(
               context,
@@ -490,7 +578,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
           }
         }
       },
-      height: 58.h,
+      height: 58.0 * scale,
     );
   }
 }

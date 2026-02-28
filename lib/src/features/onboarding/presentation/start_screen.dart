@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../../../../widgets/gradient_button.dart';
-import '../../auth/presentation/login_screen.dart';
-import '../../auth/presentation/signup_screen.dart';
+import '../../auth/presentation/auth_screen.dart';
 
 class StartScreen extends StatelessWidget {
   const StartScreen({super.key});
@@ -14,8 +13,23 @@ class StartScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final screenWidth = screenSize.width;
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isTablet = screenWidth > 600;
+
+    const double smallScale  = 0.85;
+    const double mediumScale = 0.98;
+    const double largeScale  = 1.05;
+    const double tabletScale = 1.30;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -41,16 +55,16 @@ class StartScreen extends StatelessWidget {
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 450),
                       child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 24.w),
+                        padding: EdgeInsets.symmetric(horizontal: 24.0 * scale),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _buildHeadline(),
-                            SizedBox(height: 10.h),
-                            _buildSubtitle(),
-                            SizedBox(height: 32.h),
-                            _buildButton(context),
-                            SizedBox(height: 30.h),
+                            _buildHeadline(scale),
+                            SizedBox(height: 10.0 * scale),
+                            _buildSubtitle(scale),
+                            SizedBox(height: 32.0 * scale),
+                            _buildButton(context, scale),
+                            SizedBox(height: 30.0 * scale),
                           ],
                         ),
                       ),
@@ -69,12 +83,12 @@ class StartScreen extends StatelessWidget {
   // or we can keep it if we structure it right, but inline inside SliverFillRemaining is easier for the Spacer.
   // We will keep helper methods for headline, subtitle etc.
 
-  Widget _buildHeadline() {
+  Widget _buildHeadline(double scale) {
     return Text(
       'Every step brings you closer to your goals and greater rewards.',
       textAlign: TextAlign.center,
       style: GoogleFonts.lexendDeca(
-        fontSize: 24.sp,
+        fontSize: 24.0 * scale,
         fontWeight: FontWeight.w600,
         height: 1.25,
         color: _primaryTextColor,
@@ -83,12 +97,12 @@ class StartScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSubtitle() {
+  Widget _buildSubtitle(double scale) {
     return Text(
       'This productive tool is designed to help you better manage your task project-wise conveniently!',
       textAlign: TextAlign.center,
       style: GoogleFonts.poppins(
-        fontSize: 14.sp,
+        fontSize: 14.0 * scale,
         fontWeight: FontWeight.w400,
         height: 1.5,
         color: _secondaryTextColor,
@@ -96,27 +110,28 @@ class StartScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildButton(BuildContext context) {
+  Widget _buildButton(BuildContext context, double scale) {
     return GradientButton(
       text: "Get Started",
       onPressed: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => const SignupScreen(),
+            builder: (context) => const AuthScreen(),
           ),
         );
       },
+      height: 58.0 * scale,
     );
   }
 
-  Widget _buildLoginLink(BuildContext context) {
+  Widget _buildLoginLink(BuildContext context, double scale) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           "Already have an account? ",
           style: GoogleFonts.poppins(
-            fontSize: 14.sp,
+            fontSize: 14.0 * scale,
             fontWeight: FontWeight.w400,
             color: _secondaryTextColor,
           ),
@@ -125,14 +140,14 @@ class StartScreen extends StatelessWidget {
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const LoginScreen(),
+                builder: (context) => const AuthScreen(),
               ),
             );
           },
           child: Text(
             "Sign In",
             style: GoogleFonts.poppins(
-              fontSize: 14.sp,
+              fontSize: 14.0 * scale,
               fontWeight: FontWeight.w600,
               color: const Color(0xFFF83A71),
             ),

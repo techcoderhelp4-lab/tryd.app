@@ -6,66 +6,134 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/network/api_constants.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/database/local_database.dart';
 import '../domain/activity.dart';
 import '../domain/workout.dart';
 import '../domain/activity_stats.dart';
 import '../../profile/data/user_repository.dart';
+import '../../challenges/data/challenge_repository.dart';
+import '../../notifications/data/notification_repository.dart';
 
 const String kWorkoutHistoryKey = 'workoutHistory';
 const String kActivityHistoryKey = 'activityHistory';
 
 class ActivityRepository {
   final Dio _dio;
+  final LocalDatabase _localDb;
 
-  ActivityRepository(this._dio);
+  ActivityRepository(this._dio, this._localDb);
 
-  Future<List<Activity>> getUserActivities() async {
-    // Big App logic: Everything is an Activity.
-    // Merge local runs and local workouts first for instant offline access.
-    final localActivities = await _getLocalActivities();
-    final localWorkouts = await _getLocalWorkoutHistory();
-    
-    // Map workouts to activities if they aren't already
-    final List<Activity> unifiedLocal = [
-      ...localActivities,
-      ...localWorkouts.map((w) => Activity(
-        id: w.id,
-        type: 'workout',
-        duration: w.duration,
-        calories: w.calories,
-        date: w.date,
-        // Workouts don't have distance/pace usually
-        distance: 0.0,
-        averagePace: 0.0,
-        averageBPM: 0.0,
-      )),
-    ];
-
-    try {
-      final response = await _dio.get(ApiConstants.activities);
-      final List<dynamic> data = response.data['data'] ?? response.data;
-      final List<Activity> remoteActivities = data.map((json) => Activity.fromJson(json)).toList();
-      
-      // Deduplicate by ID
-      final Map<String, Activity> activityMap = {
-        for (var a in unifiedLocal) a.id: a,
-      };
-      for (var a in remoteActivities) {
-        activityMap[a.id] = a;
+  Future<List<Activity>> getUserActivities({bool triggerSync = true}) async {
+    // 1. Fetch from Local Database first (Instant)
+    final localData = await _localDb.getActivities();
+    final List<Activity> localActivities = localData.map((json) {
+      final type = json['type']?.toString().toLowerCase() ?? 'run';
+      if (type == 'workout' || type == 'hiit') {
+        return Workout.fromJson(json);
       }
-      
-      final result = activityMap.values.toList();
-      result.sort((a, b) => b.date.compareTo(a.date));
-      
-      // Sync back to local cache
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(kActivityHistoryKey, jsonEncode(result.map((e) => e.toJson()).toList()));
-      
-      return result;
-    } catch (e) {
-      unifiedLocal.sort((a, b) => b.date.compareTo(a.date));
-      return unifiedLocal;
+      return Activity.fromJson(json);
+    }).where((a) => !a.id.startsWith('mock_')).toList();
+    
+    if (triggerSync) {
+      _fetchAndSyncRemote();
     }
+    
+    return localActivities;
+  }
+
+  Future<bool> _fetchAndSyncRemote() async {
+    final oldActivitiesCount = (await _localDb.getActivities()).length;
+
+    // Fetch Activities + Workouts in parallel
+    Future<Response?> safeFetch(String url) async {
+      try {
+        return await _dio.get(url);
+      } catch (e) {
+        debugPrint("Sync fetch failed ($url): $e");
+        return null;
+      }
+    }
+
+    final results = await Future.wait([
+      safeFetch(ApiConstants.activities),
+      safeFetch(ApiConstants.workouts),
+    ]);
+
+    // Process Activities
+    final activityResponse = results[0];
+    if (activityResponse != null) {
+      final dynamic rawData = activityResponse.data;
+      final List<dynamic> data = (rawData is List) ? rawData : (rawData['data'] ?? []);
+      for (var json in data) {
+        final a = Activity.fromJson(json);
+        await _localDb.insertActivity(_cleanForSql(a.toJson(), a.id));
+      }
+      debugPrint("Activity sync success: ${data.length} items synced");
+    }
+
+    // Process Workouts
+    final workoutResponse = results[1];
+    if (workoutResponse != null) {
+      final dynamic rawData = workoutResponse.data;
+      final List<dynamic> data = (rawData is List) ? rawData : (rawData['data'] ?? []);
+      for (var json in data) {
+        final w = Workout.fromJson(json);
+        await _localDb.insertActivity(_cleanForSql(w.toJson(), w.id));
+      }
+      debugPrint("Workout sync success: ${data.length} items synced");
+    }
+
+    final newActivitiesCount = (await _localDb.getActivities()).length;
+    return newActivitiesCount != oldActivitiesCount;
+  }
+
+  Map<String, dynamic> _cleanForSql(Map<String, dynamic> json, String id, {String status = 'synced'}) {
+    // Only keep keys that exist in our SQL schema to prevent crashes
+    final sqfKeys = [
+      'id', 'type', 'distance', 'duration', 'caloriesBurned', 
+      'averagePace', 'averageBPM', 'exercisesCount', 'roundsCount', 
+      'workTime', 'restTime', 'date', 'syncStatus'
+    ];
+    
+    final Map<String, dynamic> cleaned = {};
+    for (var key in sqfKeys) {
+      if (json.containsKey(key)) {
+        cleaned[key] = json[key];
+      }
+    }
+    
+    // Explicitly handle field name mapping if they were passed differently (e.g. from domain models)
+    if (json.containsKey('calories') && !cleaned.containsKey('caloriesBurned')) {
+      cleaned['caloriesBurned'] = json['calories'];
+    }
+    if (json.containsKey('totalDuration') && !cleaned.containsKey('duration')) {
+      cleaned['duration'] = json['totalDuration'];
+    }
+    if (json.containsKey('workDuration') && !cleaned.containsKey('workTime')) {
+      cleaned['workTime'] = json['workDuration'];
+    }
+    if (json.containsKey('restDuration') && !cleaned.containsKey('restTime')) {
+      cleaned['restTime'] = json['restDuration'];
+    }
+    if (json.containsKey('exercises') && !cleaned.containsKey('exercisesCount')) {
+      cleaned['exercisesCount'] = json['exercises'];
+    }
+    if (json.containsKey('rounds') && !cleaned.containsKey('roundsCount')) {
+      cleaned['roundsCount'] = json['rounds'];
+    }
+
+    // Ensure ID and syncStatus are set correctly for SQL
+    cleaned['id'] = id;
+    cleaned['syncStatus'] = status;
+    
+    // Ensure date is a string (SQFlite doesn't support DateTime)
+    if (json['date'] is DateTime) {
+      cleaned['date'] = (json['date'] as DateTime).toIso8601String();
+    } else if (json['date'] != null) {
+      cleaned['date'] = json['date'].toString();
+    }
+
+    return cleaned;
   }
 
   Future<ActivityStats> getActivityStats({String period = 'week'}) async {
@@ -87,6 +155,8 @@ class ActivityRepository {
          startDate = DateTime(now.year, now.month, 1);
        } else if (period == 'year') {
          startDate = DateTime(now.year, 1, 1);
+       } else if (period == 'all') {
+         startDate = DateTime(2020); // Far enough in past
        } else {
          // Default to "Last 7 Days" including today
          startDate = today.subtract(const Duration(days: 6));
@@ -131,10 +201,8 @@ class ActivityRepository {
          }
 
          final dateKey = "${a.date.year}-${a.date.month.toString().padLeft(2, '0')}-${a.date.day.toString().padLeft(2, '0')}";
-         if (period == 'week' || period == 'month') {
-            dailyDistances[dateKey] = (dailyDistances[dateKey] ?? 0) + a.distance;
-            dailyCounts[dateKey] = (dailyCounts[dateKey] ?? 0) + 1;
-         }
+         dailyDistances[dateKey] = (dailyDistances[dateKey] ?? 0) + a.distance;
+         dailyCounts[dateKey] = (dailyCounts[dateKey] ?? 0) + 1;
        }
 
        List<DailyStat> dailyStats = dailyDistances.entries.map((e) => DailyStat(
@@ -161,12 +229,19 @@ class ActivityRepository {
     try {
       // For now, we still use local storage for specific workout details if needed, 
       // but ideally we fetch all from activities API since workouts ARE activities in backend.
-      final response = await _dio.get(
-        ApiConstants.activities,
-        queryParameters: {'type': 'workout'},
-      );
-      final List<dynamic> data = response.data['data'] ?? response.data;
-      return data.map((json) => Workout.fromJson(json)).toList();
+      final response = await _dio.get(ApiConstants.workouts);
+      final dynamic rawData = response.data;
+      final List<dynamic> data = (rawData is List) ? rawData : (rawData['data'] ?? []);
+      final List<Workout> remoteWorkouts = data.map((json) => Workout.fromJson(json)).toList();
+
+      // Sort newest first
+      remoteWorkouts.sort((a, b) => b.date.compareTo(a.date));
+
+      // Sync back to local cache
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(kWorkoutHistoryKey, jsonEncode(remoteWorkouts.map((e) => e.toJson()).toList()));
+
+      return remoteWorkouts;
     } catch (e) {
       // Local fallback
       final prefs = await SharedPreferences.getInstance();
@@ -174,100 +249,92 @@ class ActivityRepository {
       if (historyJson == null) return [];
       
       final List<dynamic> decoded = jsonDecode(historyJson);
-      return decoded.map((json) {
+      final workouts = decoded.map((json) {
         if (json['id'] == null) json['id'] = DateTime.now().millisecondsSinceEpoch.toString();
         return Workout.fromJson(json);
       }).toList();
+      workouts.sort((a, b) => b.date.compareTo(a.date));
+      return workouts;
     }
   }
 
-  Future<void> logActivity(Activity activity) async {
-    // PREPARE DATA: Convert to JSON and add 'syncStatus' = 'pending'
-    final activityJson = activity.toJson();
-    activityJson['syncStatus'] = 'pending';
 
-    // 1. SAVE LOCALLY (Instant Persistence)
-    final prefs = await SharedPreferences.getInstance();
-    final historyJson = prefs.getString(kActivityHistoryKey);
-    List<dynamic> history = historyJson != null ? jsonDecode(historyJson) : [];
+  Future<void> logActivity(Activity activity, {String? customEndpoint}) async {
+    final String endpoint = customEndpoint ?? ApiConstants.activities;
     
-    // Check if activity with this ID already exists
-    final existingIndex = history.indexWhere((item) => (item['_id'] ?? item['id']) == activity.id);
-    if (existingIndex != -1) {
-      history[existingIndex] = activityJson;
-    } else {
-      history.insert(0, activityJson);
+    // 1. SAVE LOCALLY IMMEDIATELY (Instant Feedback)
+    final json = activity.toJson();
+    final cleanedJson = _cleanForSql(json, activity.id, status: 'pending');
+    
+    try {
+      await _localDb.insertActivity(cleanedJson);
+      debugPrint("Logged activity locally: ${activity.id} (Status: pending)");
+    } catch (e) {
+      debugPrint("Failed to log activity locally: $e");
+      // Even if local save fails (unlikely after cleaning), we attempt remote
     }
-    
-    // Maintain buffer limit
-    if (history.length > 100) history.removeRange(100, history.length);
-    await prefs.setString(kActivityHistoryKey, jsonEncode(history));
 
-    // 2. ATTEMPT REMOTE SAVE (Dual Saving)
+    // 2. ATTEMPT REMOTE SAVE
     try {
       final Map<String, dynamic> remotePayload = activity.toJson();
-      remotePayload.remove('_id'); // Server generates its own ID
+      remotePayload.remove('_id'); 
       
-      await _dio.post(ApiConstants.activities, data: remotePayload);
+      final response = await _dio.post(endpoint, data: remotePayload);
       
-      // 3. ON SUCCESS: Update status to 'synced'
-      activityJson['syncStatus'] = 'synced';
-      
-      // Update local storage again with synced status
-      // Re-read in case of race conditions (simple approach here)
-      final updatedHistoryJson = prefs.getString(kActivityHistoryKey);
-      if (updatedHistoryJson != null) {
-         history = jsonDecode(updatedHistoryJson);
-         final index = history.indexWhere((item) => (item['_id'] ?? item['id']) == activity.id);
-         if (index != -1) {
-           history[index]['syncStatus'] = 'synced';
-           await prefs.setString(kActivityHistoryKey, jsonEncode(history));
-         }
+      // 3. ON SUCCESS: Update local record with server ID and mark as 'synced'
+      final serverId = response.data['_id']?.toString() ?? response.data['id']?.toString();
+      if (serverId != null) {
+        await _localDb.updateSyncStatusAndId(activity.id, serverId, 'synced');
+        debugPrint("Logged activity remotely: $serverId");
+      } else {
+        await _localDb.updateSyncStatus(activity.id, 'synced');
+        debugPrint("Logged activity remotely: ${activity.id}");
       }
-
     } catch (e) {
-      // API failed, but we already saved locally as pending.
-      // It will show as "Pending Sync" in UI if UI checks this field.
-      debugPrint('API logActivity failed, remaining pending: $e');
+      debugPrint('API logActivity failed ($endpoint), remaining pending locally: $e');
     }
   }
 
   Future<void> syncPendingActivities() async {
-    final prefs = await SharedPreferences.getInstance();
-    final historyJson = prefs.getString(kActivityHistoryKey);
-    if (historyJson == null) return;
+    final pending = await _localDb.getPendingActivities();
+    if (pending.isEmpty) return;
     
-    List<dynamic> history = jsonDecode(historyJson);
-    bool changed = false;
+    debugPrint("Syncing ${pending.length} pending activities from local database...");
 
-    for (var item in history) {
-      if (item['syncStatus'] == 'pending') {
-        try {
-          // Attempt upload
-          // Reconstruct Activity object to strip extra fields if necessary or just send json
-          // The API expects standard Activity JSON. 'syncStatus' might be ignored or accepted.
-          // Safer to remove it before sending if API is strict, but usually fine.
-          final Map<String, dynamic> dataToSend = Map.from(item);
-          dataToSend.remove('syncStatus'); // Remove local-only field
+    for (var item in pending) {
+      try {
+        final Map<String, dynamic> dataToSend = Map.from(item);
+        dataToSend.remove('syncStatus'); 
+        dataToSend.remove('id'); 
+        
+        final type = item['type']?.toString().toLowerCase();
+        final isWorkout = (type == 'workout' || type == 'hiit');
+        final endpoint = isWorkout ? ApiConstants.workouts : ApiConstants.activities;
 
-          await _dio.post(ApiConstants.activities, data: dataToSend);
-          
-          item['syncStatus'] = 'synced';
-          changed = true;
-          debugPrint("Synced pending activity: ${item['id']}");
-        } catch (e) {
-          debugPrint("Failed to sync activity: ${item['id']} - $e");
+        // Map SQL fields to Backend fields if necessary
+        if (isWorkout) {
+          if (dataToSend.containsKey('duration')) {
+            dataToSend['totalDuration'] = dataToSend['duration'];
+          }
         }
-      }
-    }
 
-    if (changed) {
-      await prefs.setString(kActivityHistoryKey, jsonEncode(history));
+        final response = await _dio.post(endpoint, data: dataToSend);
+        
+        final serverId = response.data['_id']?.toString() ?? response.data['id']?.toString();
+        if (serverId != null) {
+          await _localDb.updateSyncStatusAndId(item['id'], serverId, 'synced');
+        } else {
+          await _localDb.updateSyncStatus(item['id'], 'synced');
+        }
+        debugPrint("Successfully synced pending activity: ${item['id']} to $endpoint");
+      } catch (e) {
+        debugPrint("Failed to sync activity: ${item['id']} - $e");
+      }
     }
   }
 
   Future<void> saveWorkout(Workout workout) async {
-    await logActivity(workout);
+    await logActivity(workout, customEndpoint: ApiConstants.workouts);
   }
 
   Future<List<Activity>> _getLocalActivities() async {
@@ -275,7 +342,12 @@ class ActivityRepository {
     final historyJson = prefs.getString(kActivityHistoryKey);
     if (historyJson == null) return [];
     final List<dynamic> decoded = jsonDecode(historyJson);
-    return decoded.map((json) => Activity.fromJson(json)).toList();
+    return decoded.map((json) {
+      if (json['type'] == 'workout') {
+        return Workout.fromJson(json);
+      }
+      return Activity.fromJson(json);
+    }).toList();
   }
 
   Future<List<Workout>> _getLocalWorkoutHistory() async {
@@ -289,12 +361,28 @@ class ActivityRepository {
 
 final activityRepositoryProvider = Provider<ActivityRepository>((ref) {
   final dio = ref.watch(apiClientProvider);
-  return ActivityRepository(dio);
+  final localDb = ref.watch(localDatabaseProvider);
+  return ActivityRepository(dio, localDb);
 });
 
-final activityListProvider = FutureProvider<List<Activity>>((ref) {
+final activityListProvider = FutureProvider<List<Activity>>((ref) async {
   final repository = ref.watch(activityRepositoryProvider);
-  return repository.getUserActivities();
+  
+  // 1. Fetch from Local Database first (Instant)
+  final localActivities = await repository.getUserActivities(triggerSync: false);
+
+  // 2. Trigger background sync
+  // We don't await this to keep the UI responsive, especially on Android with potential network issues
+  repository._fetchAndSyncRemote().then((didUpdate) {
+    if (didUpdate) {
+      // Invalidate the provider to refresh the UI with new data from local DB
+      ref.invalidateSelf();
+    }
+  }).catchError((e) {
+    debugPrint("Background activity sync error: $e");
+  });
+
+  return localActivities;
 });
 
 final activityStatsProvider = FutureProvider.family<ActivityStats, String>((ref, period) {
@@ -312,9 +400,13 @@ class WorkoutHistoryNotifier extends AsyncNotifier<List<Workout>> {
   Future<void> addWorkout(Workout workout) async {
     final repository = ref.read(activityRepositoryProvider);
     await repository.saveWorkout(workout);
+    // Batch invalidate — all refresh in parallel, no N+1 sequential calls
     ref.invalidate(userProfileProvider);
+    ref.invalidate(activitySummaryProvider);
+    ref.invalidate(activityListProvider);
+    ref.invalidate(notificationsListProvider);
+    ref.invalidate(unreadNotificationCountProvider);
     ref.invalidateSelf();
-    await future;
   }
 }
 

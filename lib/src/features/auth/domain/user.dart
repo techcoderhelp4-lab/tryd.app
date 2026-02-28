@@ -2,8 +2,16 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'user.g.dart';
 
+Object? _readId(Map map, String key) {
+  if (key == 'id') {
+    return map['id'] ?? map['_id'];
+  }
+  return map[key];
+}
+
 @JsonSerializable()
 class User {
+  @JsonKey(readValue: _readId)
   final String id;
   final String name;
   final String email;

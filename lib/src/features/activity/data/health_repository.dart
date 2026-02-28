@@ -1,11 +1,18 @@
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 
 class HealthRepository {
   final Health _health = Health();
 
   Future<bool> requestPermissions() async {
+    // For Android 14+ / Health Connect, we MUST configure first
+    if (!_isConfigured) {
+      await _health.configure();
+      _isConfigured = true;
+    }
+
     // Define the types to get
     var types = [
       HealthDataType.STEPS,
@@ -14,10 +21,36 @@ class HealthRepository {
       HealthDataType.HEART_RATE,
     ];
 
-    // Requesting permissions
-    // Note: Health Connect requires explicit permissions in manifest as well
-    bool requested = await _health.requestAuthorization(types);
-    return requested;
+    var permissions = [
+      HealthDataAccess.READ_WRITE,
+      HealthDataAccess.READ_WRITE,
+      HealthDataAccess.READ_WRITE,
+      HealthDataAccess.READ_WRITE,
+    ];
+
+    try {
+      bool requested = await _health.requestAuthorization(types, permissions: permissions);
+      return requested;
+    } catch (e) {
+      print("Health authorization error: $e");
+      return false;
+    }
+  }
+
+  bool _isConfigured = false;
+
+  Future<HealthConnectSdkStatus> getSdkStatus() async {
+    try {
+      if (!_isConfigured) {
+        await _health.configure();
+        _isConfigured = true;
+      }
+      final status = await _health.getHealthConnectSdkStatus();
+      return status ?? HealthConnectSdkStatus.sdkUnavailable;
+    } catch (e) {
+      print("Health: Error getting SDK status (expected on some emulators): $e");
+      return HealthConnectSdkStatus.sdkUnavailable;
+    }
   }
 
   Future<int> getStepsToday() async {

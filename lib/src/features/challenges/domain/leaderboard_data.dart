@@ -62,6 +62,7 @@ class LeaderboardUserInfo {
 class LeaderboardChallengeInfo {
   final String title;
   final double targetKm;
+  final DateTime? startDate;
   final DateTime? endDate;
   final double? userProgress;
   final double? progressPercentage;
@@ -69,6 +70,7 @@ class LeaderboardChallengeInfo {
   LeaderboardChallengeInfo({
     required this.title,
     required this.targetKm,
+    this.startDate,
     this.endDate,
     this.userProgress,
     this.progressPercentage,
@@ -78,6 +80,7 @@ class LeaderboardChallengeInfo {
     return LeaderboardChallengeInfo(
       title: json['title'] ?? '',
       targetKm: (json['targetKm'] ?? 0).toDouble(),
+      startDate: json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
       endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
       userProgress: (json['userProgress'] ?? 0).toDouble(),
       progressPercentage: (json['progressPercentage'] ?? 0).toDouble(),

@@ -14,12 +14,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/challenge.dart';
 import 'package:intl/intl.dart';
 
-class MyChallengeScreen extends ConsumerWidget {
+class MyChallengeScreen extends ConsumerStatefulWidget {
   final Challenge challenge;
   const MyChallengeScreen({super.key, required this.challenge});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyChallengeScreen> createState() => _MyChallengeScreenState();
+}
+
+class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final challenge = widget.challenge;
+    final size = MediaQuery.of(context).size;
+    final screenHeight = size.height;
+    final screenWidth = size.width;
+    final isTablet = screenWidth > 600;
+
+    // ── Responsive Scale ──────────────────────────────────
+    const double smallScale  = 0.85;
+    const double mediumScale = 0.98;
+    const double largeScale  = 1.05;
+    const double tabletScale = 1.30;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -41,37 +65,37 @@ class MyChallengeScreen extends ConsumerWidget {
                 child: Column(
                   children: [
                     // App bar
-                    _buildAppBar(context),
-                    const SizedBox(height: 30),
+                    _buildAppBar(context, scale),
+                    SizedBox(height: 30.0 * scale),
                     // Content
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      padding: EdgeInsets.symmetric(horizontal: 15.0 * scale),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Active challenge card
-                          _buildActiveChallengeCard(challenge),
-                          const SizedBox(height: 15),
+                          _buildActiveChallengeCard(context, challenge, scale, isTablet),
+                          SizedBox(height: 15.0 * scale),
                           // Details card
-                          _buildDetailsCard(challenge),
-                          const SizedBox(height: 15),
+                          _buildDetailsCard(context, challenge, scale),
+                          SizedBox(height: 15.0 * scale),
                           // Leaderboard button
-                          _buildLeaderboardButton(context, challenge),
-                          const SizedBox(height: 15),
+                          _buildLeaderboardButton(context, challenge, scale),
+                          SizedBox(height: 15.0 * scale),
                           // Unlock Rewards heading
                           Text(
                             'Unlock Rewards',
                             style: GoogleFonts.lexendDeca(
-                              fontSize: 18,
+                              fontSize: 18.0 * scale,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF221F48),
-                              height: 22 / 18,
+                              height: 1.2,
                             ),
                           ),
-                          const SizedBox(height: 15),
+                          SizedBox(height: 15.0 * scale),
                           // Reward card
-                          _buildRewardCard(challenge),
-                          const SizedBox(height: 120),
+                          _buildRewardCard(context, challenge, scale),
+                          SizedBox(height: 120.0 * scale),
                         ],
                       ),
                     ),
@@ -115,17 +139,17 @@ class MyChallengeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildAppBar(BuildContext context, double scale) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 28),
+      padding: EdgeInsets.symmetric(horizontal: 26.0 * scale, vertical: 28.0 * scale),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: SvgPicture.asset(
               'assets/images/back_arrow_icon.svg',
-              width: 24,
-              height: 24,
+              width: 24.0 * scale,
+              height: 24.0 * scale,
             ),
           ),
           Expanded(
@@ -133,40 +157,64 @@ class MyChallengeScreen extends ConsumerWidget {
               'My Challenge',
               textAlign: TextAlign.center,
               style: GoogleFonts.lexendDeca(
-                fontSize: 19,
+                fontSize: 19.0 * scale,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF24252C),
-                height: 24 / 19,
+                height: 1.2,
               ),
             ),
           ),
-          const SizedBox(width: 24),
+          SizedBox(width: 24.0 * scale),
         ],
       ),
     );
   }
 
-  Widget _buildActiveChallengeCard(Challenge challenge) {
-    final timeLeft = challenge.endDate.difference(DateTime.now()).inDays;
+  Widget _buildActiveChallengeCard(BuildContext context, Challenge challenge, double scale, bool isTablet) {
+    final now = DateTime.now();
+    final hasEnded = challenge.endDate.isBefore(now);
+    final isUpcoming = challenge.startDate.isAfter(now);
+    final timeLeft = challenge.endDate.difference(now).inDays;
+
+    // Dynamic badge text and color
+    String badgeText;
+    Color badgeColor;
+    String timeText;
+
+    if (hasEnded) {
+      badgeText = 'Challenge Ended';
+      badgeColor = const Color(0xFFFF5252).withValues(alpha: 0.67);
+      timeText = 'Ended ${DateFormat('dd MMM yyyy').format(challenge.endDate)}';
+    } else if (isUpcoming) {
+      final daysToStart = challenge.startDate.difference(now).inDays;
+      badgeText = 'Upcoming Challenge';
+      badgeColor = const Color(0xFFFFAA00).withValues(alpha: 0.67);
+      timeText = 'Starts in $daysToStart days';
+    } else {
+      badgeText = 'Active Challenge';
+      badgeColor = const Color(0xFF4FFD5B).withValues(alpha: 0.67);
+      timeText = '$timeLeft Days Remaining';
+    }
+
     return Container(
       width: double.infinity,
-      height: 146,
+      constraints: BoxConstraints(minHeight: 146.0 * scale),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [Color(0xFF910EBF), Color(0xFFFD3B6E)],
+          colors: [const Color(0xFF910EBF), const Color(0xFFFD3B6E)],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(24.0 * scale),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
+            blurRadius: 20.0 * scale,
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 22, 29, 22),
+        padding: EdgeInsets.fromLTRB(20.0 * scale, 22.0 * scale, 29.0 * scale, 22.0 * scale),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -175,51 +223,54 @@ class MyChallengeScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Active Challenge badge
+                  // Status badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 8.0 * scale, vertical: 4.0 * scale),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4FFD5B).withOpacity(0.67),
-                      borderRadius: BorderRadius.circular(185),
+                      color: badgeColor,
+                      borderRadius: BorderRadius.circular(185.0 * scale),
                     ),
                     child: Text(
-                      'Active Challenge',
+                      badgeText,
                       style: GoogleFonts.poppins(
-                        fontSize: 10,
+                        fontSize: 10.0 * scale,
                         fontWeight: FontWeight.w500,
                         color: Colors.white,
-                        height: 15 / 10,
+                        height: 1.5,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8.0 * scale),
                   // Title
                   Text(
                     challenge.title,
                     style: GoogleFonts.poppins(
-                      fontSize: 18,
+                      fontSize: 18.0 * scale,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
-                      height: 22 / 18,
+                      height: 1.2,
                     ),
                   ),
-                  const Spacer(),
-                  // Days Remaining
+                  SizedBox(height: 16.0 * scale),
+                  // Time info
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.access_time_filled,
                         color: Colors.white,
-                        size: 18,
+                        size: 18.0 * scale,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${timeLeft >= 0 ? timeLeft : 0} Days Remaining',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.white,
-                          height: 21 / 14,
+                      SizedBox(width: 8.0 * scale),
+                      Flexible(
+                        child: Text(
+                          timeText,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14.0 * scale,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white,
+                            height: 1.5,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -227,32 +278,51 @@ class MyChallengeScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12.0 * scale),
             // Circular progress indicator
-            _buildCircularProgress(challenge.userProgress, challenge.targetKm), 
+            _buildCircularProgress(context, challenge.userProgress, challenge.targetKm, scale),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCircularProgress(double current, double total) {
-    final progress = current / total;
+  Widget _buildCircularProgress(BuildContext context, double current, double total, double scale) {
+    final progress = total > 0 ? (current / total).clamp(0.0, 1.0) : 0.0;
+
+    // Format current value - use compact format for large values
+    String currentText;
+    if (current >= 1000) {
+      currentText = '${(current / 1000).toStringAsFixed(1)}K';
+    } else if (current >= 100) {
+      currentText = current.toStringAsFixed(0);
+    } else {
+      currentText = current.toStringAsFixed(1);
+    }
+
+    // Format total value
+    String totalText;
+    if (total >= 1000) {
+      totalText = '${(total / 1000).toStringAsFixed(0)}K KM';
+    } else {
+      totalText = '${total.toInt()}KM';
+    }
+
     return Center(
       child: SizedBox(
-        width: 82,
-        height: 82,
+        width: 82.0 * scale,
+        height: 82.0 * scale,
         child: Stack(
           children: [
             // Progress indicator with background stroke
             Transform.rotate(
               angle: -1.5708, // -90 degrees to start from top (12 o'clock)
               child: SizedBox(
-                width: 82,
-                height: 82,
+                width: 82.0 * scale,
+                height: 82.0 * scale,
                 child: CircularProgressIndicator(
                   value: progress,
-                  strokeWidth: 10,
+                  strokeWidth: 10.0 * scale,
                   strokeCap: StrokeCap.round,
                   backgroundColor: const Color(0xFFEF60A3),
                   valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE8DEFF)),
@@ -265,19 +335,19 @@ class MyChallengeScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    current.toString(),
+                    currentText,
                     style: GoogleFonts.lexendDeca(
-                      fontSize: 14,
+                      fontSize: 12.0 * scale,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                       height: 1,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2.0 * scale),
                   Text(
-                    '${total.toInt()}KM',
+                    totalText,
                     style: GoogleFonts.lexendDeca(
-                      fontSize: 14,
+                      fontSize: 11.0 * scale,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                       height: 1,
@@ -292,62 +362,62 @@ class MyChallengeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetailsCard(Challenge challenge) {
+  Widget _buildDetailsCard(BuildContext context, Challenge challenge, double scale) {
     final dateFormat = DateFormat('d MMM');
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: EdgeInsets.all(22.0 * scale),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: const Color(0xFFF5F3F3).withOpacity(0.62)),
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(15.0 * scale),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            offset: const Offset(0, 4),
-            blurRadius: 32,
+            offset: Offset(0, 4.0 * scale),
+            blurRadius: 32.0 * scale,
           ),
         ],
       ),
       child: Column(
         children: [
-          _buildDetailRow('Total Distance', '${challenge.targetKm.toStringAsFixed(0)} Km'),
-          const SizedBox(height: 7),
-          _buildDetailRow('Duration', '${dateFormat.format(challenge.startDate)} - ${dateFormat.format(challenge.endDate)}'),
-          const SizedBox(height: 7),
-          _buildDetailRow('Participants', '19,543 Runners'),
+          _buildDetailRow(context, 'Total Distance', '${challenge.targetKm.toStringAsFixed(0)} Km', scale),
+          SizedBox(height: 7.0 * scale),
+          _buildDetailRow(context, 'Duration', '${dateFormat.format(challenge.startDate)} - ${dateFormat.format(challenge.endDate)}', scale),
+          SizedBox(height: 7.0 * scale),
+          _buildDetailRow(context, 'Participants', '${NumberFormat.decimalPattern().format(challenge.participantCount)} Runners', scale),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(BuildContext context, String label, String value, double scale) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
           style: GoogleFonts.lexendDeca(
-            fontSize: 14,
+            fontSize: 14.0 * scale,
             fontWeight: FontWeight.w500,
             color: const Color(0xFF1B2D51),
-            height: 18 / 14,
+            height: 1.3,
           ),
         ),
         Text(
           value,
           style: GoogleFonts.poppins(
-            fontSize: 14,
+            fontSize: 14.0 * scale,
             fontWeight: FontWeight.w400,
             color: const Color(0xFF8B88B5).withOpacity(0.7),
-            height: 21 / 14,
+            height: 1.5,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLeaderboardButton(BuildContext context, Challenge challenge) {
+  Widget _buildLeaderboardButton(BuildContext context, Challenge challenge, double scale) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -359,10 +429,10 @@ class MyChallengeScreen extends ConsumerWidget {
       },
       child: Container(
         width: double.infinity,
-        height: 58,
+        height: 58.0 * scale,
         decoration: BoxDecoration(
           color: const Color(0xFF900EBF),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.0 * scale),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -370,19 +440,19 @@ class MyChallengeScreen extends ConsumerWidget {
             Text(
               'Leaderboard',
               style: GoogleFonts.lexendDeca(
-                fontSize: 19,
+                fontSize: 19.0 * scale,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
-                height: 24 / 19,
+                height: 1.2,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12.0 * scale),
             Transform.rotate(
               angle: 3.14159, // 180 degrees
               child: SvgPicture.asset(
                 'assets/images/back_arrow_icon.svg',
-                width: 24,
-                height: 24,
+                width: 24.0 * scale,
+                height: 24.0 * scale,
                 colorFilter: const ColorFilter.mode(
                   Colors.white,
                   BlendMode.srcIn,
@@ -395,24 +465,24 @@ class MyChallengeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRewardCard(Challenge challenge) {
+  Widget _buildRewardCard(BuildContext context, Challenge challenge, double scale) {
     return Container(
       width: double.infinity,
-      height: 73,
+      constraints: BoxConstraints(minHeight: 73.0 * scale),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: const Color(0xFFF5F3F3).withOpacity(0.62)),
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(15.0 * scale),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            offset: const Offset(0, 4),
-            blurRadius: 32,
+            offset: Offset(0, 4.0 * scale),
+            blurRadius: 32.0 * scale,
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 23, vertical: 15),
+        padding: EdgeInsets.symmetric(horizontal: 23.0 * scale, vertical: 15.0 * scale),
         child: Row(
           children: [
             Expanded(
@@ -423,44 +493,45 @@ class MyChallengeScreen extends ConsumerWidget {
                   Text(
                     'Run ${challenge.targetKm.toStringAsFixed(0)} km',
                     style: GoogleFonts.lexendDeca(
-                      fontSize: 11,
+                      fontSize: 11.0 * scale,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF6E6A7C),
-                      height: 14 / 11,
+                      height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4.0 * scale),
                   Text(
                     'win ${NumberFormat.compact().format(challenge.rewardPoints)} points',
                     style: GoogleFonts.lexendDeca(
-                      fontSize: 14,
+                      fontSize: 14.0 * scale,
                       fontWeight: FontWeight.w400,
                       color: Colors.black,
-                      height: 18 / 14,
+                      height: 1.3,
                     ),
                   ),
                 ],
               ),
             ),
             Container(
-              width: 41,
-              height: 41,
+              width: 41.0 * scale,
+              height: 41.0 * scale,
               decoration: BoxDecoration(
                 color: const Color(0xFFFFE4F2),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.0 * scale),
               ),
               child: Center(
                 child: SvgPicture.asset(
                   'assets/images/cup.svg',
-                  width: 26,
-                  height: 26,
+                  width: 26.0 * scale,
+                  height: 26.0 * scale,
                   colorFilter: const ColorFilter.mode(
                     Color(0xFFF83A71),
                     BlendMode.srcIn,
                   ),
-                  errorBuilder: (context, error, stackTrace) => const Icon(
+                  errorBuilder: (context, error, stackTrace) => Icon(
                     Icons.emoji_events,
-                    color: Color(0xFFF83A71),
+                    color: const Color(0xFFF83A71),
+                    size: 20.0 * scale,
                   ),
                 ),
               ),

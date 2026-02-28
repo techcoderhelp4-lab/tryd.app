@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
+import 'package:flutter/services.dart';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -14,9 +15,11 @@ import '../../activity/presentation/workout_screen.dart';
 import '../../club/presentation/club_screen.dart';
 import '../../profile/data/user_repository.dart';
 import '../data/reward_repository.dart';
+import '../../notifications/data/real_time_notification_service.dart';
 import '../domain/reward.dart';
 import '../domain/redemption.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 
 class RewardsScreen extends ConsumerStatefulWidget {
   const RewardsScreen({super.key});
@@ -28,6 +31,8 @@ class RewardsScreen extends ConsumerStatefulWidget {
 class _RewardsScreenState extends ConsumerState<RewardsScreen> {
   final int _selectedIndex = 2; // Rewards tab
   String _selectedCategory = 'All';
+  final ScrollController _scrollController = ScrollController();
+  bool _isRedeeming = false;
 
   List<Map<String, dynamic>> get _categories => [
     {'name': 'All', 'icon': 'assets/images/square.svg'},
@@ -41,8 +46,36 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(userProfileProvider);
-    final rewardsAsync = ref.watch(filteredRewardsProvider(_selectedCategory == 'All' ? null : _selectedCategory));
+    final rewardsAsync = ref.watch(filteredRewardsProvider(_selectedCategory == 'All' ? null : _selectedCategory)) as AsyncValue<List<Reward>>;
     final redemptionsAsync = ref.watch(myRedemptionsProvider);
+    
+    // ── Responsive Scale ──────────────────────────────────
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isTablet = screenWidth > 600;
+
+    const double smallScale  = 0.85;
+    const double mediumScale = 0.98;
+    const double largeScale  = 1.05;
+    const double tabletScale = 1.25;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
+
+    final double tabHeightValue = 50.0 * scale;
+    final double tabSpacing0 = 14.0 * scale;
+    final double categoryHeightValue = 88.0 * scale;
+    final double categoryBottomSpacing = 10.0 * scale;
+    final double tabSpacing1 = 20.0 * scale;
+
+    final headerHeightTabIndex0 = tabHeightValue + tabSpacing0 + categoryHeightValue + categoryBottomSpacing;
+    final headerHeightTabIndex1 = tabHeightValue + tabSpacing1;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -61,46 +94,56 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
           
           SafeArea(
             bottom: false,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      SizedBox(height: 28.h),
-                      _buildHeader(context),
-                      SizedBox(height: 20.h),
-                      userAsync.when(
-                        data: (user) => _buildPointsSection(user.points ?? 0),
-                        loading: () => _buildPointsSection(0),
-                        error: (_, __) => _buildPointsSection(0),
-                      ),
-                      SizedBox(height: 30.h),
-                    ],
+            child: RefreshIndicator(
+              color: const Color(0xFF900EBF),
+              onRefresh: () async {
+                ref.invalidate(userProfileProvider);
+                ref.invalidate(rewardsListProvider);
+                ref.invalidate(myRedemptionsProvider);
+                await Future.delayed(const Duration(seconds: 1));
+              },
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        SizedBox(height: 24.0 * scale),
+                        _buildHeader(context, isTablet, scale),
+                        SizedBox(height: 16.0 * scale),
+                        userAsync.when(
+                          data: (user) => _buildPointsSection(user.points ?? 0, isTablet, scale),
+                          loading: () => _buildPointsSection(null, isTablet, scale),
+                          error: (_, __) => _buildPointsSection(0, isTablet, scale),
+                        ),
+                        SizedBox(height: 24.0 * scale),
+                      ],
+                    ),
                   ),
-                ),
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _StickyFiltersDelegate(
-                    minHeight: _selectedTabIndex == 0 ? 169.h : 80.h,
-                    maxHeight: _selectedTabIndex == 0 ? 170.h : 81.h,
-                    child: Container(
-                      child: Column(
-                        children: [
-                          _buildTabs(),
-                          if (_selectedTabIndex == 0) ...[
-                            SizedBox(height: 20.h),
-                            _buildCategories(),
-                            SizedBox(height: 15.h),
-                          ] else
-                            SizedBox(height: 30.h),
-                        ],
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _StickyFiltersDelegate(
+                      minHeight: _selectedTabIndex == 0 ? headerHeightTabIndex0 : headerHeightTabIndex1,
+                      maxHeight: (_selectedTabIndex == 0 ? headerHeightTabIndex0 : headerHeightTabIndex1) + 1.0,
+                      child: Container(
+                        child: Column(
+                          children: [
+                            _buildTabs(isTablet, scale),
+                            if (_selectedTabIndex == 0) ...[
+                              SizedBox(height: tabSpacing0),
+                              _buildCategories(isTablet, scale),
+                              SizedBox(height: categoryBottomSpacing),
+                            ] else
+                              SizedBox(height: tabSpacing1),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                _buildRewardsList(rewardsAsync, redemptionsAsync),
-              ],
+                  _buildRewardsList(rewardsAsync, redemptionsAsync, isTablet, headerHeightTabIndex0, scale),
+                ],
+              ),
             ),
           ),
           
@@ -136,9 +179,14 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, bool isTablet, double scale) {
+    final horizontalPadding = 26.0 * scale;
+    final iconSize = 24.0 * scale;
+    final buttonSize = 40.0 * scale;
+    final titleSize = 19.0 * scale;
+    
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 26.w),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -150,14 +198,14 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               );
             },
             child: Container(
-              width: 40,
-              height: 40,
+              width: buttonSize,
+              height: buttonSize,
               alignment: Alignment.center,
               child: Transform.scale(
                 scaleX: -1,
-                child: const CustomArrowIcon(
-                  size: 24,
-                  color: Color(0xFF130F26),
+                child: CustomArrowIcon(
+                  size: iconSize,
+                  color: const Color(0xFF130F26),
                 ),
               ),
             ),
@@ -165,45 +213,52 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
           Text(
             'Rewards',
             style: GoogleFonts.lexendDeca(
-              fontSize: 19.sp,
+              fontSize: titleSize,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF24252C),
             ),
           ),
-          SizedBox(width: 40.w), // Spacer
+          SizedBox(width: buttonSize), // Spacer
         ],
       ),
     );
   }
 
-  Widget _buildPointsSection(int points) {
+  Widget _buildPointsSection(int? points, bool isTablet, double scale) {
+    final horizontalPadding = 26.0 * scale;
+    final iconBoxSize = 44.0 * scale;
+    final crownSize = 24.0 * scale;
+    final pointsFontSize = 24.0 * scale;
+    final labelFontSize = 14.0 * scale;
+    final gap = 16.0 * scale;
+    
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 26.w),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Row(
         children: [
           Container(
-            width: 44.w,
-            height: 44.w,
+            width: iconBoxSize,
+            height: iconBoxSize,
             decoration: BoxDecoration(
               color: const Color(0xFFFFD66B),
-              borderRadius: BorderRadius.circular(16.r),
+              borderRadius: BorderRadius.circular(16.0 * scale),
             ),
             child: Center(
               child: SvgPicture.asset(
                 'assets/images/crown_icon.svg',
-                width: 24.w,
+                width: crownSize,
                 colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
               ),
             ),
           ),
-          SizedBox(width: 16.w),
+          SizedBox(width: gap),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                NumberFormat('#,###').format(points),
+                points != null ? NumberFormat('#,###').format(points) : '--',
                 style: GoogleFonts.poppins(
-                  fontSize: 24.sp,
+                  fontSize: pointsFontSize,
                   fontWeight: FontWeight.w600,
                   color: const Color(0xFF221F48),
                   height: 1.0,
@@ -212,7 +267,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               Text(
                 'Your Available Points',
                 style: GoogleFonts.lexendDeca(
-                  fontSize: 14.sp,
+                  fontSize: labelFontSize,
                   fontWeight: FontWeight.w400,
                   color: const Color(0xFF221F48),
                 ),
@@ -226,23 +281,29 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
 
   int _selectedTabIndex = 0;
 
-  Widget _buildTabs() {
+  Widget _buildTabs(bool isTablet, double scale) {
+    final horizontalMargin = 26.0 * scale;
+    final tabHeight = 50.0 * scale;
+    final tabRadius = 15.0 * scale;
+    final innerPadding = 8.0 * scale;
+    final tabFontSize = 13.0 * scale;
+    
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 26.w),
-      height: 50.h,
+      margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
+      height: tabHeight,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15.r),
+        borderRadius: BorderRadius.circular(tabRadius),
         border: Border.all(color: const Color(0xFFF5F3F3)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 32,
-            offset: const Offset(0, 4),
+            blurRadius: 24,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      padding: EdgeInsets.all(8.w),
+      padding: EdgeInsets.all(innerPadding),
       child: Row(
         children: [
           Expanded(
@@ -256,7 +317,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         height: constraints.maxHeight,
                         showIcon: false,
                         textStyle: GoogleFonts.poppins(
-                          fontSize: 13.sp,
+                          fontSize: tabFontSize,
                           fontWeight: FontWeight.w500,
                           color: Colors.white,
                         ),
@@ -275,7 +336,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       child: Text(
                         'Available Rewards',
                         style: GoogleFonts.poppins(
-                          fontSize: 13.sp,
+                          fontSize: tabFontSize,
                           fontWeight: FontWeight.w400,
                           color: const Color(0xFF8B88B5),
                         ),
@@ -294,7 +355,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         height: constraints.maxHeight,
                         showIcon: false,
                         textStyle: GoogleFonts.poppins(
-                          fontSize: 13.sp,
+                          fontSize: tabFontSize,
                           fontWeight: FontWeight.w500,
                           color: Colors.white,
                         ),
@@ -313,7 +374,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       child: Text(
                         'My Redemptions',
                         style: GoogleFonts.poppins(
-                          fontSize: 13.sp,
+                          fontSize: tabFontSize,
                           fontWeight: FontWeight.w400,
                           color: const Color(0xFF8B88B5),
                         ),
@@ -326,15 +387,23 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  Widget _buildCategories() {
+  Widget _buildCategories(bool isTablet, double scale) {
+    final categoryHeight = 88.0 * scale;
+    final categoryWidth = 64.0 * scale;
+    final iconSize = 28.0 * scale;
+    final labelSize = 11.0 * scale;
+    final horizontalPadding = 26.0 * scale;
+    final gap = 12.0 * scale;
+    final borderRadius = 15.0 * scale;
+    
     return SizedBox(
-      height: 84.h,
+      height: categoryHeight,
       child: ListView.separated(
-        padding: EdgeInsets.symmetric(horizontal: 26.w),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: _categories.length,
-        separatorBuilder: (_, __) => SizedBox(width: 12.w),
+        separatorBuilder: (_, __) => SizedBox(width: gap),
         itemBuilder: (context, index) {
           final category = _categories[index];
           final isAll = category['name'] == 'All';
@@ -347,10 +416,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               });
             },
             child: Container(
-              width: 64.w,
+              width: categoryWidth,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(15.r),
+                borderRadius: BorderRadius.circular(borderRadius),
                 border: isSelected ? Border.all(color: const Color(0xFF900EBF)) : null,
               ),
               child: Column(
@@ -359,24 +428,24 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                   if (category['icon'] != null)
                     SvgPicture.asset(
                       category['icon'],
-                      width: 28.w,
-                      height: 28.w,
+                      width: iconSize,
+                      height: iconSize,
                     )
                   else
                     Padding(
-                      padding: EdgeInsets.all(4.w),
+                      padding: EdgeInsets.all(3.0 * scale),
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          Icon(Icons.grid_view, color: isSelected ? const Color(0xFF900EBF) : const Color(0xFFFFD66B), size: 28.sp),
+                          Icon(Icons.grid_view, color: isSelected ? const Color(0xFF900EBF) : const Color(0xFFFFD66B), size: iconSize),
                         ],
                       ),
                     ),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: 6.0 * scale),
                   Text(
                     category['name'],
                     style: GoogleFonts.lexendDeca(
-                      fontSize: 11.sp,
+                      fontSize: labelSize,
                       color: const Color(0xFF1B2D51),
                     ),
                   ),
@@ -389,221 +458,538 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  Widget _buildRewardsList(AsyncValue<List<Reward>> rewardsAsync, AsyncValue<List<Redemption>> redemptionsAsync) {
+  Widget _buildRewardsList(AsyncValue<List<Reward>> rewardsAsync, AsyncValue<List<Redemption>> redemptionsAsync, bool isTablet, double headerHeightTabIndex0, double scale) {
+    final horizontalPadding = 20.0 * scale;
+    final bottomPadding = 120.0 * scale;
+    final itemSpacing = 16.0 * scale;
+    
+    // Approximate height of the header sections to center empty state visually
+    final totalHeaderHeight = (70.0 * scale) + (90.0 * scale) + headerHeightTabIndex0;
+
     if (_selectedTabIndex == 0) {
       return rewardsAsync.when(
-        data: (rewards) => SliverPadding(
-          padding: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 120.h),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                if (index.isOdd) return SizedBox(height: 16.h);
-                final itemIndex = index ~/ 2;
-                return _buildRewardCard(rewards[itemIndex]);
+        data: (rewards) => rewards.isEmpty 
+          ? SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: totalHeaderHeight / 2),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.redeem_outlined, size: 48.0 * scale, color: const Color(0xFF8B88B5).withOpacity(0.3)),
+                      SizedBox(height: 12.0 * scale),
+                      Text(
+                        'No rewards available',
+                        style: GoogleFonts.lexendDeca(
+                          fontSize: 16.0 * scale,
+                          color: const Color(0xFF8B88B5),
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          : Builder(
+              builder: (context) {
+                final redemptions = redemptionsAsync.value ?? [];
+                // Count approved & pending per reward (rejected don't count — user can redeem again)
+                final Map<String, int> approvedCount = {};
+                final Map<String, int> pendingCount = {};
+                for (final r in redemptions) {
+                  if (r.status == 'approved') {
+                    approvedCount[r.reward.id] = (approvedCount[r.reward.id] ?? 0) + 1;
+                  } else if (r.status == 'pending') {
+                    pendingCount[r.reward.id] = (pendingCount[r.reward.id] ?? 0) + 1;
+                  }
+                }
+
+                return SliverPadding(
+                  padding: EdgeInsets.only(left: horizontalPadding, right: horizontalPadding, bottom: bottomPadding),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        if (index.isOdd) return SizedBox(height: itemSpacing);
+                        final itemIndex = index ~/ 2;
+                        final reward = rewards[itemIndex];
+                        final approved = approvedCount[reward.id] ?? 0;
+                        final pending = pendingCount[reward.id] ?? 0;
+                        final limit = reward.maxPerUser;
+                        // Fully claimed = approved count hit the limit
+                        final isClaimed = limit != null && approved >= limit;
+                        // For manual approval: block redeem while any is still pending
+                        final isPending = !isClaimed && pending > 0 && reward.requiresApproval == true;
+                        return _buildRewardCard(reward, isTablet, scale, isClaimed: isClaimed, isPending: isPending);
+                      },
+                      childCount: rewards.length * 2 - 1,
+                    ),
+                  ),
+                );
               },
-              childCount: rewards.isEmpty ? 0 : rewards.length * 2 - 1,
             ),
-          ),
-        ),
-        loading: () => const SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
+        loading: () => _buildSkeletonList(horizontalPadding, itemSpacing, scale),
         error: (err, _) => SliverFillRemaining(child: Center(child: Text('Error: $err'))),
       );
     } else {
       return redemptionsAsync.when(
-        data: (redemptions) => SliverPadding(
-          padding: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 120.h),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                if (index.isOdd) return SizedBox(height: 16.h);
-                final itemIndex = index ~/ 2;
-                return _buildRedemptionCard(redemptions[itemIndex]);
-              },
-              childCount: redemptions.isEmpty ? 0 : redemptions.length * 2 - 1,
+        data: (redemptions) => redemptions.isEmpty
+          ? SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: totalHeaderHeight / 2),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.history_outlined, size: 48.0 * scale, color: const Color(0xFF8B88B5).withOpacity(0.3)),
+                      SizedBox(height: 12.0 * scale),
+                      Text(
+                        'No redemptions yet',
+                        style: GoogleFonts.lexendDeca(
+                          fontSize: 16.0 * scale,
+                          color: const Color(0xFF8B88B5),
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          : SliverPadding(
+              padding: EdgeInsets.only(left: horizontalPadding, right: horizontalPadding, bottom: bottomPadding),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    if (index.isOdd) return SizedBox(height: itemSpacing);
+                    final itemIndex = index ~/ 2;
+                    return _buildRedemptionCard(redemptions[itemIndex], isTablet, scale);
+                  },
+                  childCount: redemptions.length * 2 - 1,
+                ),
+              ),
             ),
-          ),
-        ),
-        loading: () => const SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
+        loading: () => _buildSkeletonList(horizontalPadding, itemSpacing, scale),
         error: (err, _) => SliverFillRemaining(child: Center(child: Text('Error: $err'))),
       );
     }
   }
 
-  Widget _buildRewardCard(Reward reward) {
-    return Container(
-      height: 109.h,
-      width: 369.w,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15.r),
-        border: Border.all(color: const Color(0xFFF5F3F3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 32,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(12.w),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 68.w,
-                  height: 68.w,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(17.r),
-                    color: const Color(0xFFF5F3F3),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(17.r),
-                    child: Image.network(
-                      reward.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: const Color(0xFFF5F3F3),
-                          child: Icon(
-                            Icons.broken_image_outlined,
-                            color: const Color(0xFF8B88B5),
-                            size: 24.sp,
-                          ),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                                : null,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(width: 16.w),
-                SizedBox(
-                  width: 160.w,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        reward.title,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        reward.partner,
-                        style: GoogleFonts.lexendDeca(
-                          fontSize: 11.sp,
-                          color: const Color(0xFF8B88B5),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 8.h),
-                      Row(
-                        children: [
-                          Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
-                          SizedBox(width: 4.w),
-                          Text(
-                            reward.requiredPoints.toString(),
-                            style: GoogleFonts.lexendDeca(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black,
-                            ),
-                          ),
-                          SizedBox(width: 4.w),
-                          Text(
-                            'points',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12.sp,
-                              color: const Color(0xFF8B88B5),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            right: 15.w,
-            bottom: 11.h,
-            child: GestureDetector(
-              onTap: () {
-                _showConfirmRedemptionDialog(context, reward);
-              },
-              child: Container(
-                width: 90.w,
-                height: 37.h,
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF900EBF)),
-                  borderRadius: BorderRadius.circular(9.r),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Redeem',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF900EBF),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (reward.requiresApproval == true)
-            Positioned(
-              right: 9.w,
-              top: 9.h,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8337F).withOpacity(0.08),
-                  border: Border.all(color: const Color(0xFFE8337F).withOpacity(0.22)),
-                  borderRadius: BorderRadius.circular(22.r),
-                ),
-                child: Text(
-                  'Manual Approval',
-                  style: GoogleFonts.poppins(
-                    fontSize: 9.sp,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ),
-        ],
+  Widget _buildSkeletonList(double horizontalPadding, double itemSpacing, double scale) {
+    return SliverPadding(
+      padding: EdgeInsets.only(left: horizontalPadding, right: horizontalPadding, bottom: 120.0 * scale),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            if (index.isOdd) return SizedBox(height: itemSpacing);
+            return _buildRewardSkeleton(scale);
+          },
+          childCount: 10,
+        ),
       ),
     );
   }
 
-  Widget _buildRedemptionCard(Redemption redemption) {
-    if (redemption.status == 'pending') {
+  Widget _buildRewardSkeleton(double scale) {
+    final cardHeight = 109.0 * scale;
+    final borderRadius = 15.0 * scale;
+    final innerPadding = 12.0 * scale;
+    final imageSize = 68.0 * scale;
+    final imageRadius = 17.0 * scale;
+
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[200]!,
+      highlightColor: Colors.grey[50]!,
+      child: Container(
+        height: cardHeight,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(borderRadius),
+          border: Border.all(color: const Color(0xFFF5F3F3)),
+        ),
+        padding: EdgeInsets.all(innerPadding),
+        child: Row(
+          children: [
+            Container(
+              width: imageSize,
+              height: imageSize,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(imageRadius),
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: 12.0 * scale),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 120.0 * scale,
+                    height: 12.0 * scale,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  SizedBox(height: 8.0 * scale),
+                  Container(
+                    width: 80.0 * scale,
+                    height: 10.0 * scale,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  SizedBox(height: 10.0 * scale),
+                  Container(
+                    width: 60.0 * scale,
+                    height: 14.0 * scale,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRewardCard(Reward reward, bool isTablet, double scale, {bool isClaimed = false, bool isPending = false}) {
+    final cardHeight = 109.0 * scale;
+    final borderRadius = 15.0 * scale;
+    final innerPadding = 12.0 * scale;
+    final imageSize = 68.0 * scale;
+    final imageRadius = 17.0 * scale;
+    final titleFontSize = 12.0 * scale;
+    final partnerFontSize = 11.0 * scale;
+    final pointsFontSize = 14.0 * scale;
+    final starSize = 16.0 * scale;
+    final buttonWidth = 90.0 * scale;
+    final buttonHeight = 37.0 * scale;
+    final buttonFontSize = 13.0 * scale;
+    final badgeFontSize = 9.0 * scale;
+
+    return Container(
+      height: cardHeight,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(color: const Color(0xFFF5F3F3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(innerPadding),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: imageSize,
+              height: imageSize,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(imageRadius),
+                color: const Color(0xFFF5F3F3),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(imageRadius),
+                child: Image.network(
+                  reward.imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: const Color(0xFFF5F3F3),
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        color: const Color(0xFF8B88B5),
+                        size: 24.0 * scale,
+                      ),
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            SizedBox(width: 12.0 * scale),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    reward.title,
+                    style: GoogleFonts.poppins(
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.black,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    reward.partner,
+                    style: GoogleFonts.lexendDeca(
+                      fontSize: partnerFontSize,
+                      color: const Color(0xFF8B88B5),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 6.0 * scale),
+                  Row(
+                    children: [
+                      Icon(Icons.star, color: const Color(0xFFFFA500), size: starSize),
+                      SizedBox(width: 4.0 * scale),
+                      Text(
+                        reward.requiredPoints.toString(),
+                        style: GoogleFonts.lexendDeca(
+                          fontSize: pointsFontSize,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
+                      ),
+                      SizedBox(width: 4.0 * scale),
+                      Text(
+                        'points',
+                        style: GoogleFonts.poppins(
+                          fontSize: partnerFontSize,
+                          color: const Color(0xFF8B88B5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 8.0 * scale),
+            SizedBox(
+              height: cardHeight - 2 * innerPadding,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (reward.requiresApproval == true)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 6.0 * scale,
+                        vertical: 2.0 * scale,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8337F).withOpacity(0.08),
+                        border: Border.all(color: const Color(0xFFE8337F).withOpacity(0.22)),
+                        borderRadius: BorderRadius.circular(18.0 * scale),
+                      ),
+                      child: Text(
+                        'Manual Approval',
+                        style: GoogleFonts.poppins(
+                          fontSize: badgeFontSize,
+                          color: Colors.black,
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox.shrink(),
+                  if (isClaimed)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle, color: const Color(0xFF22D198), size: 16.0 * scale),
+                        SizedBox(width: 4.0 * scale),
+                        Text(
+                          'Claimed',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12.0 * scale,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF22D198),
+                          ),
+                        ),
+                      ],
+                    )
+                  else if (isPending)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.access_time, color: const Color(0xFFDC931F), size: 16.0 * scale),
+                        SizedBox(width: 4.0 * scale),
+                        Text(
+                          'Pending',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12.0 * scale,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFFDC931F),
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    GestureDetector(
+                      onTap: () {
+                        _showConfirmRedemptionDialog(context, reward);
+                      },
+                      child: Container(
+                        width: buttonWidth,
+                        height: buttonHeight,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFF900EBF)),
+                          borderRadius: BorderRadius.circular(8.0 * scale),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Redeem',
+                          style: GoogleFonts.poppins(
+                            fontSize: buttonFontSize,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF900EBF),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRedemptionCard(Redemption redemption, bool isTablet, double scale) {
+    final horizontalPadding = 22.0 * scale;
+    final borderRadius = 15.0 * scale;
+    final titleFontSize = 14.0 * scale;
+    final dateFontSize = 11.0 * scale;
+    final pointsFontSize = 13.0 * scale;
+    final starSize = 16.0 * scale;
+    final messageBoxPadding = 10.0 * scale;
+    final messageFontSize = 12.0 * scale;
+    final couponHeight = 52.0 * scale;
+
+    if (redemption.status == 'rejected') {
+      // ── Rejected Card ──
       return Container(
-        width: 372.w,
-        padding: EdgeInsets.all(22.w),
+        padding: EdgeInsets.all(horizontalPadding),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF5F5),
+          border: Border.all(color: const Color(0xFFE53E3E).withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(18.0 * scale),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  redemption.reward.title,
+                  style: GoogleFonts.lexendDeca(
+                    fontSize: titleFontSize,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                SizedBox(height: 4.0 * scale),
+                Text(
+                  'Requested on ${DateFormat('MMM d, yyyy').format(redemption.createdAt)}',
+                  style: GoogleFonts.poppins(
+                    fontSize: dateFontSize,
+                    color: const Color(0xFF818181),
+                  ),
+                ),
+                SizedBox(height: 4.0 * scale),
+                Row(
+                  children: [
+                    Icon(Icons.star, color: const Color(0xFFFFA500), size: starSize),
+                    SizedBox(width: 3.0 * scale),
+                    Text(
+                      '${redemption.pointsDeducted} points',
+                      style: GoogleFonts.poppins(
+                        fontSize: pointsFontSize,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                    SizedBox(width: 8.0 * scale),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6.0 * scale, vertical: 2.0 * scale),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF22D198).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4.0 * scale),
+                      ),
+                      child: Text(
+                        'Refunded',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.0 * scale,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF22D198),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: 16.0 * scale),
+            Container(
+              padding: EdgeInsets.all(messageBoxPadding),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFE53E3E).withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(6.0 * scale),
+                color: const Color(0xFFE53E3E).withOpacity(0.05),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.cancel_outlined, color: const Color(0xFFE53E3E), size: 18.0 * scale),
+                  SizedBox(width: 8.0 * scale),
+                  Expanded(
+                    child: Text(
+                      redemption.adminNote != null && redemption.adminNote!.isNotEmpty
+                          ? 'Rejected: ${redemption.adminNote}'
+                          : 'Your request was rejected. Points have been refunded to your account.',
+                      style: GoogleFonts.poppins(
+                        fontSize: messageFontSize,
+                        color: const Color(0xFFE53E3E),
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (redemption.status == 'pending') {
+      // ── Pending Card ──
+      return Container(
+        padding: EdgeInsets.all(horizontalPadding),
         decoration: BoxDecoration(
           color: const Color(0xFFFFF7ED),
           border: Border.all(color: const Color(0xFFECB953).withOpacity(0.74)),
-          borderRadius: BorderRadius.circular(22.r),
+          borderRadius: BorderRadius.circular(18.0 * scale),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -615,53 +1001,53 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                  Text(
                    redemption.reward.title,
                    style: GoogleFonts.lexendDeca(
-                     fontSize: 14.sp,
+                     fontSize: titleFontSize,
                      fontWeight: FontWeight.w600,
                      color: Colors.black,
                    ),
                  ),
-                 SizedBox(height: 4.h),
+                                   SizedBox(height: 4.0 * scale),
                  Text(
                    'Requested on ${DateFormat('MMM d, yyyy').format(redemption.createdAt)}',
                    style: GoogleFonts.poppins(
-                     fontSize: 11.sp,
+                     fontSize: dateFontSize,
                      color: const Color(0xFF818181),
                    ),
                  ),
-                 SizedBox(height: 4.h),
-                 Row(
-                   children: [
-                     Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
-                     SizedBox(width: 3.w),
-                     Text(
-                       '${redemption.pointsDeducted} points',
-                       style: GoogleFonts.poppins(
-                         fontSize: 13.sp,
-                         fontWeight: FontWeight.w500,
-                         color: Colors.black,
-                       ),
-                     ),
-                   ],
-                 ),
+                                   SizedBox(height: 4.0 * scale),
+                  Row(
+                    children: [
+                      Icon(Icons.star, color: const Color(0xFFFFA500), size: starSize),
+                      SizedBox(width: 3.0 * scale),
+                      Text(
+                        '${redemption.pointsDeducted} points',
+                        style: GoogleFonts.poppins(
+                          fontSize: pointsFontSize,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
                ],
              ),
-             SizedBox(height: 16.h),
+             SizedBox(height: 16.0 * scale),
              Container(
-               padding: EdgeInsets.all(10.w),
+               padding: EdgeInsets.all(messageBoxPadding),
                decoration: BoxDecoration(
                  border: Border.all(color: const Color(0xFFECB953).withOpacity(0.9)),
-                 borderRadius: BorderRadius.circular(6.r),
+                 borderRadius: BorderRadius.circular(6.0 * scale),
                ),
                child: Row(
                crossAxisAlignment: CrossAxisAlignment.start,
                  children: [
-                   Icon(Icons.access_time, color: const Color(0xFFDC931F), size: 20.sp),
-                   SizedBox(width: 8.w),
+                   Icon(Icons.access_time, color: const Color(0xFFDC931F), size: 18.0 * scale),
+                   SizedBox(width: 8.0 * scale),
                    Expanded(
                      child: Text(
                        'Your request is being reviewed. You\'ll be notified once approved.',
                        style: GoogleFonts.poppins(
-                         fontSize: 12.sp,
+                         fontSize: messageFontSize,
                          color: const Color(0xFFDC931F),
                          height: 1.2,
                        ),
@@ -674,18 +1060,18 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
         ),
       );
     } else {
+      // ── Approved Card ──
       return Container(
-        width: 372.w,
-        padding: EdgeInsets.all(22.w),
+        padding: EdgeInsets.all(horizontalPadding),
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: const Color(0xFFF5F3F3)),
-          borderRadius: BorderRadius.circular(15.r),
+          borderRadius: BorderRadius.circular(borderRadius),
           boxShadow: [
              BoxShadow(
                color: Colors.black.withOpacity(0.04),
-               blurRadius: 32,
-               offset: const Offset(0, 4),
+               blurRadius: 24,
+               offset: const Offset(0, 3),
              ),
           ],
         ),
@@ -699,28 +1085,28 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                  Text(
                    redemption.reward.title,
                    style: GoogleFonts.lexendDeca(
-                     fontSize: 14.sp,
+                     fontSize: titleFontSize,
                      fontWeight: FontWeight.w600,
                      color: Colors.black,
                    ),
                  ),
-                 SizedBox(height: 4.h),
+                                   SizedBox(height: 4.0 * scale),
                  Text(
                    'Redeemed on ${DateFormat('MMM d, yyyy').format(redemption.createdAt)}',
                    style: GoogleFonts.poppins(
-                     fontSize: 11.sp,
+                     fontSize: dateFontSize,
                      color: const Color(0xFF818181),
                    ),
                  ),
-                 SizedBox(height: 4.h),
+                                   SizedBox(height: 4.0 * scale),
                  Row(
                    children: [
-                     Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
-                     SizedBox(width: 3.w),
+                     Icon(Icons.star, color: const Color(0xFFFFA500), size: starSize),
+                     SizedBox(width: 4.0 * scale),
                      Text(
                        '${redemption.pointsDeducted} points',
                        style: GoogleFonts.poppins(
-                         fontSize: 13.sp,
+                         fontSize: pointsFontSize,
                          fontWeight: FontWeight.w500,
                          color: Colors.black,
                        ),
@@ -730,20 +1116,20 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                ],
              ),
              if (redemption.couponCode != null) ...[
-               SizedBox(height: 16.h),
+               SizedBox(height: 16.0 * scale),
                CustomPaint(
                  foregroundPainter: DashedRectPainter(
-                   color: const Color(0xFFF7A1BA), 
-                   strokeWidth: 1.0, 
+                   color: const Color(0xFFF7A1BA),
+                   strokeWidth: 1.0,
                    gap: 5.0,
-                   borderRadius: 13.r,
+                   borderRadius: 13.0 * scale,
                  ),
                  child: Container(
-                   height: 52.h,
-                   padding: EdgeInsets.symmetric(horizontal: 16.w),
+                   height: couponHeight,
+                   padding: EdgeInsets.symmetric(horizontal: 16.0 * scale),
                    decoration: BoxDecoration(
                      color: Colors.white,
-                     borderRadius: BorderRadius.circular(13.r),
+                     borderRadius: BorderRadius.circular(13.0 * scale),
                    ),
                    child: Row(
                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -755,7 +1141,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                            Text(
                              'Your Coupon Code',
                              style: GoogleFonts.poppins(
-                               fontSize: 11.sp,
+                               fontSize: dateFontSize,
                                fontWeight: FontWeight.w400,
                                color: const Color(0xFF818181),
                              ),
@@ -763,25 +1149,37 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                            Text(
                              redemption.couponCode!,
                              style: GoogleFonts.lexendDeca(
-                               fontSize: 14.sp,
+                               fontSize: titleFontSize,
                                fontWeight: FontWeight.w600,
                                color: Colors.black,
                              ),
                            ),
                          ],
                        ),
-                       Container(
-                         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                         decoration: BoxDecoration(
-                           color: const Color(0xFFF7A1BA).withOpacity(0.15),
-                           borderRadius: BorderRadius.circular(6.r),
-                         ),
-                         child: Text(
-                           'Copy',
-                           style: GoogleFonts.poppins(
-                             fontSize: 11.sp,
-                             fontWeight: FontWeight.w600,
-                             color: const Color(0xFFF83A71),
+                       GestureDetector(
+                         onTap: () {
+                           Clipboard.setData(ClipboardData(text: redemption.couponCode!));
+                            ref.read(realTimeNotificationServiceProvider).showInAppBanner(
+                              'Code Copied!',
+                              'Coupon code copied to clipboard.',
+                            );
+                         },
+                         child: Container(
+                           padding: EdgeInsets.symmetric(
+                             horizontal: 12.0 * scale,
+                             vertical: 6.0 * scale,
+                           ),
+                           decoration: BoxDecoration(
+                             color: const Color(0xFFF7A1BA).withOpacity(0.15),
+                             borderRadius: BorderRadius.circular(6.0 * scale),
+                           ),
+                           child: Text(
+                             'Copy',
+                             style: GoogleFonts.poppins(
+                               fontSize: dateFontSize,
+                               fontWeight: FontWeight.w600,
+                               color: const Color(0xFFF83A71),
+                             ),
                            ),
                          ),
                        ),
@@ -796,23 +1194,52 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     }
   }
 
-  void _showConfirmRedemptionDialog(BuildContext context, Reward reward) {
-    showDialog(
+  Future<void> _showConfirmRedemptionDialog(BuildContext parentContext, Reward reward) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
+        final size = MediaQuery.of(context).size;
+        final screenWidth = size.width;
+        final screenHeight = size.height;
+        final isTablet = screenWidth > 600;
+
+        const double smallScale  = 0.85;
+        const double mediumScale = 0.98;
+        const double largeScale  = 1.05;
+        const double tabletScale = 1.25;
+
+        final double scale = isTablet
+            ? tabletScale
+            : screenHeight < 680
+                ? smallScale
+                : screenHeight < 850
+                    ? mediumScale
+                    : largeScale;
+
+        final horizontalPadding = 21.0 * scale;
+        final borderRadius = 22.0 * scale;
+        final titleFontSize = 13.0 * scale;
+        final cardTitleSize = 15.0 * scale;
+        final cardLabelSize = 12.0 * scale;
+        final ptsSize = 16.0 * scale;
+        final balanceLabelSize = 11.0 * scale;
+        final balanceValueSize = 11.0 * scale;
+        final buttonHeight = 37.0 * scale;
+        final buttonFontSize = 13.0 * scale;
+        
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.symmetric(horizontal: 20.w),
+          insetPadding: EdgeInsets.symmetric(horizontal: 21.0 * scale),
           child: Container(
-            width: 372.w,
+            width: isTablet ? 400.0 : double.infinity,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(22.r),
+              borderRadius: BorderRadius.circular(borderRadius),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
-                  blurRadius: 6.2,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 20.0 * scale,
+                  offset: Offset(0, 4.0 * scale),
                 ),
               ],
             ),
@@ -821,29 +1248,29 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: EdgeInsets.only(left: 21.w, top: 21.h),
+                  padding: EdgeInsets.only(left: horizontalPadding, top: horizontalPadding),
                   child: Text(
                     'Confirm Redemption',
                     style: GoogleFonts.poppins(
-                      fontSize: 13.sp,
+                      fontSize: titleFontSize,
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                     ),
                   ),
                 ),
-                SizedBox(height: 20.h),
+                SizedBox(height: 16.0 * scale),
                 Container(
-                  margin: EdgeInsets.symmetric(horizontal: 21.w),
-                  padding: EdgeInsets.all(16.w),
+                  margin: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                  padding: EdgeInsets.all(16.0 * scale),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFAF5FE),
                     border: Border.all(color: const Color(0xFF96AAD2).withOpacity(0.22)),
-                    borderRadius: BorderRadius.circular(11.r),
+                    borderRadius: BorderRadius.circular(11.0 * scale),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
-                        blurRadius: 6.2,
-                        offset: const Offset(0, 4),
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10.0 * scale,
+                        offset: Offset(0, 2.0 * scale),
                       ),
                     ],
                   ),
@@ -852,17 +1279,17 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       Row(
                         children: [
                           Container(
-                            width: 46.w,
-                            height: 46.w,
+                            width: 46.0 * scale,
+                            height: 46.0 * scale,
                             decoration: BoxDecoration(
                               color: const Color(0xFFF97316),
-                              borderRadius: BorderRadius.circular(10.r),
+                              borderRadius: BorderRadius.circular(10.0 * scale),
                             ),
                             child: Center(
-                              child: Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 24.sp),
+                              child: Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 24.0 * scale),
                             ),
                           ),
-                          SizedBox(width: 12.w),
+                          SizedBox(width: 12.0 * scale),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -870,7 +1297,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                 Text(
                                   reward.title,
                                   style: GoogleFonts.poppins(
-                                    fontSize: 15.sp,
+                                    fontSize: cardTitleSize,
                                     fontWeight: FontWeight.w500,
                                     color: Colors.black,
                                   ),
@@ -880,7 +1307,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                 Text(
                                   reward.partner,
                                   style: GoogleFonts.poppins(
-                                    fontSize: 12.sp,
+                                    fontSize: cardLabelSize,
                                     fontWeight: FontWeight.w400,
                                     color: const Color(0xFF8B88B5),
                                   ),
@@ -890,31 +1317,31 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 12.h),
+                      SizedBox(height: 12.0 * scale),
                       Container(
                         height: 1,
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withOpacity(0.05),
                       ),
-                      SizedBox(height: 12.h),
+                      SizedBox(height: 12.0 * scale),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             'Points Required',
                             style: GoogleFonts.poppins(
-                              fontSize: 11.sp,
+                              fontSize: balanceLabelSize,
                               fontWeight: FontWeight.w400,
                               color: const Color(0xFF8B88B5),
                             ),
                           ),
                           Row(
                             children: [
-                              Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.sp),
-                              SizedBox(width: 4.w),
+                              Icon(Icons.star, color: const Color(0xFFFFA500), size: 16.0 * scale),
+                              SizedBox(width: 4.0 * scale),
                               Text(
                                 reward.requiredPoints.toString(),
                                 style: GoogleFonts.poppins(
-                                  fontSize: 16.sp,
+                                  fontSize: ptsSize,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.black,
                                 ),
@@ -926,13 +1353,13 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: 16.h),
+                SizedBox(height: 20.0 * scale),
                 Container(
-                  margin: EdgeInsets.symmetric(horizontal: 21.w),
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  margin: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                  padding: EdgeInsets.symmetric(horizontal: 16.0 * scale, vertical: 12.0 * scale),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(11.r),
+                    borderRadius: BorderRadius.circular(11.0 * scale),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -943,7 +1370,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                           Text(
                             'Current Balance',
                             style: GoogleFonts.poppins(
-                              fontSize: 11.sp,
+                              fontSize: balanceLabelSize,
                               fontWeight: FontWeight.w400,
                               color: Colors.black,
                             ),
@@ -951,7 +1378,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                           Text(
                             'After Redemption',
                             style: GoogleFonts.poppins(
-                              fontSize: 11.sp,
+                              fontSize: balanceLabelSize,
                               fontWeight: FontWeight.w400,
                               color: Colors.black,
                             ),
@@ -968,15 +1395,15 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                               Text(
                                 '${NumberFormat('#,###').format(points)} pts',
                                 style: GoogleFonts.poppins(
-                                  fontSize: 11.sp,
+                                  fontSize: balanceValueSize,
                                   fontWeight: FontWeight.w500,
                                   color: Colors.black,
                                 ),
                               ),
                               Text(
-                                '${NumberFormat('#,###').format(max(0, points - reward.requiredPoints))} pts',
+                                '${NumberFormat('#,###').format(math.max(0, points - reward.requiredPoints))} pts',
                                 style: GoogleFonts.poppins(
-                                  fontSize: 11.sp,
+                                  fontSize: balanceValueSize,
                                   fontWeight: FontWeight.w500,
                                   color: const Color(0xFFF83A71),
                                 ),
@@ -988,26 +1415,26 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: 24.h),
+                SizedBox(height: 24.0 * scale),
                 Padding(
-                  padding: EdgeInsets.fromLTRB(21.w, 0, 21.w, 21.h),
+                  padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, horizontalPadding),
                   child: Row(
                     children: [
                       Expanded(
                         child: GestureDetector(
                           onTap: () => Navigator.pop(context),
                           child: Container(
-                            height: 37.h,
+                            height: buttonHeight,
                             decoration: BoxDecoration(
                               color: const Color(0xFFF3F4F6),
-                              borderRadius: BorderRadius.circular(9.r),
-                              border: Border.all(color: const Color(0xFF900EBF)),
+                              borderRadius: BorderRadius.circular(9.0 * scale),
+                              border: Border.all(color: const Color(0xFF900EBF).withOpacity(0.5)),
                             ),
                             alignment: Alignment.center,
                             child: Text(
                               'Cancel',
                               style: GoogleFonts.poppins(
-                                fontSize: 13.sp,
+                                fontSize: buttonFontSize,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF838383),
                               ),
@@ -1015,7 +1442,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                           ),
                         ),
                       ),
-                      SizedBox(width: 12.w),
+                      SizedBox(width: 12.0 * scale),
                       Consumer(
                         builder: (context, ref, _) {
                           final user = ref.watch(userProfileProvider).value;
@@ -1024,52 +1451,21 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
 
                           return Expanded(
                             child: GestureDetector(
-                              onTap: canRedeem ? () async {
-                                Navigator.pop(context); // Close dialog
-                                
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Processing redemption...')),
-                                );
-
-                                try {
-                                  await ref.read(rewardRepositoryProvider).redeemReward(reward.id);
-                                  
-                                  ref.invalidate(userProfileProvider);
-                                  ref.invalidate(myRedemptionsProvider);
-
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Reward redeemed successfully!'),
-                                        backgroundColor: Color(0xFF22D198),
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Failed to redeem: ${e.toString()}'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
+                              onTap: canRedeem ? () {
+                                Navigator.pop(context, true); // Close dialog, return true to confirm
                               } : null,
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
-                                height: 37.h,
+                                height: buttonHeight,
                                 decoration: BoxDecoration(
                                   color: canRedeem ? const Color(0xFF900EBF) : Colors.grey.withOpacity(0.3),
-                                  borderRadius: BorderRadius.circular(9.r),
+                                  borderRadius: BorderRadius.circular(9.0 * scale),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
                                   'Confirm Redeem',
                                   style: GoogleFonts.poppins(
-                                    fontSize: 11.sp,
+                                    fontSize: buttonFontSize,
                                     fontWeight: FontWeight.w600,
                                     color: canRedeem ? Colors.white : Colors.white.withOpacity(0.6),
                                   ),
@@ -1088,6 +1484,50 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
         );
       },
     );
+
+    if (confirmed == true && parentContext.mounted && !_isRedeeming) {
+      _isRedeeming = true;
+
+      // INSTANT: switch tab + scroll to top immediately
+      setState(() {
+        _selectedTabIndex = 1;
+      });
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+
+      // Fire API in background — don't block UI
+      ref.read(rewardRepositoryProvider).redeemReward(reward.id).then((_) {
+        // Refresh data silently
+        ref.invalidate(userProfileProvider);
+        ref.invalidate(myRedemptionsProvider);
+        ref.invalidate(rewardsListProvider);
+
+        if (parentContext.mounted) {
+          ref.read(realTimeNotificationServiceProvider).showInAppBanner(
+            'Reward Redeemed!',
+            '${reward.title} has been added to your redemptions.',
+          );
+        }
+        _isRedeeming = false;
+      }).catchError((e) {
+        // Revert to available rewards tab on failure
+        if (parentContext.mounted) {
+          setState(() {
+            _selectedTabIndex = 0;
+          });
+          ScaffoldMessenger.of(parentContext).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        _isRedeeming = false;
+      });
+    }
   }
 }
 

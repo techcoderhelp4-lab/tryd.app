@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../src/features/activity/presentation/running_screen.dart';
 
 class CustomBottomNavigation extends StatelessWidget {
   final int currentIndex;
@@ -14,12 +15,30 @@ class CustomBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isTablet = screenWidth > 600;
+
+    const double smallScale  = 0.85;
+    const double mediumScale = 0.98;
+    const double largeScale  = 1.05;
+    const double tabletScale = 1.30;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
     
+    final navHeight = 137.0 * scale;
+
     return Container(
       color: Colors.transparent,
       child: SizedBox(
-        height: 137,
+        height: navHeight,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -29,20 +48,20 @@ class CustomBottomNavigation extends StatelessWidget {
               right: 0,
               bottom: 0,
               child: CustomPaint(
-                size: Size(screenWidth, 137),
-                painter: BottomNavPainter(),
+                size: Size(screenWidth, navHeight),
+                painter: BottomNavPainter(scale: scale),
               ),
             ),
             
             // Floating Action Button (Center)
             Positioned(
-              top: 14.6,
-              left: screenWidth / 2 - 27,
+              top: 14.6 * scale,
+              left: screenWidth / 2 - (27 * scale),
               child: GestureDetector(
                 onTap: () => onTap(2),
                 child: Container(
-                  width: 54,
-                  height: 54,
+                  width: 54.0 * scale,
+                  height: 54.0 * scale,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: Color(0xFF900EBF),
@@ -50,8 +69,8 @@ class CustomBottomNavigation extends StatelessWidget {
                   child: Center(
                     child: SvgPicture.asset(
                       'assets/images/crown_icon.svg',
-                      width: 24,
-                      height: 24,
+                      width: 24.0 * scale,
+                      height: 24.0 * scale,
                       colorFilter: const ColorFilter.mode(
                         Colors.white,
                         BlendMode.srcIn,
@@ -66,7 +85,7 @@ class CustomBottomNavigation extends StatelessWidget {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 24,
+              bottom: 24.0 * scale,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -76,25 +95,29 @@ class CustomBottomNavigation extends StatelessWidget {
                     label: 'Home',
                     isActive: currentIndex == 0,
                     onTap: () => onTap(0),
+                    scale: scale,
                   ),
                   _buildNavItem(
                     svgIcon: 'assets/images/run_icon.svg',
                     label: 'Run',
                     isActive: currentIndex == 1,
                     onTap: () => onTap(1),
+                    scale: scale,
                   ),
-                  const SizedBox(width: 60), // Space for center FAB
+                  SizedBox(width: 60.0 * scale), // Space for center FAB
                   _buildNavItem(
                     svgIcon: 'assets/images/workout_icon.svg',
                     label: 'Workout',
                     isActive: currentIndex == 3,
                     onTap: () => onTap(3),
+                    scale: scale,
                   ),
                   _buildNavItem(
                     svgIcon: 'assets/images/club_icon.svg',
                     label: 'Club',
                     isActive: currentIndex == 4,
                     onTap: () => onTap(4),
+                    scale: scale,
                   ),
                 ],
               ),
@@ -110,6 +133,7 @@ class CustomBottomNavigation extends StatelessWidget {
     required String label,
     required bool isActive,
     required VoidCallback onTap,
+    required double scale,
   }) {
     final color = isActive ? const Color(0xFF900EBF) : const Color(0xFF8B88B5);
 
@@ -117,24 +141,24 @@ class CustomBottomNavigation extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 60,
+        width: 60.0 * scale,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SvgPicture.asset(
               svgIcon,
-              width: 24,
-              height: 24,
+              width: 24.0 * scale,
+              height: 24.0 * scale,
               colorFilter: ColorFilter.mode(
                 color,
                 BlendMode.srcIn,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4.0 * scale),
             Text(
               label,
               style: GoogleFonts.lexend(
-                fontSize: 12,
+                fontSize: 12.0 * scale,
                 fontWeight: FontWeight.w500,
                 color: color,
                 height: 1.5,
@@ -148,6 +172,10 @@ class CustomBottomNavigation extends StatelessWidget {
 }
 
 class BottomNavPainter extends CustomPainter {
+  final double scale;
+  
+  BottomNavPainter({required this.scale});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
@@ -156,7 +184,7 @@ class BottomNavPainter extends CustomPainter {
 
     // Scale factor to fit the design to screen width
     final scaleX = size.width / 402;
-    // ScaleY is implicitly handled by the container height constraints
+    final scaleY = scale; // Use the provided scale factor for vertical dimensions
 
     final path = Path();
     
@@ -164,76 +192,76 @@ class BottomNavPainter extends CustomPainter {
     // Original: M366 41.6001C385.882 41.6001 402 57.7178 402 77.6001V135.6C402 136.152 401.552 136.6 401 136.6H1C0.447715 136.6 2.31527e-08 136.152 0 135.6V77.6001C4.5101e-07 57.7178 16.1178 41.6001 36 41.6001H141.239C155.319 41.6001 166.286 54.1923 175.839 64.5345C182.131 71.3451 191.075 75.6001 201 75.6001C210.925 75.6001 219.869 71.3451 226.161 64.5345C235.714 54.1923 246.681 41.6001 260.761 41.6001H366Z
     
     // Start point (top-right before curve)
-    path.moveTo(366 * scaleX, 41.6);
+    path.moveTo(366 * scaleX, 41.6 * scaleY);
     
     // Top right rounded corner
     path.cubicTo(
-      385.882 * scaleX, 41.6,
-      402 * scaleX, 57.7178,
-      402 * scaleX, 77.6001,
+      385.882 * scaleX, 41.6 * scaleY,
+      402 * scaleX, 57.7178 * scaleY,
+      402 * scaleX, 77.6001 * scaleY,
     );
     
     // Right side down
-    path.lineTo(402 * scaleX, 135.6);
+    path.lineTo(402 * scaleX, 135.6 * scaleY);
     
     // Bottom right corner (slight curve)
     path.cubicTo(
-      402 * scaleX, 136.152,
-      401.552 * scaleX, 136.6,
-      401 * scaleX, 136.6,
+      402 * scaleX, 136.152 * scaleY,
+      401.552 * scaleX, 136.6 * scaleY,
+      401 * scaleX, 136.6 * scaleY,
     );
     
     // Bottom line
-    path.lineTo(1 * scaleX, 136.6);
+    path.lineTo(1 * scaleX, 136.6 * scaleY);
     
     // Bottom left corner
     path.cubicTo(
-      0.447715 * scaleX, 136.6,
-      0, 136.152,
-      0, 135.6,
+      0.447715 * scaleX, 136.6 * scaleY,
+      0, 136.152 * scaleY,
+      0, 135.6 * scaleY,
     );
     
     // Left side up
-    path.lineTo(0, 77.6001);
+    path.lineTo(0, 77.6001 * scaleY);
     
     // Top left rounded corner
     path.cubicTo(
-      0, 57.7178,
-      16.1178 * scaleX, 41.6001,
-      36 * scaleX, 41.6001,
+      0, 57.7178 * scaleY,
+      16.1178 * scaleX, 41.6001 * scaleY,
+      36 * scaleX, 41.6001 * scaleY,
     );
     
     // Left flat section
-    path.lineTo(141.239 * scaleX, 41.6001);
+    path.lineTo(141.239 * scaleX, 41.6001 * scaleY);
     
     // Left curve going up (towards center button)
     path.cubicTo(
-      155.319 * scaleX, 41.6001,
-      166.286 * scaleX, 54.1923,
-      175.839 * scaleX, 64.5345,
+      155.319 * scaleX, 41.6001 * scaleY,
+      166.286 * scaleX, 54.1923 * scaleY,
+      175.839 * scaleX, 64.5345 * scaleY,
     );
     
     path.cubicTo(
-      182.131 * scaleX, 71.3451,
-      191.075 * scaleX, 75.6001,
-      201 * scaleX, 75.6001,
+      182.131 * scaleX, 71.3451 * scaleY,
+      191.075 * scaleX, 75.6001 * scaleY,
+      201 * scaleX, 75.6001 * scaleY,
     );
     
     // Right curve coming down from center
     path.cubicTo(
-      210.925 * scaleX, 75.6001,
-      219.869 * scaleX, 71.3451,
-      226.161 * scaleX, 64.5345,
+      210.925 * scaleX, 75.6001 * scaleY,
+      219.869 * scaleX, 71.3451 * scaleY,
+      226.161 * scaleX, 64.5345 * scaleY,
     );
     
     path.cubicTo(
-      235.714 * scaleX, 54.1923,
-      246.681 * scaleX, 41.6001,
-      260.761 * scaleX, 41.6001,
+      235.714 * scaleX, 54.1923 * scaleY,
+      246.681 * scaleX, 41.6001 * scaleY,
+      260.761 * scaleX, 41.6001 * scaleY,
     );
     
     // Right flat section
-    path.lineTo(366 * scaleX, 41.6001);
+    path.lineTo(366 * scaleX, 41.6001 * scaleY);
     
     path.close();
 

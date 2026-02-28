@@ -4,13 +4,12 @@ import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../../../widgets/custom_arrow_icon.dart';
 import '../../../../widgets/custom_clock_icon.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'dart:math' as math;
 import '../../../../widgets/gradient_button.dart';
 import '../../home/presentation/home_screen.dart';
 import 'running_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
-import 'workout_screen.dart';
 import '../../club/presentation/club_screen.dart';
+import '../../../../core/utils/responsive_utils.dart';
 
 class AddTimeScreen extends StatefulWidget {
   final String title;
@@ -27,7 +26,7 @@ class AddTimeScreen extends StatefulWidget {
 }
 
 class _AddTimeScreenState extends State<AddTimeScreen> {
-  int _selectedIndex = 3; // Workout tab
+  final int _selectedIndex = 3; // Workout tab
   int _currentSeconds = 600; // Default 10 minutes (600 seconds)
 
   @override
@@ -60,6 +59,25 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ── Responsive Scale ──────────────────────────────────
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isTablet = screenWidth > 600;
+
+    const double smallScale  = 0.85;
+    const double mediumScale = 0.98;
+    const double largeScale  = 0.95;
+    const double tabletScale = 1.30;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -77,27 +95,29 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
           
           // Main content
           SafeArea(
+            bottom: false,
             child: Column(
               children: [
-                const SizedBox(height: 28),
-                _buildHeader(context),
-                const SizedBox(height: 50),
+                SizedBox(height: 10.0 * scale),
+                _buildHeader(context, isTablet, scale),
                 Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      // Clock icon
-                      _buildClockIcon(),
-                      const SizedBox(height: 80),
-                      // Time display
-                      _buildTimeDisplay(),
-                      const SizedBox(height: 48),
-                      // Waveform slider
-                      _buildWaveformSlider(),
-                      const SizedBox(height: 48),
-                      // Continue button
-                      _buildContinueButton(),
-                    ],
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 120.0 * scale),
+                      child: Column(
+                        children: [
+                          SizedBox(height: (isTablet ? 40.0 : 30.0) * scale),
+                          _buildClockIcon(scale),
+                          SizedBox(height: (isTablet ? 40.0 : 30.0) * scale),
+                          _buildTimeDisplay(scale),
+                          SizedBox(height: (isTablet ? 50.0 : 40.0) * scale),
+                          _buildWaveformSlider(scale),
+                          SizedBox(height: (isTablet ? 50.0 : 40.0) * scale),
+                          _buildContinueButton(scale),
+                          SizedBox(height: 20.0 * scale),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -139,61 +159,61 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, bool isTablet, double scale) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 26),
+      padding: EdgeInsets.symmetric(horizontal: (isTablet ? 20.0 : 26.0) * scale),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
-              width: 40,
-              height: 40,
+              width: 40.0 * scale,
+              height: 40.0 * scale,
               alignment: Alignment.center,
               child: Transform.scale(
                 scaleX: -1,
-                child: const CustomArrowIcon(
-                  size: 24,
-                  color: Color(0xFF130F26),
+                child: CustomArrowIcon(
+                  size: 24.0 * scale,
+                  color: const Color(0xFF130F26),
                 ),
               ),
             ),
           ),
           Text(
-            'Add Time',
+            widget.title, // Use actual title
             style: GoogleFonts.lexendDeca(
-              fontSize: 19,
+              fontSize: 19.0 * scale,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF24252C),
             ),
           ),
-          const SizedBox(width: 40), // Spacer for alignment
+          SizedBox(width: 40.0 * scale), // Spacer for alignment
         ],
       ),
     );
   }
 
-  Widget _buildClockIcon() {
+  Widget _buildClockIcon(double scale) {
     return Container(
-      width: 148,
-      height: 148,
+      width: 148.0 * scale,
+      height: 148.0 * scale,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
           color: const Color(0xFFFFD66B),
-          width: 2,
+          width: 2.0 * scale,
         ),
       ),
       child: Container(
-        margin: const EdgeInsets.all(12),
+        margin: EdgeInsets.all(12.0 * scale),
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
           color: Color(0xFF900EBF),
         ),
-        child: const Center(
+        child: Center(
           child: CustomClockIcon(
-            size: 80,
+            size: 80.0 * scale,
             color: Colors.white,
           ),
         ),
@@ -201,7 +221,7 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
     );
   }
 
-  Widget _buildTimeDisplay() {
+  Widget _buildTimeDisplay(double scale) {
     int minutes = _currentSeconds ~/ 60;
     int seconds = _currentSeconds % 60;
     
@@ -213,85 +233,91 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
         Text(
           '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
           style: GoogleFonts.lexend(
-            fontSize: 40,
+            fontSize: 40.0 * scale,
             fontWeight: FontWeight.w600,
             color: const Color(0xFF221F48),
-            height: 17 / 40,
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8.0 * scale),
         Text(
           'mins',
           style: GoogleFonts.roboto(
-            fontSize: 14,
+            fontSize: 14.0 * scale,
             fontWeight: FontWeight.w400,
             color: const Color(0xFF221F48),
-            height: 31 / 14,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildWaveformSlider() {
+  Widget _buildWaveformSlider(double scale) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      child: Column(
-        children: [
-          GestureDetector(
-            onHorizontalDragUpdate: (details) {
-              _updateTime(details.localPosition.dx, 370);
-            },
-            onTapDown: (details) {
-              _updateTime(details.localPosition.dx, 370);
-            },
-            child: SizedBox(
-              width: 370,
-              height: 52,
-              child: CustomPaint(
-                size: const Size(370, 52),
-                painter: _WaveformPainter(progress: _currentSeconds / 3600),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onHorizontalDragUpdate: (details) {
-              _updateTime(details.localPosition.dx, 370);
-            },
-            onTapDown: (details) {
-              _updateTime(details.localPosition.dx, 370);
-            },
-            child: SizedBox(
-              width: 370,
-              height: 17,
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: ((_currentSeconds / 3600) * 370 - 8.5).clamp(0.0, 370.0 - 17.0),
-                    child: CustomPaint(
-                      size: const Size(17, 17),
-                      painter: _TrianglePainter(),
-                    ),
+      padding: EdgeInsets.symmetric(horizontal: 15.0 * scale),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          
+          return Column(
+            children: [
+              GestureDetector(
+                onHorizontalDragUpdate: (details) {
+                  _updateTime(details.localPosition.dx, width);
+                },
+                onTapDown: (details) {
+                  _updateTime(details.localPosition.dx, width);
+                },
+                child: SizedBox(
+                  width: width,
+                  height: 52.0 * scale,
+                  child: CustomPaint(
+                    size: Size(width, 52.0 * scale),
+                    painter: _WaveformPainter(progress: _currentSeconds / 3600, scale: scale),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-        ],
+              SizedBox(height: 12.0 * scale),
+              GestureDetector(
+                onHorizontalDragUpdate: (details) {
+                  _updateTime(details.localPosition.dx, width);
+                },
+                onTapDown: (details) {
+                  _updateTime(details.localPosition.dx, width);
+                },
+                child: SizedBox(
+                  width: width,
+                  height: 17.0 * scale,
+                  child: Stack(
+                    children: [
+                      // Arrow indicator position
+                      Positioned(
+                        left: ((_currentSeconds / 3600) * width - 8.5 * scale).clamp(0.0, width - 17.0 * scale),
+                        child: CustomPaint(
+                          size: Size(17.0 * scale, 17.0 * scale),
+                          painter: _TrianglePainter(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
       ),
     );
   }
 
-  Widget _buildContinueButton() {
+  Widget _buildContinueButton(double scale) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 36),
+      padding: EdgeInsets.symmetric(horizontal: 36.0 * scale),
       child: GradientButton(
         text: 'Continue',
         onPressed: () {
           // Return duration in seconds
           Navigator.pop(context, _currentSeconds);
         },
+        height: 58.0 * scale,
       ),
     );
   }
@@ -299,16 +325,17 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
 
 class _WaveformPainter extends CustomPainter {
   final double progress; // 0.0 to 1.0
+  final double scale;
 
-  _WaveformPainter({required this.progress});
+  _WaveformPainter({required this.progress, required this.scale});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..strokeWidth = 1
+      ..strokeWidth = 1 * scale
       ..strokeCap = StrokeCap.round;
 
-    final spacing = 5.0;
+    final spacing = size.width / 74; // Dynamic spacing based on width
     final totalBars = 74;
     double x = 0;
 
@@ -322,48 +349,48 @@ class _WaveformPainter extends CustomPainter {
       // Determine bar height based on distance from selection with smooth gradients
       double barHeight;
       if (i == selectedBarIndex) {
-        barHeight = 52; // Main selected bar
+        barHeight = 52.0 * scale; // Main selected bar
       } else if (distanceFromSelected == 1) {
-        barHeight = 38; // Immediately adjacent
+        barHeight = 38.0 * scale; // Immediately adjacent
       } else if (distanceFromSelected == 2) {
-        barHeight = 32; // Close to selected
+        barHeight = 32.0 * scale; // Close to selected
       } else if (distanceFromSelected == 3) {
-        barHeight = 28; // Near selected
+        barHeight = 28.0 * scale; // Near selected
       } else if (distanceFromSelected <= 5) {
-        barHeight = 24; // Medium-close
+        barHeight = 24.0 * scale; // Medium-close
       } else if (distanceFromSelected <= 8) {
-        barHeight = 20; // Medium distance
+        barHeight = 20.0 * scale; // Medium distance
       } else if (i % 5 == 0) {
-        barHeight = 22; // Every 5th bar slightly taller
+        barHeight = 22.0 * scale; // Every 5th bar slightly taller
       } else if (i % 10 == 0) {
-        barHeight = 26; // Every 10th bar even taller
+        barHeight = 26.0 * scale; // Every 10th bar even taller
       } else {
-        barHeight = 16; // Default short bars
+        barHeight = 16.0 * scale; // Default short bars
       }
 
       // Determine color based on distance from selection with smooth transitions
       if (i == selectedBarIndex) {
         paint.color = const Color(0xFFFF004A);
-        paint.strokeWidth = 2.5;
+        paint.strokeWidth = 2.5 * scale;
       } else if (distanceFromSelected == 1) {
         paint.color = const Color(0xFFFC1857);
-        paint.strokeWidth = 2;
+        paint.strokeWidth = 2 * scale;
       } else if (distanceFromSelected <= 3) {
         paint.color = const Color(0xFFF95383);
-        paint.strokeWidth = 1.5;
+        paint.strokeWidth = 1.5 * scale;
       } else if (distanceFromSelected <= 6) {
         paint.color = const Color(0xFFFC7EA0);
-        paint.strokeWidth = 1.2;
+        paint.strokeWidth = 1.2 * scale;
       } else {
         paint.color = const Color(0xFFFF96B5);
-        paint.strokeWidth = 1;
+        paint.strokeWidth = 1 * scale;
       }
 
       // Special case: if value is minimum (15s ~= 0 on large scale), don't hide the bar
       if (progress < 0.01 && i == 0) {
          paint.color = const Color(0xFFFF004A);
-         paint.strokeWidth = 2.5;
-         barHeight = 52;
+         paint.strokeWidth = 2.5 * scale;
+         barHeight = 52.0 * scale;
       }
 
       final y1 = (size.height - barHeight) / 2;
@@ -380,7 +407,7 @@ class _WaveformPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _WaveformPainter oldDelegate) => true;
 }
 
 class _TrianglePainter extends CustomPainter {

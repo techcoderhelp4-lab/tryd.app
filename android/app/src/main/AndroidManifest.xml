@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -6,12 +8,15 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
     <application
         android:label="tryd"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -44,6 +49,10 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="tryd_priority_alert_v2" />
+        <meta-data android:name="health_permissions" android:resource="@array/health_permissions" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
@@ -58,11 +67,27 @@
         </intent>
     </queries>
 
-    <!-- Health Connect Permissions -->
+    <!-- Health Connect Permissions (Android 14+) -->
     <uses-permission android:name="android.permission.health.READ_STEPS"/>
+    <uses-permission android:name="android.permission.health.WRITE_STEPS"/>
     <uses-permission android:name="android.permission.health.READ_DISTANCE"/>
+    <uses-permission android:name="android.permission.health.WRITE_DISTANCE"/>
     <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED"/>
+    <uses-permission android:name="android.permission.health.WRITE_TOTAL_CALORIES_BURNED"/>
     <uses-permission android:name="android.permission.health.READ_HEART_RATE"/>
-    <uses-permission android:name="android.permission.health.READ_vO2_MAX"/>
+    <uses-permission android:name="android.permission.health.WRITE_HEART_RATE"/>
+    <uses-permission android:name="android.permission.health.WRITE_WORKOUT"/>
+
+    <!-- Health Connect Permissions (Android 13 and below) -->
+    <uses-permission android:name="androidx.health.permission.Steps.READ" />
+    <uses-permission android:name="androidx.health.permission.Steps.WRITE" />
+    <uses-permission android:name="androidx.health.permission.Distance.READ" />
+    <uses-permission android:name="androidx.health.permission.Distance.WRITE" />
+    <uses-permission android:name="androidx.health.permission.TotalCaloriesBurned.READ" />
+    <uses-permission android:name="androidx.health.permission.TotalCaloriesBurned.WRITE" />
+    <uses-permission android:name="androidx.health.permission.HeartRate.READ" />
+    <uses-permission android:name="androidx.health.permission.HeartRate.WRITE" />
+    <uses-permission android:name="androidx.health.permission.Workout.WRITE" />
+
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
 </manifest>

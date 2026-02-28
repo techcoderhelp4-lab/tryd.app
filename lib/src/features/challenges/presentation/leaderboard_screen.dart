@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
+import '../../../../widgets/skeleton_loading.dart';
+import '../../../../core/utils/responsive_utils.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../activity/presentation/running_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
@@ -13,13 +15,62 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/challenge_repository.dart';
 import '../domain/leaderboard_data.dart';
 
-class LeaderboardScreen extends ConsumerWidget {
+class LeaderboardScreen extends ConsumerStatefulWidget {
   final String challengeId;
   const LeaderboardScreen({super.key, required this.challengeId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LeaderboardScreen> createState() => _LeaderboardScreenState();
+}
+
+class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
+  final ScrollController _scrollController = ScrollController();
+  static const double _rowHeight = 65.0; // Approximate height of each row
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToUser(int rank, int totalItems, double scale) {
+    if (rank <= 1) return;
+    
+    // Calculate approximate offset: 
+    // Header section + active card + table header = roughly 350-400
+    // Each row = _rowHeight * scale
+    final headerOffset = (250.0 + 160.0) * scale;
+    final targetOffset = headerOffset + ((rank - 1) * _rowHeight * scale);
+    
+    _scrollController.animateTo(
+      targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
+  }
+  @override
+  Widget build(BuildContext context) {
+    final challengeId = widget.challengeId;
     final leaderboardAsync = ref.watch(challengeLeaderboardProvider(challengeId));
+
+    final size = MediaQuery.of(context).size;
+    final screenHeight = size.height;
+    final screenWidth = size.width;
+    final isTablet = screenWidth > 600;
+
+    // ── Responsive Scale ──────────────────────────────────
+    const double smallScale  = 0.85;
+    const double mediumScale = 0.98;
+    const double largeScale  = 1.05;
+    const double tabletScale = 1.25;
+
+    final double scale = isTablet
+        ? tabletScale
+        : screenHeight < 680
+            ? smallScale
+            : screenHeight < 850
+                ? mediumScale
+                : largeScale;
     return Scaffold(
       body: Stack(
         children: [
@@ -35,26 +86,52 @@ class LeaderboardScreen extends ConsumerWidget {
               ),
             ),
           ),
-          
+
           SafeArea(
             bottom: false,
             child: Column(
               children: [
-                _buildAppBar(context),
+                _buildAppBar(context, scale),
                 Expanded(
                   child: leaderboardAsync.when(
-                    data: (data) => SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(15, 0, 15, 20),
-                      child: Column(
-                        children: [
-                          _buildActiveChallengeCard(data.challenge),
-                          SizedBox(height: 15.h),
-                          _buildLeaderboardCard(data),
-                          SizedBox(height: 120.h),
-                        ],
+                    data: (data) => Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 15.0 * scale),
+                      child: RefreshIndicator(
+                        color: const Color(0xFF900EBF),
+                        onRefresh: () async {
+                          await ref.read(challengeRepositoryProvider).fetchAndCacheLeaderboard(challengeId, force: true);
+                          ref.invalidate(challengeLeaderboardProvider(challengeId));
+                        },
+                        child: CustomScrollView(
+                          controller: _scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                          slivers: [
+                            SliverToBoxAdapter(
+                              child: Column(
+                                children: [
+                                  _buildActiveChallengeCard(context, data.challenge, scale),
+                                  SizedBox(height: 15.0 * scale),
+                                ],
+                              ),
+                            ),
+                            _buildTableHeader(scale),
+                            SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final participant = data.leaderboard[index];
+                                  return _buildParticipantTableRow(context, participant, scale);
+                                },
+                                childCount: data.leaderboard.length,
+                              ),
+                            ),
+                            SliverToBoxAdapter(
+                              child: SizedBox(height: 260.0 * scale),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    loading: () => const Center(child: CircularProgressIndicator()),
+                    loading: () => LeaderboardSkeletonLoading(scale: scale, isTablet: isTablet),
                     error: (err, stack) => Center(
                       child: Padding(
                         padding: const EdgeInsets.all(40.0),
@@ -76,7 +153,22 @@ class LeaderboardScreen extends ConsumerWidget {
               ],
             ),
           ),
-          
+
+          // Pinned Bottom User Rank - Positioned clearly above bottom nav
+          leaderboardAsync.when(
+            data: (data) => (data.currentUserRank > 5) ? Positioned(
+              left: 15.0 * scale,
+              right: 15.0 * scale,
+              bottom: (137.0 * scale) + MediaQuery.of(context).padding.bottom + 10.0, 
+              child: GestureDetector(
+                onTap: () => _scrollToUser(data.currentUserRank, data.leaderboard.length, scale),
+                child: _buildStickyUserRank(context, data, scale),
+              ),
+            ) : const SizedBox.shrink(),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+
           // Bottom Navigation
           Positioned(
             left: 0,
@@ -89,7 +181,7 @@ class LeaderboardScreen extends ConsumerWidget {
                    Navigator.pop(context);
                    return;
                 }
-                
+
                 Widget? page;
                 switch (index) {
                   case 0: page = const HomeScreen(); break;
@@ -97,7 +189,7 @@ class LeaderboardScreen extends ConsumerWidget {
                   case 2: page = const RewardsScreen(); break;
                   case 3: page = const WorkoutScreen(); break;
                 }
-                
+
                 if (page != null) {
                   Navigator.pushReplacement(
                     context,
@@ -112,9 +204,46 @@ class LeaderboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildStickyUserRank(BuildContext context, LeaderboardData data, double scale) {
+    final me = data.leaderboard.firstWhere(
+      (entry) => entry.isCurrentUser,
+      orElse: () => LeaderboardEntry(
+        rank: data.currentUserRank,
+        user: LeaderboardUserInfo(id: '', name: 'You'),
+        completedKm: data.challenge.userProgress ?? 0,
+        isCurrentUser: true,
+      ),
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.0 * scale),
+        border: Border.all(color: const Color(0xFF2CFC44), width: 2.0 * scale),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: _buildParticipantRow(
+        context: context,
+        rank: '${me.rank}.',
+        name: me.user.name.isEmpty ? 'You' : me.user.name,
+        rankLabel: 'Your Position',
+        km: '${me.completedKm.toStringAsFixed(2)} KM',
+        isYou: true,
+        profilePicture: me.user.profilePicture,
+        scale: scale,
+      ),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context, double scale) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(26, 28, 26, 20),
+      padding: EdgeInsets.fromLTRB(26.0 * scale, 28.0 * scale, 26.0 * scale, 20.0 * scale),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -122,8 +251,8 @@ class LeaderboardScreen extends ConsumerWidget {
             onTap: () => Navigator.pop(context),
             child: SvgPicture.asset(
               'assets/images/back_arrow_icon.svg',
-              width: 24,
-              height: 24,
+              width: 24.0 * scale,
+              height: 24.0 * scale,
               colorFilter: const ColorFilter.mode(
                 Color(0xFF24252C),
                 BlendMode.srcIn,
@@ -135,39 +264,64 @@ class LeaderboardScreen extends ConsumerWidget {
               'Leaderboard',
               textAlign: TextAlign.center,
               style: GoogleFonts.lexendDeca(
-                fontSize: 19,
+                fontSize: 19.0 * scale,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF24252C),
-                height: 24 / 19,
+                height: 1.2,
               ),
             ),
           ),
-          const SizedBox(width: 24), // Spacer for centering
+          SizedBox(width: 24.0 * scale),
         ],
       ),
     );
   }
 
-  Widget _buildActiveChallengeCard(LeaderboardChallengeInfo challenge) {
+  Widget _buildActiveChallengeCard(BuildContext context, LeaderboardChallengeInfo challenge, double scale) {
+    final now = DateTime.now();
+    final hasEnded = challenge.endDate != null && challenge.endDate!.isBefore(now);
+    final isUpcoming = challenge.startDate != null && challenge.startDate!.isAfter(now);
+
+    // Dynamic badge and time text
+    String badgeText;
+    Color badgeColor;
+    String timeText;
+
+    if (hasEnded) {
+      badgeText = 'Challenge Ended';
+      badgeColor = const Color(0xFFFF5252).withValues(alpha: 0.67);
+      timeText = 'Ended ${challenge.endDate != null ? "${challenge.endDate!.day} ${_monthName(challenge.endDate!.month)} ${challenge.endDate!.year}" : ""}';
+    } else if (isUpcoming) {
+      final daysToStart = challenge.startDate!.difference(now).inDays;
+      badgeText = 'Upcoming Challenge';
+      badgeColor = const Color(0xFFFFAA00).withValues(alpha: 0.67);
+      timeText = 'Starts in $daysToStart days';
+    } else {
+      badgeText = 'Active Challenge';
+      badgeColor = const Color(0xFF4FFD5B).withValues(alpha: 0.67);
+      final daysLeft = challenge.endDate != null ? challenge.endDate!.difference(now).inDays.clamp(0, 999) : 0;
+      timeText = '$daysLeft Days Remaining';
+    }
+
     return Container(
       width: double.infinity,
-      height: 146,
+      constraints: BoxConstraints(minHeight: 146.0 * scale),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [Color(0xFF910EBF), Color(0xFFFD3B6E)],
+          colors: [const Color(0xFF910EBF), const Color(0xFFFD3B6E)],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(24.0 * scale),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
+            blurRadius: 20.0 * scale,
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 22, 29, 22),
+        padding: EdgeInsets.fromLTRB(20.0 * scale, 22.0 * scale, 20.0 * scale, 22.0 * scale),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -176,51 +330,53 @@ class LeaderboardScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Active Challenge badge
+                  // Status badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 8.0 * scale, vertical: 4.0 * scale),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4FFD5B).withOpacity(0.67),
-                      borderRadius: BorderRadius.circular(185),
+                      color: badgeColor,
+                      borderRadius: BorderRadius.circular(185.0 * scale),
                     ),
                     child: Text(
-                      'Active Challenge',
+                      badgeText,
                       style: GoogleFonts.poppins(
-                        fontSize: 10,
+                        fontSize: 10.0 * scale,
                         fontWeight: FontWeight.w500,
                         color: Colors.white,
-                        height: 15 / 10,
+                        height: 1.5,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8.0 * scale),
                   // Title
                   Text(
                     challenge.title,
                     style: GoogleFonts.poppins(
-                      fontSize: 18,
+                      fontSize: 18.0 * scale,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
-                      height: 22 / 18,
+                      height: 1.2,
                     ),
                   ),
-                  const Spacer(),
-                  // Days Remaining
+                  SizedBox(height: 16.0 * scale),
+                  // Time info
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.access_time_filled,
                         color: Colors.white,
-                        size: 18,
+                        size: 18.0 * scale,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${challenge.endDate != null ? challenge.endDate!.difference(DateTime.now()).inDays.clamp(0, 999) : 0} Days Remaining',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.white,
-                          height: 21 / 14,
+                      SizedBox(width: 8.0 * scale),
+                      Flexible(
+                        child: Text(
+                          timeText,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14.0 * scale,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white,
+                            height: 1.5,
+                          ),
                         ),
                       ),
                     ],
@@ -228,32 +384,56 @@ class LeaderboardScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12.0 * scale),
             // Circular progress indicator
-            _buildCircularProgress(challenge.userProgress ?? 0.0, challenge.targetKm),
+            _buildCircularProgress(context, challenge.userProgress ?? 0.0, challenge.targetKm, scale),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCircularProgress(double current, double total) {
-    final progress = current / total;
+  String _monthName(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[month - 1];
+  }
+
+  Widget _buildCircularProgress(BuildContext context, double current, double total, double scale) {
+    final progress = total > 0 ? (current / total).clamp(0.0, 1.0) : 0.0;
+
+    // Format current value - use compact format for large values
+    String currentText;
+    if (current >= 1000) {
+      currentText = '${(current / 1000).toStringAsFixed(1)}K';
+    } else if (current >= 100) {
+      currentText = current.toStringAsFixed(0);
+    } else {
+      currentText = current.toStringAsFixed(1);
+    }
+
+    // Format total value
+    String totalText;
+    if (total >= 1000) {
+      totalText = '${(total / 1000).toStringAsFixed(0)}K KM';
+    } else {
+      totalText = '${total.toInt()}KM';
+    }
+
     return Center(
       child: SizedBox(
-        width: 82,
-        height: 82,
+        width: 82.0 * scale,
+        height: 82.0 * scale,
         child: Stack(
           children: [
             // Progress indicator with background stroke
             Transform.rotate(
-              angle: -1.5708, // -90 degrees to start from top (12 o'clock)
+              angle: -1.5708,
               child: SizedBox(
-                width: 82,
-                height: 82,
+                width: 82.0 * scale,
+                height: 82.0 * scale,
                 child: CircularProgressIndicator(
                   value: progress,
-                  strokeWidth: 10,
+                  strokeWidth: 10.0 * scale,
                   strokeCap: StrokeCap.round,
                   backgroundColor: const Color(0xFFEF60A3),
                   valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE8DEFF)),
@@ -266,19 +446,19 @@ class LeaderboardScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    current.toString(),
+                    currentText,
                     style: GoogleFonts.lexendDeca(
-                      fontSize: 14,
+                      fontSize: 11.0 * scale,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                       height: 1,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2.0 * scale),
                   Text(
-                    '${total.toInt()}KM',
+                    totalText,
                     style: GoogleFonts.lexendDeca(
-                      fontSize: 14,
+                      fontSize: 10.0 * scale,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                       height: 1,
@@ -293,229 +473,314 @@ class LeaderboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLeaderboardCard(LeaderboardData data) {
+  Widget _buildLeaderboardHeaderSection(BuildContext context, LeaderboardData data, double scale) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
-          color: const Color(0xFFF5F3F3).withOpacity(0.74),
+          color: const Color(0xFFF5F3F3).withValues(alpha: 0.74),
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 32,
+            blurRadius: 32.0 * scale,
           ),
         ],
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(15.0 * scale),
+          topRight: Radius.circular(15.0 * scale),
+        ),
       ),
-      padding: const EdgeInsets.fromLTRB(18.5, 23, 18.5, 23),
+      padding: EdgeInsets.fromLTRB(18.0 * scale, 23.0 * scale, 18.0 * scale, 15.0 * scale),
       child: Column(
         children: [
-          // Header with Your Rank and participants
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Your Rank',
                 style: GoogleFonts.poppins(
-                  fontSize: 18,
+                  fontSize: 18.0 * scale,
                   fontWeight: FontWeight.w500,
                   color: const Color(0xFF1B2D51),
-                  height: 15 / 18,
+                  height: 1.0,
                 ),
               ),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.people_outline,
-                    size: 15,
-                    color: Color(0xFF1B2D51),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${data.leaderboard.length} participants',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.people_outline,
+                      size: 15.0 * scale,
                       color: const Color(0xFF1B2D51),
-                      height: 15 / 14,
                     ),
-                  ),
-                ],
+                    SizedBox(width: 6.0 * scale),
+                    Flexible(
+                      child: Text(
+                        '${data.leaderboard.length} participants',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14.0 * scale,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF1B2D51),
+                          height: 1.0,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 15),
-          // Your Rank Box
+          SizedBox(height: 15.0 * scale),
           Container(
             width: double.infinity,
-            height: 61,
+            constraints: BoxConstraints(minHeight: 61.0 * scale),
             decoration: BoxDecoration(
               color: const Color(0xFFFFF7ED),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.0 * scale),
             ),
             alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.only(left: 20),
+            padding: EdgeInsets.symmetric(horizontal: 20.0 * scale, vertical: 15.0 * scale),
             child: Text(
               '#${data.currentUserRank}',
               style: GoogleFonts.poppins(
-                fontSize: 31,
+                fontSize: 31.0 * scale,
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFFF83A71),
-                height: 15 / 31,
+                height: 1,
               ),
             ),
           ),
-          const SizedBox(height: 17),
-          // Top Performers Rank
+          SizedBox(height: 17.0 * scale),
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
               'Top Performers Rank',
               style: GoogleFonts.poppins(
-                fontSize: 18,
+                fontSize: 18.0 * scale,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF1B2D51),
-                height: 15 / 18,
+                height: 1.0,
               ),
             ),
           ),
-          const SizedBox(height: 17),
-          // Leaderboard List
-          _buildLeaderboardList(data.leaderboard),
         ],
       ),
     );
   }
 
-  Widget _buildLeaderboardList(List<LeaderboardEntry> participants) {
-    return Column(
-      children: participants.map((participant) {
-        return _buildParticipantRow(
-          rank: '${participant.rank.toString().padLeft(2, '0')}.',
-          name: participant.user.name,
-          rankLabel: participant.rank <= 3 ? 'Rank #${participant.rank}' : '',
-          km: '${participant.completedKm.toStringAsFixed(2)} KM',
-          isYou: participant.isCurrentUser,
-          profilePicture: participant.user.profilePicture,
-        );
-      }).toList(),
+  Widget _buildTableHeader(double scale) {
+    return SliverToBoxAdapter(
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 18.0 * scale, vertical: 12.0 * scale),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            bottom: BorderSide(color: Color(0xFFF5F3F3)),
+          ),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 48.0 * scale,
+              child: Text(
+                'RANK',
+                style: GoogleFonts.lexend(
+                  fontSize: 10.0 * scale,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF8B88B5),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            SizedBox(width: 8.0 * scale),
+            Expanded(
+              child: Text(
+                'USER',
+                style: GoogleFonts.lexend(
+                  fontSize: 10.0 * scale,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF8B88B5),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 90.0 * scale,
+              child: Text(
+                'DISTANCE',
+                textAlign: TextAlign.right,
+                style: GoogleFonts.lexend(
+                  fontSize: 10.0 * scale,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF8B88B5),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildParticipantTableRow(BuildContext context, LeaderboardEntry participant, double scale) {
+    String kmText;
+    if (participant.completedKm >= 1000) {
+      kmText = '${(participant.completedKm / 1000).toStringAsFixed(1)}K KM';
+    } else if (participant.completedKm >= 100) {
+      kmText = '${participant.completedKm.toStringAsFixed(1)} KM';
+    } else {
+      kmText = '${participant.completedKm.toStringAsFixed(2)} KM';
+    }
+
+    return Container(
+      color: Colors.white,
+      child: _buildParticipantRow(
+        context: context,
+        rank: '${participant.rank}.',
+        name: participant.user.name,
+        rankLabel: participant.rank <= 3 ? 'Rank #${participant.rank}' : '',
+        km: kmText,
+        isYou: participant.isCurrentUser,
+        profilePicture: participant.user.profilePicture,
+        scale: scale,
+      ),
     );
   }
 
   Widget _buildParticipantRow({
+    required BuildContext context,
     required String rank,
     required String name,
     required String rankLabel,
     required String km,
     required bool isYou,
+    required double scale,
     String? profilePicture,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 9),
+      margin: isYou ? EdgeInsets.symmetric(vertical: 4.0 * scale) : EdgeInsets.only(bottom: 9.0 * scale),
       padding: isYou
-          ? const EdgeInsets.fromLTRB(10, 11, 13, 12)
-          : const EdgeInsets.only(bottom: 12),
+          ? EdgeInsets.fromLTRB(16.0 * scale, 18.0 * scale, 16.0 * scale, 18.0 * scale)
+          : EdgeInsets.symmetric(horizontal: 18.0 * scale, vertical: 12.0 * scale),
       decoration: BoxDecoration(
-        color: isYou ? const Color(0xFF2CFC44).withOpacity(0.13) : Colors.transparent,
-        border: isYou
-            ? const Border(
-                bottom: BorderSide(
-                  color: Color(0xFF2CFC44),
-                  width: 2,
-                ),
-              )
-            : const Border(
-                bottom: BorderSide(
-                  color: Color(0xFFE7EAF0),
-                  width: 1,
-                ),
-              ),
-        borderRadius: isYou ? BorderRadius.circular(12) : null,
+        color: isYou ? const Color(0xFF2CFC44).withOpacity(0.15) : Colors.transparent,
+        border: Border(
+          bottom: BorderSide(
+            color: isYou ? const Color(0xFF2CFC44) : const Color(0xFFE7EAF0),
+            width: isYou ? 3.0 * scale : 1.0 * scale,
+          ),
+        ),
+        borderRadius: isYou ? BorderRadius.circular(15.0 * scale) : null,
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Left side: rank + profile + name
-          Row(
-            children: [
-              // Rank number
-              SizedBox(
-                width: 26,
-                child: Text(
-                  rank,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF121212).withOpacity(0.5),
-                    height: 16 / 14,
+          // Rank number or Medal
+          SizedBox(
+            width: 48.0 * scale,
+            child: _buildRankIconOrNumber(rank, scale, isYou),
+          ),
+          SizedBox(width: 8.0 * scale),
+          // Profile image
+          ClipOval(
+            child: profilePicture != null && profilePicture.startsWith('http')
+              ? Image.network(
+                  profilePicture,
+                  width: 34.0 * scale,
+                  height: 34.0 * scale,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Image.asset(
+                    'assets/images/profile.png',
+                    width: 34.0 * scale,
+                    height: 34.0 * scale,
+                    fit: BoxFit.cover,
                   ),
+                )
+              : Image.asset(
+                  'assets/images/profile.png',
+                  width: 34.0 * scale,
+                  height: 34.0 * scale,
+                  fit: BoxFit.cover,
                 ),
-              ),
-              const SizedBox(width: 26),
-              // Profile image
-              ClipOval(
-                child: profilePicture != null && profilePicture.startsWith('http')
-                  ? Image.network(
-                      profilePicture,
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Image.asset(
-                        'assets/images/profile.png',
-                        width: 32,
-                        height: 32,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  : Image.asset(
-                      'assets/images/profile.png',
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.cover,
-                    ),
-              ),
-              const SizedBox(width: 12),
-              // Name and rank label
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF121212),
-                      height: 16 / 16,
-                    ),
+          ),
+          SizedBox(width: 12.0 * scale),
+          // Name and rank label
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  name,
+                  style: GoogleFonts.inter(
+                    fontSize: 14.0 * scale,
+                    fontWeight: isYou ? FontWeight.w700 : FontWeight.w600,
+                    color: const Color(0xFF121212),
+                    height: 1.2,
                   ),
-                  if (rankLabel.isNotEmpty)
-                    Text(
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                if (rankLabel.isNotEmpty && !isYou) // Hide redundant rank label for YOU
+                  Padding(
+                    padding: EdgeInsets.only(top: 2.0 * scale),
+                    child: Text(
                       rankLabel,
                       style: GoogleFonts.poppins(
-                        fontSize: 13,
+                        fontSize: 11.0 * scale,
                         fontWeight: FontWeight.w400,
                         color: const Color(0xFF8B88B5).withOpacity(0.7),
-                        height: 20 / 13,
+                        height: 1.2,
                       ),
                     ),
-                ],
-              ),
-            ],
+                  ),
+              ],
+            ),
           ),
-          // Right side: KM
-          Text(
-            km,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF121212).withOpacity(0.5),
-              height: 16 / 14,
-              letterSpacing: -0.5,
+          SizedBox(width: 8.0 * scale),
+          // KM value
+          SizedBox(
+            width: 90.0 * scale,
+            child: Text(
+              km,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.inter(
+                fontSize: 13.0 * scale,
+                fontWeight: isYou ? FontWeight.w800 : FontWeight.w500,
+                color: isYou ? const Color(0xFF121212) : const Color(0xFF121212).withOpacity(0.5),
+                height: 1.2,
+                letterSpacing: -0.5,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRankIconOrNumber(String rankText, double scale, bool isYou) {
+    int? rankNum = int.tryParse(rankText.replaceAll('.', '').trim());
+    
+    if (rankNum == 1) {
+      return Center(child: Text('🥇', style: TextStyle(fontSize: 22.0 * scale)));
+    } else if (rankNum == 2) {
+      return Center(child: Text('🥈', style: TextStyle(fontSize: 22.0 * scale)));
+    } else if (rankNum == 3) {
+      return Center(child: Text('🥉', style: TextStyle(fontSize: 22.0 * scale)));
+    }
+    
+    return Text(
+      rankText,
+      style: GoogleFonts.lexend(
+        fontSize: isYou ? 16.0 * scale : 14.0 * scale,
+        fontWeight: isYou ? FontWeight.w800 : FontWeight.w600,
+        color: const Color(0xFF121212).withOpacity(isYou ? 1.0 : 0.5),
+        height: 1.2,
       ),
     );
   }
