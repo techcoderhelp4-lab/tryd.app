@@ -321,6 +321,11 @@
   "navHome": "Home",
   "navRun": "Run",
   "navWorkout": "Workout",
-  "navClub": "Club"
+  "navClub": "Club",
+  "removePhotoLabel": "Remove Photo",
+  "resumeActivityTitle": "Resume Activity",
+  "resumeActivityMessage": "You have an unfinished run. Would you like to resume it?",
+  "discardButton": "Discard",
+  "resumeButton": "Resume"
 }
 

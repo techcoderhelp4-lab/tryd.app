@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'dart:io';
+import 'dart:convert';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:on_audio_query/on_audio_query.dart';
@@ -76,6 +77,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
   bool _healthCheckAttempted = false; // Prevent auto-init loop
   bool _healthModalShownThisSession = false; // Prevent modal fatigue
   bool _isGpsReady = false; // Add flag for GPS readiness
+  DateTime _lastDistanceUpdate = DateTime.now();
+  double _lastRecordedDistance = 0.0;
+  double _currentAccuracy = 0.0;
   
   // Countdown
   // Countdown
@@ -152,6 +156,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     _initTts();
     _initMusic();
     _fetchInitialLocation();
+    _loadPendingRun();
   }
 
   @override
@@ -281,10 +286,100 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
   }
 
 
+  Future<void> _savePendingRun() async {
+    if (_runningState != RunningState.running && _runningState != RunningState.paused) return;
+    
+    final prefs = await SharedPreferences.getInstance();
+    final data = {
+      'distance': _distance,
+      'seconds': _seconds,
+      'calories': _calories,
+      'steps': _steps,
+      'avgPace': _avgPace,
+      'avgBpm': _avgBpm,
+      'startTime': _runStartTime?.toIso8601String(),
+      'runningState': _runningState.index,
+      'routePoints': _routePoints.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList(),
+    };
+    await prefs.setString('current_run_state', jsonEncode(data));
+    debugPrint("RunningScreen: Saved pending run snapshot");
+  }
 
+  Future<void> _loadPendingRun() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString('current_run_state');
+    if (json == null) return;
 
+    try {
+      final data = jsonDecode(json);
+      final int stateIndex = data['runningState'];
+      final state = RunningState.values[stateIndex];
+      
+      if (!mounted) return;
 
+      // Ask user to resume
+      final resume = await _showResumeDialog();
+      if (resume == true) {
+        setState(() {
+          _distance = data['distance'] ?? 0.0;
+          _seconds = data['seconds'] ?? 0;
+          _calories = data['calories'] ?? 0.0;
+          _steps = data['steps'] ?? 0;
+          _avgPace = data['avgPace'] ?? 0.0;
+          _avgBpm = data['avgBpm'] ?? 0.0;
+          _runStartTime = data['startTime'] != null ? DateTime.parse(data['startTime']) : null;
+          
+          final List<dynamic> points = data['routePoints'] ?? [];
+          _routePoints.clear();
+          for (var p in points) {
+            _routePoints.add(LatLng(p['lat'], p['lng']));
+          }
 
+          if (state == RunningState.paused) {
+            _runningState = RunningState.paused;
+          } else {
+            _runningState = RunningState.running;
+            _startRun(); // This will restart timer and location
+          }
+        });
+        
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _fitMapToRoute();
+        });
+      } else {
+        await _clearPendingRun();
+      }
+    } catch (e) {
+      debugPrint("Error loading pending run: $e");
+      await _clearPendingRun();
+    }
+  }
+
+  Future<bool?> _showResumeDialog() {
+    final dynamic l10n = AppLocalizations.of(context);
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.resumeActivityTitle ?? "Pending Activity"),
+        content: Text(l10n.resumeActivityMessage ?? "You have an unfinished run. Would you like to resume it?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.discardButton ?? "Discard"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF900EBF),
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.resumeButton ?? "Resume"),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _clearPendingRun() async {
     final prefs = await SharedPreferences.getInstance();
@@ -516,13 +611,21 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
       final LocationSettings locationSettings = Platform.isAndroid
         ? AndroidSettings(
             accuracy: LocationAccuracy.bestForNavigation,
-            distanceFilter: 0, // Get every update, we handle filtering
-            intervalDuration: const Duration(seconds: 1),
+            distanceFilter: isLowBattery ? 10 : 0, // Save battery when low
+            intervalDuration: isLowBattery 
+                ? const Duration(seconds: 3) 
+                : const Duration(seconds: 1),
             useMSLAltitude: false,
+            foregroundNotificationConfig: const ForegroundNotificationConfig(
+              notificationText: "Tracking your activity in progress",
+              notificationTitle: "Tryd Running Tracker",
+              enableWakeLock: true,
+              setOngoing: true,
+            ),
           )
         : AppleSettings(
             accuracy: LocationAccuracy.bestForNavigation,
-            distanceFilter: 0,
+            distanceFilter: isLowBattery ? 10 : 0,
             pauseLocationUpdatesAutomatically: false,
             showBackgroundLocationIndicator: true,
           );
@@ -617,23 +720,34 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
             });
           }
 
-          if (_runningState == RunningState.running && _routePoints.length > 1 && isReallyMoving) {
+          if (_runningState == RunningState.running && _routePoints.length > 1) {
               final double dist = _distanceCalc.as(LengthUnit.Meter, _routePoints[_routePoints.length - 2], newLatLng);
               
               // Noise Filter: Jump must be larger than noise floor
               double noiseThreshold = math.max(7.0, position.accuracy * 1.2); 
               
-              if (dist > noiseThreshold) {
-                  // Speed Cap: Human running speed limit
-                  if (avgSpeed < 8.5) { 
-                    if (!_isFirstAfterResume) {
-                      setState(() {
-                        _distance += dist / 1000.0;
-                        _updateStats(newLatLng, currentSpeed);
-                      });
-                    } else {
-                      _isFirstAfterResume = false;
-                    }
+              // Combined Filter: Distance > Noise && Really Moving && Human Speed
+              if (dist > noiseThreshold && avgSpeed > 1.0 && avgSpeed < _maxRunningSpeed) {
+                  // Time Filter (Don't update more than every 2s to stabilize)
+                  if (DateTime.now().difference(_lastDistanceUpdate).inSeconds >= 2) { 
+                      final double deltaKm = dist / 1000.0;
+                      // Only add if displacement is meaningful relative to last point
+                      if (deltaKm > 0.005) {
+                        if (!_isFirstAfterResume) {
+                          setState(() {
+                            _distance += deltaKm;
+                            _lastDistanceUpdate = DateTime.now();
+                            _lastRecordedDistance = _distance;
+                            _updateStats(newLatLng, currentSpeed);
+                          });
+                          // Save periodically (e.g. every 5th point to avoid overhead)
+                          if (_routePoints.length % 5 == 0) {
+                            _savePendingRun();
+                          }
+                        } else {
+                          _isFirstAfterResume = false;
+                        }
+                      }
                   }
               }
           }
@@ -682,17 +796,18 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
           _updateCalories();
         });
         
-        // Every 5s: HR
+        // Every 5s: Calories & Steps & HR
         if (_isHealthConnected && _seconds % 5 == 0) {
-           _fetchHeartRate();
-        }
-        // Every 10s: Calories & Steps
-        if (_isHealthConnected && _seconds % 10 == 0) {
            _fetchHealthData();
         }
 
         // --- Nike Style Live Notification Update ---
         _updateLiveNotification();
+
+        // Save state every 10 seconds as backup
+        if (_seconds % 10 == 0) {
+          _savePendingRun();
+        }
       }
     });
 
@@ -723,7 +838,10 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
       if (mounted) {
         setState(() {
           if (cals > 0) _calories = cals;
-          if (steps > 0) _steps = steps;
+          // Significant change detection for steps
+          if (steps > 0 && (steps - _steps).abs() >= 1) {
+            _steps = steps;
+          }
         });
       }
     } catch (e) {
@@ -797,6 +915,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     // Recalculate pace/calories/points
     _updatePace();
     _updateCalories();
+    _updateSteps();
     _updatePoints();
     
     // Live Notification Pulse
@@ -817,16 +936,26 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     }
   }
 
-  void _updateCalories() {
+   void _updateCalories() {
     // Only estimate if we haven't got real data from Health Connect
     if (_isHealthConnected && _calories > 0) return;
 
     // Strictly distance-based for Running (approx 65 kcal per km)
-    // This prevents "fake" counting while standing still at the start or during pauses
+    // This calculation is standard for running to ensure accurate metabolic estimation.
     if (_distance > 0) {
       _calories = _distance * 65.0; 
     } else {
       _calories = 0.0;
+    }
+  }
+
+  void _updateSteps() {
+    // If health is connected, real data comes from poll, 
+    // but we use estimate as baseline for instant feedback.
+    if (!_isHealthConnected || _steps == 0) {
+      setState(() {
+        _steps = (_distance * 1312).toInt();
+      });
     }
   }
 
@@ -1467,7 +1596,6 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildBackButton(scale, isTablet, isAr),
-                    // GPS indicator hidden
                     const SizedBox.shrink(),
                     Row(
                       children: [
@@ -1517,6 +1645,65 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     ),
    );
 }
+
+  Widget _buildGpsIndicator(double scale, bool isTablet) {
+    if (_runningState == RunningState.countdown) return const SizedBox.shrink();
+
+    Color indicatorColor;
+    String label;
+
+    if (!_isLocationInitialized || _currentAccuracy == 0) {
+      indicatorColor = Colors.grey;
+      label = "Searching...";
+    } else if (_currentAccuracy <= 15.0) {
+      indicatorColor = const Color(0xFF4ADE80); // Success Green
+      label = "GPS High";
+    } else if (_currentAccuracy <= 35.0) {
+      indicatorColor = const Color(0xFFFACC15); // Warning Yellow
+      label = "GPS Med";
+    } else {
+      indicatorColor = const Color(0xFFF87171); // Error Red
+      label = "GPS Low";
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.0 * scale, vertical: 6.0 * scale),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(20.0 * scale),
+        border: Border.all(color: const Color(0xFFF5F3F3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8 * scale,
+            height: 8 * scale,
+            decoration: BoxDecoration(
+              color: indicatorColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          SizedBox(width: 6 * scale),
+          Text(
+            label,
+            style: GoogleFonts.lexend(
+              fontSize: 11.0 * scale,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF24252C),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<String?> _showExitConfirmation() async {
     final l10n = AppLocalizations.of(context)!;

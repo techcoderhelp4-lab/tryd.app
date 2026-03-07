@@ -1525,6 +1525,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Club'**
   String get navClub;
+
+  /// No description provided for @removePhotoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Photo'**
+  String get removePhotoLabel;
+
+  /// No description provided for @resumeActivityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume Activity'**
+  String get resumeActivityTitle;
+
+  /// No description provided for @resumeActivityMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You have an unfinished run. Would you like to resume it?'**
+  String get resumeActivityMessage;
+
+  /// No description provided for @discardButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get discardButton;
+
+  /// No description provided for @resumeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get resumeButton;
 }
 
 class _AppLocalizationsDelegate

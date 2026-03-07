@@ -51,6 +51,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _showAvatar = true;
   double _dragProgress = 0.0;
   bool _isUploading = false;
+  File? _optimisticImage;
+  bool _isRemoving = false;
 
   void _onSheetDrag(double extent) {
     // extent ranges from minChildSize (0.72) to maxChildSize (0.87 in this case)
@@ -69,17 +71,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  Future<void> _pickAndUploadImage() async {
+  Future<void> _pickAndUploadImage(ImageSource source) async {
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
       imageQuality: 70,
     );
 
     if (image == null) return;
+    
+    final imageFile = File(image.path);
 
-    setState(() => _isUploading = true);
-
+    if (mounted) {
+      setState(() {
+        _isUploading = true;
+        _optimisticImage = imageFile;
+      });
+    }
     try {
       await ref.read(userRepositoryProvider).uploadProfilePicture(File(image.path));
       
@@ -94,6 +102,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           l10n.profilePicChanged,
         );
       }
+      
+      // Clear optimistic preview after a short delay to allow provider to settle
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) setState(() => _optimisticImage = null);
+      });
     } catch (e) {
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
@@ -104,6 +117,108 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
+  }
+
+  Future<void> _removeProfilePicture() async {
+    if (mounted) {
+      setState(() {
+        _isUploading = true;
+        _isRemoving = true;
+        _optimisticImage = null; // Forces fallback to asset
+      });
+    }
+    
+    try {
+      await ref.read(userRepositoryProvider).removeProfilePicture();
+      
+      // Invalidate and refresh
+      ref.invalidate(userProfileProvider);
+      await ref.read(userProfileProvider.future);
+      
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        ref.read(realTimeNotificationServiceProvider).showInAppBanner(
+          l10n.profileUpdated,
+          "Profile picture removed successfully",
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to remove photo: $e")),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _isRemoving = false;
+        });
+      }
+    }
+  }
+
+  void _showPhotoOptions(bool hasPhoto) {
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.1 : 1.0;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                l10n.changePicture,
+                style: GoogleFonts.lexend(
+                  fontSize: 18 * fontScale,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF24252C),
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: Color(0xFF900EBF)),
+              title: Text(l10n.takeAPhoto, style: GoogleFonts.lexend(fontSize: 16 * fontScale)),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndUploadImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF900EBF)),
+              title: Text(l10n.chooseFromGallery, style: GoogleFonts.lexend(fontSize: 16 * fontScale)),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndUploadImage(ImageSource.gallery);
+              },
+            ),
+            if (hasPhoto)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: Text(
+                  // Look for localized string or fallback
+                  (l10n as dynamic).removePhotoLabel ?? "Remove Photo", 
+                  style: GoogleFonts.lexend(fontSize: 16 * fontScale, color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _removeProfilePicture();
+                },
+              ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _editName(String currentName) async {
@@ -495,7 +610,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               right: 12.0 * scale,
                               bottom: 12.0 * scale,
                               child: GestureDetector(
-                                onTap: _pickAndUploadImage,
+                                onTap: () => _showPhotoOptions(user.profilePicture != null && user.profilePicture!.isNotEmpty),
                                 child: Container(
                                   padding: EdgeInsets.all(8.0 * scale),
                                   decoration: const BoxDecoration(
@@ -670,39 +785,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _buildAvatar(double size, String? imageUrl) {
     final innerSize = size * 0.85;
-    final borderWidth = size * 0.075;
-    return SizedBox(
+    final borderWidth = size * 0.08;
+    return Container(
       width: size,
       height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white,
-                width: borderWidth,
-              ),
-            ),
-          ),
-          Container(
-            width: innerSize,
-            height: innerSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFCCCCCC),
-              image: DecorationImage(
-                image: imageUrl != null && imageUrl.isNotEmpty
-                    ? NetworkImage(imageUrl)
-                    : const AssetImage('assets/images/profile.png') as ImageProvider,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-        ],
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white,
+          width: borderWidth,
+        ),
+      ),
+      child: ClipOval(
+        child: Container(
+          width: innerSize,
+          height: innerSize,
+          color: const Color(0xFFF3F4F6),
+          child: _isRemoving 
+              ? _buildDefaultAvatar(innerSize)
+              : (_optimisticImage != null)
+                  ? Image.file(
+                      _optimisticImage!,
+                      fit: BoxFit.cover,
+                    )
+                  : (imageUrl != null && imageUrl.isNotEmpty)
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildDefaultAvatar(innerSize),
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                    : null,
+                                strokeWidth: 2,
+                                color: const Color(0xFF900EBF),
+                              ),
+                            );
+                          },
+                        )
+                      : _buildDefaultAvatar(innerSize),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultAvatar(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: Color(0xFFE5E7EB),
+        image: DecorationImage(
+          image: AssetImage('assets/images/profile.png'),
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }

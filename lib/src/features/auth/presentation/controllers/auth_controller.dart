@@ -1,15 +1,17 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/user.dart';
-import 'package:tryd/core/database/local_database.dart';
-import 'package:tryd/core/network/api_client.dart';
-import 'package:tryd/src/features/profile/data/user_repository.dart';
-import 'package:tryd/src/features/challenges/data/challenge_repository.dart';
-import 'package:tryd/src/features/rewards/data/reward_repository.dart';
-import 'package:tryd/src/features/activity/data/activity_repository.dart';
-import 'package:tryd/src/features/notifications/data/notification_repository.dart';
-import 'package:tryd/core/network/sync_service.dart';
-import 'package:flutter/foundation.dart';
+import '../../../../../core/database/local_database.dart';
+import '../../../../../core/network/api_client.dart';
+import '../../../profile/data/user_repository.dart';
+import '../../../challenges/data/challenge_repository.dart';
+import '../../../rewards/data/reward_repository.dart';
+import '../../../activity/data/activity_repository.dart';
+import '../../../notifications/data/notification_repository.dart';
+import '../../../notifications/data/real_time_notification_service.dart';
+import '../../../../../core/network/sync_service.dart';
 
 part 'auth_controller.g.dart';
 
@@ -74,7 +76,7 @@ class AuthController extends _$AuthController {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final authRepo = ref.read(authRepositoryProvider);
-      await authRepo.logout();
+      await authRepo.logout(ref);
       await _onAccountChange();
       return null;
     });
@@ -86,15 +88,22 @@ class AuthController extends _$AuthController {
     try {
       debugPrint('AuthController: Account changed, performing global reset...');
       
-      // 1. Clear Local Database (Cache, activities, etc.)
+      // 1. Disconnect real-time services
+      ref.read(realTimeNotificationServiceProvider).disconnect();
+      
+      // 2. Clear Local Database (SQLite)
       final localDb = ref.read(localDatabaseProvider);
       await localDb.clearAllData();
       
-      // 2. Invalidate API Client
-      // This will cause all providers that depend on it (repositories, etc.) to rebuild
+      // 3. Clear SharedPreferences specific keys
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('workoutHistory');
+      await prefs.remove('activityHistory');
+      await prefs.remove('cached_user_profile');
+      
+      // 4. Invalidate all data providers to force re-fetch
       ref.invalidate(apiClientProvider);
-
-      // 3. Force Invalidate key domain providers to ensure UI reactive update
+      
       ref.invalidate(userProfileProvider);
       ref.invalidate(challengesListProvider);
       ref.invalidate(rewardsListProvider);
@@ -103,7 +112,15 @@ class AuthController extends _$AuthController {
       ref.invalidate(notificationsListProvider);
       ref.invalidate(unreadNotificationCountProvider);
       
-      // 4. Force restart sync service if it's active
+      // Force invalidate families and complex providers
+      ref.invalidate(activitySummaryProvider);
+      ref.invalidate(activityStatsProvider);
+      ref.invalidate(challengeLeaderboardProvider);
+      ref.invalidate(challengeDetailsProvider);
+      ref.invalidate(filteredRewardsProvider);
+      ref.invalidate(workoutHistoryProvider);
+      
+      // 5. Force restart sync service
       ref.invalidate(syncServiceProvider);
       
       debugPrint('AuthController: Global reset completed.');

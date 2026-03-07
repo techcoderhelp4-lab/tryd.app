@@ -28,7 +28,7 @@ class ActivityScreen extends ConsumerStatefulWidget {
 }
 
 class _ActivityScreenState extends ConsumerState<ActivityScreen> {
-  int _selectedIndex = 3; // Workout tab
+  int _selectedIndex = -1; // No tab selected for sub-screens
   String _selectedFilter = 'W';
 
   @override
@@ -135,7 +135,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                               children: [
                                 _buildWeekCard(stats, isTablet, scale, l10n, isRTL, fontScale),
                                 SizedBox(height: 16.0 * scale),
-                                _buildWeeklyChart(stats.dailyStats, isTablet, scale, isRTL),
+                                _buildActivityChart(stats.dailyStats, _selectedFilter, isTablet, scale, isRTL),
                               ],
                             ),
                             loading: () => _buildStatsSkeleton(isTablet, scale),
@@ -227,7 +227,10 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
               currentIndex: _selectedIndex,
               onTap: (index) {
                 if (index == 0) {
-                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HomeScreen()),
+                  );
                   return;
                 }
 
@@ -531,28 +534,80 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  Widget _buildWeeklyChart(List<DailyStat> dailyStats, bool isTablet, double scale, bool isRTL) {
-    final dayLabels = isRTL
-        ? ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س']
-        : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    final List<double> weeklyData = List.filled(7, 0.0);
+  Widget _buildActivityChart(List<DailyStat> dailyStats, String filter, bool isTablet, double scale, bool isRTL) {
+    List<String> labels = [];
+    List<double> data = [];
 
-    for (var stat in dailyStats) {
-      try {
-        final statDate = DateTime.parse(stat.date);
-        final dayIndex = statDate.weekday % 7;
-        if (dayIndex < 7) {
-          // Aggregate distance for same day of week (works for week/month/year)
-          weeklyData[dayIndex] += stat.distance;
+    final now = DateTime.now();
+
+    if (filter == 'W') {
+      labels = isRTL
+          ? ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س']
+          : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+      data = List.filled(7, 0.0);
+      
+      // Fixed Calendar Week: Sunday (0) to Saturday (6)
+      // DateTime.weekday is 1 (Mon) to 7 (Sun)
+      for (var stat in dailyStats) {
+        try {
+          // Robust parsing for various ISO formats
+          final DateTime statDate = DateTime.parse(stat.date);
+          // Sunday should be 0, Mon 1, ..., Sat 6
+          final int dayIndex = statDate.weekday % 7; 
+          
+          if (dayIndex >= 0 && dayIndex < 7) {
+            data[dayIndex] += stat.distance;
+          }
+        } catch (e) {
+          debugPrint("Chart date parse error: $e for ${stat.date}");
         }
-      } catch (e) {
-        debugPrint("Error parsing stat date: ${stat.date}");
+      }
+    } else if (filter == 'M') {
+      // Show only last 6 months dynamically
+      final allLabelsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      final allLabelsAr = ['ينا', 'فبر', 'مار', 'أبر', 'ماي', 'يون', 'يول', 'أغس', 'سبت', 'أكت', 'نوف', 'ديس'];
+      
+      labels = [];
+      data = List.filled(6, 0.0);
+      
+      // Sliding window: 4 months history, 1 current, 1 future month (Total 6)
+      final List<DateTime> monthDates = [];
+      for (int i = 4; i >= -1; i--) {
+        DateTime d = DateTime(now.year, now.month - i, 1);
+        monthDates.add(d);
+        labels.add(isRTL ? allLabelsAr[d.month - 1] : allLabelsEn[d.month - 1]);
+      }
+      
+      for (var stat in dailyStats) {
+        try {
+          final statDate = DateTime.parse(stat.date);
+          for (int i = 0; i < 6; i++) {
+            if (statDate.year == monthDates[i].year && statDate.month == monthDates[i].month) {
+              data[i] += stat.distance;
+              break;
+            }
+          }
+        } catch (_) {}
+      }
+    } else {
+      // Yearly: 2 past years, current year, 2 future years (Total 5)
+      int currentYear = now.year;
+      labels = List.generate(5, (index) => (currentYear - 2 + index).toString());
+      data = List.filled(5, 0.0);
+      for (var stat in dailyStats) {
+        try {
+          final statDate = DateTime.parse(stat.date);
+          int yearIndex = statDate.year - (currentYear - 2);
+          if (yearIndex >= 0 && yearIndex < 5) {
+            data[yearIndex] += stat.distance;
+          }
+        } catch (_) {}
       }
     }
 
-    // Calculate max distance from aggregated data for correct scaling
+    // Calculate max distance for scaling
     double maxDistance = 5.0;
-    for (var dist in weeklyData) {
+    for (var dist in data) {
       if (dist > maxDistance) {
         maxDistance = dist;
       }
@@ -600,12 +655,17 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: List.generate(dayLabels.length, (index) {
-                            final dist = weeklyData[index];
-                            final heightFactor = (dist / maxDistance).clamp(0.0, 1.0);
+                          children: List.generate(labels.length, (index) {
+                            final dist = data[index];
+                            final heightFactor = (dist / maxDistance).clamp(0.01, 1.0);
                             
+                            double barWidth = 
+                                filter == 'W' ? 16.0 :
+                                filter == 'M' ? 12.0 :
+                                20.0;
+
                             return SizedBox(
-                              width: 16.0 * scale,
+                              width: barWidth * scale,
                               child: Stack(
                                 alignment: Alignment.bottomCenter,
                                 children: [
@@ -632,13 +692,23 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                 // X-axis labels
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(dayLabels.length, (index) {
+                  children: List.generate(labels.length, (index) {
+                     double labelWidth = 
+                         filter == 'W' ? 22.0 :
+                         filter == 'M' ? 28.0 :
+                         40.0;
                      return SizedBox(
-                       width: 16.0 * scale,
+                       width: labelWidth * scale,
                        child: Text(
-                         dayLabels[index],
-                         style: _chartLabelStyle(isTablet, scale),
+                         labels[index],
+                         style: _chartLabelStyle(isTablet, scale).copyWith(
+                           fontSize: (filter == 'M' || filter == 'Y' ? 11.0 : 12.0) * scale,
+                           height: 1.2,
+                         ),
                          textAlign: TextAlign.center,
+                         maxLines: 1,
+                         softWrap: false,
+                         overflow: TextOverflow.visible,
                        ),
                      );
                   }),
@@ -663,8 +733,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                 ),
               ),
               // Spacer to align with chart area
-              SizedBox(height: 8.0 * scale),
-              Text('', style: _chartLabelStyle(isTablet, scale)),
+              SizedBox(height: 14.0 * scale),
             ],
           ),
         ],

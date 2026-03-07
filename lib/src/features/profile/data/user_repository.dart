@@ -21,13 +21,16 @@ class UserRepository {
   Future<User> getProfile() async {
     try {
       final response = await _dio.get(ApiConstants.profile);
-      final user = User.fromJson(response.data);
+      
+      final userData = _extractUser(response.data);
+      final user = User.fromJson(userData);
 
       // Cache the profile for instant loading next time
-      _cacheUserProfile(response.data);
+      _cacheUserProfile(userData);
 
       return user;
     } catch (e) {
+      debugPrint('UserRepository: Error fetching profile: $e');
       // Try loading from cache first
       final cached = await _getCachedUserProfile();
       if (cached != null) return cached;
@@ -46,8 +49,13 @@ class UserRepository {
 
   Future<void> _cacheUserProfile(dynamic data) async {
     try {
+      if (data == null) return;
+      debugPrint('UserRepository: Caching user profile...');
       await _localDb.setKV(_kUserCacheKey, jsonEncode(data));
-    } catch (_) {}
+      debugPrint('UserRepository: Cache successful.');
+    } catch (e) {
+      debugPrint('UserRepository: Cache error: $e');
+    }
   }
 
   Future<User?> _getCachedUserProfile() async {
@@ -66,15 +74,31 @@ class UserRepository {
         ApiConstants.updateProfile,
         data: data,
       );
-      final user = User.fromJson(response.data['user']);
+      
+      final userData = _extractUser(response.data);
+      final user = User.fromJson(userData);
 
       // Cache the updated profile immediately
-      _cacheUserProfile(response.data['user']);
+      _cacheUserProfile(userData);
 
       return user;
     } catch (e) {
+      debugPrint('UserRepository: updateProfile error: $e');
       rethrow;
     }
+  }
+
+  dynamic _extractUser(dynamic responseData) {
+    if (responseData is! Map) return responseData;
+    
+    // Check common wrappers: 'user', 'data', or nested 'data' -> 'user'
+    if (responseData.containsKey('user')) return responseData['user'];
+    if (responseData.containsKey('data')) {
+      final data = responseData['data'];
+      if (data is Map && data.containsKey('user')) return data['user'];
+      return data;
+    }
+    return responseData;
   }
 
   Future<User> uploadProfilePicture(File file) async {
@@ -104,15 +128,35 @@ class UserRepository {
       }
 
       // Get the updated user from response and cache it
-      final userData = response.data['user'];
-      debugPrint('User data: $userData');
+      final userData = _extractUser(response.data);
+      debugPrint('User data extracted: $userData');
 
       final user = User.fromJson(userData);
       _cacheUserProfile(userData);
 
       return user;
     } catch (e) {
-      debugPrint('Upload error: $e');
+      debugPrint('UserRepository: uploadProfilePicture error: $e');
+      rethrow;
+    }
+  }
+
+  Future<User> removeProfilePicture() async {
+    try {
+      final response = await _dio.put(
+        ApiConstants.updateProfile,
+        data: {'profilePicture': ""}, // Empty string often triggers removal logic better than null
+      );
+      
+      final userData = _extractUser(response.data);
+      final user = User.fromJson(userData);
+      
+      // Update cache
+      _cacheUserProfile(userData);
+      
+      return user;
+    } catch (e) {
+      debugPrint('UserRepository: removeProfilePicture error: $e');
       rethrow;
     }
   }

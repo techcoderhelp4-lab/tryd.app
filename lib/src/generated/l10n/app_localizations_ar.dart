@@ -758,4 +758,20 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get navClub => 'نادي';
+
+  @override
+  String get removePhotoLabel => 'إزالة الصورة';
+
+  @override
+  String get resumeActivityTitle => 'استئناف النشاط';
+
+  @override
+  String get resumeActivityMessage =>
+      'لديك جري غير مكتمل. هل ترغب في استئنافه؟';
+
+  @override
+  String get discardButton => 'تجاهل';
+
+  @override
+  String get resumeButton => 'استئناف';
 }

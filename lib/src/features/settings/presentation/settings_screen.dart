@@ -9,6 +9,7 @@ import '../../../../core/network/api_constants.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/presentation/auth_screen.dart';
 import '../../notifications/data/real_time_notification_service.dart';
+import '../../auth/presentation/controllers/auth_controller.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
 import '../../../../main.dart' show localeProvider;
 
@@ -244,7 +245,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       final dio = ref.read(apiClientProvider);
       await dio.delete(ApiConstants.deleteAccount);
-      await ref.read(authRepositoryProvider).logout();
+      await ref.read(authControllerProvider.notifier).logout();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const AuthScreen()),
@@ -263,7 +264,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _handleLogout() async {
-    await ref.read(authRepositoryProvider).logout();
+    await ref.read(authControllerProvider.notifier).logout();
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const AuthScreen()),

@@ -342,15 +342,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Container(
               width: avatarSize,
               height: avatarSize,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFCCCCCC),
-                image: DecorationImage(
-                  image: user.profilePicture != null && user.profilePicture!.isNotEmpty
-                      ? NetworkImage(user.profilePicture!)
-                      : const AssetImage('assets/images/profile.png') as ImageProvider,
-                  fit: BoxFit.cover,
-                ),
+                color: Color(0xFFE5E7EB),
+              ),
+              child: ClipOval(
+                child: (user.profilePicture != null && user.profilePicture!.isNotEmpty)
+                    ? Image.network(
+                        user.profilePicture!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Image.asset(
+                          'assets/images/profile.png',
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Image.asset(
+                        'assets/images/profile.png',
+                        fit: BoxFit.cover,
+                      ),
               ),
             ),
           ),
@@ -521,61 +530,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final borderRadius = (isTablet ? 14.0 : 16.0) * scale;
     final horizontalPadding = (isTablet ? 12.0 : 14.0) * scale;
 
-    return Container(
-      constraints: BoxConstraints(minHeight: cardHeight),
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: (isTablet ? 8.0 : 11.0) * scale),
-      child: Row(
-        children: [
-          Container(
-            width: iconContainerSize,
-            height: iconContainerSize,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFD66B),
-              borderRadius: BorderRadius.circular(borderRadius),
-            ),
-            child: Center(
-              child: SvgPicture.asset(
-                'assets/images/crown_icon.svg',
-                width: (isTablet ? 20.0 : 25.0) * scale,
-                height: (isTablet ? 18.0 : 22.0) * scale,
-                colorFilter: const ColorFilter.mode(
-                  Colors.white,
-                  BlendMode.srcIn,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RewardsScreen()),
+        );
+      },
+      child: Container(
+        constraints: BoxConstraints(minHeight: cardHeight),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: (isTablet ? 8.0 : 11.0) * scale),
+        child: Row(
+          children: [
+            Container(
+              width: iconContainerSize,
+              height: iconContainerSize,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD66B),
+                borderRadius: BorderRadius.circular(borderRadius),
+              ),
+              child: Center(
+                child: SvgPicture.asset(
+                  'assets/images/crown_icon.svg',
+                  width: (isTablet ? 20.0 : 25.0) * scale,
+                  height: (isTablet ? 18.0 : 22.0) * scale,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             ),
-          ),
-          SizedBox(width: (isTablet ? 12.0 : 14.0) * scale),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    points.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
-                    style: GoogleFonts.poppins(
-                      fontSize: 24.0 * scale * fontScale,
-                      fontWeight: FontWeight.w600,
+            SizedBox(width: (isTablet ? 12.0 : 14.0) * scale),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      points.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
+                      style: GoogleFonts.poppins(
+                        fontSize: 24.0 * scale * fontScale,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF221F48),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  SizedBox(height: (isTablet ? 1.0 : 4.0) * scale),
+                  Text(
+                    l10n.availablePointsLabel,
+                    style: GoogleFonts.lexendDeca(
+                      fontSize: 14.0 * scale * fontScale,
+                      fontWeight: FontWeight.w400,
                       color: const Color(0xFF221F48),
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                SizedBox(height: (isTablet ? 1.0 : 4.0) * scale),
-                Text(
-                  l10n.availablePointsLabel,
-                  style: GoogleFonts.lexendDeca(
-                    fontSize: 14.0 * scale * fontScale,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF221F48),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

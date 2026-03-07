@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dto/auth_response.dart';
 import '../../../../core/network/api_constants.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/database/local_database.dart';
 
 part 'auth_repository.g.dart';
 
@@ -64,16 +66,29 @@ class AuthRepository {
     }
   }
 
-  Future<void> logout() async {
+  Future<void> logout(Ref ref) async {
     try {
       await _dio.post(ApiConstants.logout);
     } catch (e) {
       // Ignore
     } finally {
+      // 1. Clear Local SQLite Database (Profile, Challenges, Activity, Sync Queue)
+      try {
+        await ref.read(localDatabaseProvider).clearAllData();
+      } catch (e) {
+        // Ignore DB clear errors during logout
+      }
+
+      // 2. Clear SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('auth_token');
       await prefs.remove('workoutHistory');
       await prefs.remove('activityHistory');
+      await prefs.remove('selected_language_code');
+      await prefs.remove('cached_user_profile');
+      
+      // 3. Invalidate all cached providers
+      ref.invalidate(apiClientProvider);
     }
   }
   Future<bool> checkUserExists({String? phoneNumber, String? email}) async {

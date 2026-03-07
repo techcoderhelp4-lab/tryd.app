@@ -763,4 +763,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get navClub => 'Club';
+
+  @override
+  String get removePhotoLabel => 'Remove Photo';
+
+  @override
+  String get resumeActivityTitle => 'Resume Activity';
+
+  @override
+  String get resumeActivityMessage =>
+      'You have an unfinished run. Would you like to resume it?';
+
+  @override
+  String get discardButton => 'Discard';
+
+  @override
+  String get resumeButton => 'Resume';
 }

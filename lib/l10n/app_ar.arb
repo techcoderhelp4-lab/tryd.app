@@ -237,5 +237,10 @@
   "navHome": "الرئيسية",
   "navRun": "جري",
   "navWorkout": "تمرين",
-  "navClub": "نادي"
+  "navClub": "نادي",
+  "removePhotoLabel": "إزالة الصورة",
+  "resumeActivityTitle": "استئناف النشاط",
+  "resumeActivityMessage": "لديك جري غير مكتمل. هل ترغب في استئنافه؟",
+  "discardButton": "تجاهل",
+  "resumeButton": "استئناف"
 }

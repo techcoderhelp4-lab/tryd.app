@@ -23,7 +23,7 @@ class HistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
-  int _selectedIndex = 3;
+  int _selectedIndex = -1;
 
   @override
   Widget build(BuildContext context) {
@@ -104,8 +104,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             child: CustomBottomNavigation(
               currentIndex: _selectedIndex,
               onTap: (index) {
-                if (index == 3) {
-                  Navigator.pop(context);
+                if (index == 0) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HomeScreen()),
+                  );
                   return;
                 }
 

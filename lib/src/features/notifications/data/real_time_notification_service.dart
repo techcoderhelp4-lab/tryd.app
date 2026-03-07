@@ -229,12 +229,21 @@ class RealTimeNotificationService {
     _ref.invalidate(unreadNotificationCountProvider);
     _ref.invalidate(notificationsListProvider);
 
-    // Refresh rewards data on redemption status change
+    // Refresh data based on notification type or title
     final type = data is Map ? data['type'] : null;
-    if (type == 'redemption_approved' || type == 'redemption_rejected') {
-      _ref.invalidate(myRedemptionsProvider);
-      _ref.invalidate(rewardsListProvider);
-      _ref.invalidate(userProfileProvider);
+    final title = notification.title.toLowerCase();
+
+    if (type == 'redemption_approved' || 
+        type == 'redemption_rejected' || 
+        type == 'profile_updated' ||
+        title.contains('profile updated')) {
+      
+      Timer(const Duration(milliseconds: 200), () {
+        debugPrint('NotificationService: Invalidating profile and rewards providers...');
+        _ref.invalidate(myRedemptionsProvider);
+        _ref.invalidate(rewardsListProvider);
+        _ref.invalidate(userProfileProvider);
+      });
     }
   }
 
