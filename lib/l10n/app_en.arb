@@ -1,0 +1,326 @@
+{
+  "@@locale": "en",
+  "appTitle": "TRYD",
+  "@appTitle": {
+    "description": "Title of the application"
+  },
+  "loginTitle": "Enter your email address to get started.",
+  "loginSubtitle": "Sign in or join to reach your peak performance today",
+  "emailPlaceholder": "example@mail.com",
+  "continueButton": "Continue",
+  "emailLabel": "Email Address",
+  "checking": "Checking...",
+  "sendingOtp": "Sending OTP...",
+  "verifyTitle": "Enter verification code to login",
+  "verifySubtitle": "We have sent the OTP to {email}",
+  "@verifySubtitle": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verifyButton": "Verify OTP",
+  "verifying": "Verifying...",
+  "resendText": "If you didn't receive a code!",
+  "resendButton": "Resend",
+  "sending": "Sending...",
+  "signupTitle": "Complete your profile",
+  "fullNameLabel": "Full Name",
+  "fullNamePlaceholder": "Enter full name",
+  "phoneNumberLabel": "Phone Number",
+  "phoneNumberPlaceholder": "1234 5678",
+  "verificationCodeLabel": "Verification Code",
+  "codeSentTo": "Code sent to ",
+  "didntReceiveCode": "Didn't receive code? ",
+  "resendCode": "Resend code",
+  "changeEmail": "Change Email",
+  "completeSignup": "Complete Signup",
+  "signingUp": "Signing up...",
+  "enterCompleteOtp": "Please enter complete OTP",
+  "invalidPhone": "Please enter a valid phone number",
+  "signupFailed": "Verification or Signup failed. Try again.",
+  "otpResentSuccess": "OTP Resent",
+  "otpResentSubtitle": "A new verification code has been sent to your email.",
+  "otpResentFailed": "Failed to resend OTP",
+  "verificationFailed": "Verification failed. Check OTP.",
+  "invalidEmail": "Please enter a valid email address",
+  "somethingWentWrong": "Something went wrong. Try again.",
+  "loginLabel": "Log In",
+  "helloGreeting": "Hello!",
+  "availablePointsLabel": "Your Available Points",
+  "currentMonthLabel": "Current Month",
+  "stepsCountLabel": "Steps Count",
+  "durationsLabel": "Durations",
+  "minsSuffix": "mins",
+  "burnedCaloriesLabel": "Burned Calories",
+  "averageBpmLabel": "Average BPM",
+  "activityLoadError": "Could not load activity details",
+  "kmSuffix": "km",
+  "logoutLabel": "Logout",
+  "notificationsTitle": "Notifications",
+  "noNotifications": "No notifications yet",
+  "markAllAsRead": "Mark all as read",
+  "justNow": "Just now",
+  "minutesAgo": "{minutes}m ago",
+  "@minutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "hoursAgo": "{hours}h ago",
+  "@hoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "daysAgo": "{days}d ago",
+  "@daysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "profileTitle": "Profile",
+  "myRewards": "My Rewards",
+  "activityLabel": "Activity",
+  "myWorkouts": "My Workouts",
+  "settingsLabel": "Settings",
+  "editNameTitle": "Edit Name",
+  "profileUpdated": "Profile Updated!",
+  "profilePicChanged": "Your profile picture has been successfully changed.",
+  "nameUpdated": "Name Updated!",
+  "nameChangedSuccess": "Your display name has been changed to {name}.",
+  "@nameChangedSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToUpdateName": "Failed to update name: {error}",
+  "@failedToUpdateName": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToUploadImage": "Failed to upload image: {error}",
+  "@failedToUploadImage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cancelButton": "Cancel",
+  "saveButton": "Save",
+  "retryButton": "Retry",
+  "loadProfileError": "Something went wrong",
+  "freePlan": "Free Plan",
+  "freePlanSubtitle": "Basic tracking & community access",
+  "settingsTitle": "Settings",
+  "notificationsSection": "Notifications",
+  "pushNotifications": "Push Notifications",
+  "inAppNotifications": "In-App Notifications",
+  "aboutSection": "About",
+  "appVersionLabel": "App Version",
+  "logoutButton": "Log Out",
+  "passwordChanged": "Password Changed",
+  "passwordUpdatedSuccess": "Your password has been updated successfully.",
+  "failedToUpdatePreference": "Failed to update preference",
+  "deleteAccountTitle": "Delete Account?",
+  "deleteAccountWarning": "This action is permanent and cannot be undone. All your data will be lost.",
+  "deleteAccountButton": "Delete Account",
+  "changePasswordTitle": "Change Password",
+  "currentPasswordLabel": "Current Password",
+  "newPasswordLabel": "New Password",
+  "confirmPasswordLabel": "Confirm Password",
+  "passwordsDoNotMatch": "Passwords do not match",
+  "passwordLengthError": "Password must be at least 6 characters",
+  "startRun": "START",
+  "distanceLabel": "DISTANCE",
+  "durationLabel": "DURATION",
+  "caloriesLabel": "EST. CALS",
+  "currentPaceLabel": "CURRENT PACE",
+  "avgPaceLabel": "AVERAGE PACE",
+  "heartRateLabel": "HEART RATE",
+  "endRunTitle": "End Run?",
+  "endRunMessage": "Save your progress and exit, or continue your run?",
+  "saveAndExit": "Save & Exit",
+  "keepRunning": "Keep Running",
+  "healthConnectTitle": "Health Connect Required",
+  "healthUpdateTitle": "Update Required",
+  "healthConnectMessage": "To track your steps and heart rate accurately, you need to install the Google Health Connect app.",
+  "healthUpdateMessage": "Your Google Health Connect app needs an update to sync workout data properly.",
+  "installUpdate": "Install / Update",
+  "appleHealthTitle": "Apple Health Access",
+  "appleHealthMessage": "Tryd needs access to Apple Health to track your steps, distance, and heart rate during runs.\n\nPlease go to:",
+  "appleHealthPath": "Settings → Health → Data Access → Tryd",
+  "appleHealthTurnOnMessage": "Turn on all categories to get the best experience.",
+  "openSettings": "Open Settings",
+  "go": "Go",
+  "runCompleteAmazing": "Run complete, Amazing effort",
+  "runCompleteGreat": "Run complete, Great job",
+  "runCompleteWellDone": "Run complete, Well done",
+  "paused": "Paused",
+  "letsGo": "Let's go",
+  "shareButton": "Share",
+  "stopButton": "Stop",
+  "later": "Later",
+  "workoutsTitle": "Workouts",
+  "workLabel": "Work",
+  "restLabel": "Rest",
+  "exercisesLabel": "Exercises",
+  "roundsLabel": "Rounds",
+  "repsLabel": "Reps",
+  "exerciseProgress": "Exercise {current} of {total}",
+  "@exerciseProgress": {
+    "placeholders": {
+      "current": { "type": "String" },
+      "total": { "type": "String" }
+    }
+  },
+  "roundProgress": "Round {current} of {total}",
+  "@roundProgress": {
+    "placeholders": {
+      "current": { "type": "String" },
+      "total": { "type": "String" }
+    }
+  },
+  "holdToPause": "Hold to Pause",
+  "holdToResume": "Hold to Resume",
+  "resetWorkout": "Reset Workout",
+  "endWorkoutTitle": "End Workout?",
+  "endWorkoutMessage": "Are you sure you want to end this workout?",
+  "endButton": "End",
+  "workoutComplete": "Workout Complete!",
+  "workoutCompleteMessage": "Great job! You completed all exercises and rounds.",
+  "doneButton": "Done",
+  "skipRest": "Skip Rest",
+  "unitKm": "km",
+  "unitMinKm": "min/km",
+  "unitBpm": "bpm",
+  "historyTitle": "History",
+  "noWorkoutsYet": "No workouts yet",
+  "todayLabel": "Today",
+  "yesterdayLabel": "Yesterday",
+  "exLabel": "Ex",
+  "challengesTitle": "Challenges",
+  "challengesSubtitle": "Join Challenge and surprise points waiting for you once you finish the challenge.",
+  "myChallengesTab": "My Challenges",
+  "joinAChallengeTab": "Join a Challenge",
+  "noActiveChallenges": "No active challenges.",
+  "previousChallenges": "Previous Challenges",
+  "noAvailableChallenges": "No available challenges to join.",
+  "activeChallengesBadge": "Active Challenge",
+  "upcomingChallengeBadge": "Upcoming Challenge",
+  "challengeEndedBadge": "Challenge Ended",
+  "kmLabel": "KM",
+  "myChallengeTitle": "My Challenge",
+  "unlockRewards": "Unlock Rewards",
+  "totalDistance": "Total Distance",
+  "participantsLabel": "Participants",
+  "leaderboardTitle": "Leaderboard",
+  "goToChallenge": "Go to Challenge",
+  "challengeEndedButton": "Challenge Ended",
+  "joinChallenge": "Join Challenge",
+  "challengeJoinedTitle": "Challenge Joined!",
+  "errorLoadingChallenge": "Error loading challenge",
+  "challengeDetailTitle": "Challenge Detail",
+  "rankHeaderLabel": "RANK",
+  "userHeaderLabel": "USER",
+  "distanceHeaderLabel": "DISTANCE",
+  "yourRankLabel": "Your Rank",
+  "topPerformersLabel": "Top Performers Rank",
+  "yourPositionLabel": "Your Position",
+  "activityTitle": "Activity",
+  "thisWeek": "This Week",
+  "thisMonth": "This Month",
+  "thisYear": "This Year",
+  "allActivitiesLabel": "All Activities",
+  "kilometersLabel": "Kilometers",
+  "countLabel": "Count",
+  "timeLabel": "Time",
+  "avgPaceShort": "Avg pace",
+  "recentActivities": "Recent Activities",
+  "noRecentActivities": "No recent activities",
+  "filterWeekLabel": "W",
+  "filterMonthLabel": "M",
+  "filterYearLabel": "Y",
+  "filterAllLabel": "All",
+  "rewardsTitle": "Rewards",
+  "availableRewardsTab": "Available Rewards",
+  "myRedemptionsTab": "My Redemptions",
+  "categoryAll": "All",
+  "categoryCoffee": "Coffee",
+  "categoryShop": "Shop",
+  "categoryFood": "Food",
+  "categoryGym": "Gym",
+  "categoryBooks": "Books",
+  "noRewardsAvailable": "No rewards available",
+  "noRedemptionsYet": "No redemptions yet",
+  "manualApprovalBadge": "Manual Approval",
+  "claimedLabel": "Claimed",
+  "pendingLabel": "Pending",
+  "redeemButton": "Redeem",
+  "pointsLabel": "points",
+  "ptsSuffix": "pts",
+  "requestedOnDate": "Requested on {date}",
+  "@requestedOnDate": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "redeemedOnDate": "Redeemed on {date}",
+  "@redeemedOnDate": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "refundedLabel": "Refunded",
+  "rejectedWithNote": "Rejected: {note}",
+  "@rejectedWithNote": {
+    "placeholders": {
+      "note": { "type": "String" }
+    }
+  },
+  "requestRejectedDefault": "Your request was rejected. Points have been refunded to your account.",
+  "requestPendingMessage": "Your request is being reviewed. You'll be notified once approved.",
+  "yourCouponCode": "Your Coupon Code",
+  "copyButton": "Copy",
+  "confirmRedemptionTitle": "Confirm Redemption",
+  "pointsRequired": "Points Required",
+  "currentBalance": "Current Balance",
+  "afterRedemption": "After Redemption",
+  "confirmRedeemButton": "Confirm Redeem",
+  "codeCopiedTitle": "Code Copied!",
+  "codeCopiedMessage": "Coupon code copied to clipboard.",
+  "rewardRedeemedTitle": "Reward Redeemed!",
+  "rewardRedeemedMessage": "{title} has been added to your redemptions.",
+  "@rewardRedeemedMessage": {
+    "placeholders": {
+      "title": { "type": "String" }
+    }
+  },
+  "chooseFromGallery": "Choose from Gallery",
+  "takeAPhoto": "Take a Photo",
+  "uploadImage": "Upload Image",
+  "changePicture": "Change Picture",
+  "totalTimeLabel": "Total Time",
+  "distanceShort": "Distance",
+  "startHeadline": "Every step brings you closer to your goals and greater rewards.",
+  "startSubtitle": "This productive tool is designed to help you better manage your task project-wise conveniently!",
+  "getStarted": "Get Started",
+  "navHome": "Home",
+  "navRun": "Run",
+  "navWorkout": "Workout",
+  "navClub": "Club"
+}
+

@@ -8,7 +8,6 @@ import '../../../../widgets/custom_work_icon.dart';
 import '../../../../widgets/custom_refresh_icon.dart';
 import '../../../../widgets/custom_exercises_icon.dart';
 import '../../../../widgets/custom_rounds_icon.dart';
-import '../../../../widgets/gradient_button.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
 import '../data/activity_repository.dart';
 import '../domain/workout.dart';
@@ -19,10 +18,11 @@ import 'history_screen.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
 import 'hold_progress_button.dart';
-import 'running_screen.dart';
+import 'running_screen.dart' hide Container;
 import '../../club/presentation/club_screen.dart';
 import '../../challenges/data/challenge_repository.dart';
 import '../../notifications/data/real_time_notification_service.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
 
 class WorkoutScreen extends ConsumerStatefulWidget {
   const WorkoutScreen({super.key});
@@ -98,39 +98,19 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
 
   void _stopWorkout() {
     HapticFeedback.mediumImpact();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('End Workout?', style: GoogleFonts.lexend(fontWeight: FontWeight.w600)),
-        content: Text('Are you sure you want to end this workout?', style: GoogleFonts.lexend()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: GoogleFonts.lexend(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ref.read(workoutControllerProvider.notifier).reset();
-              _disableWakelock();
-            },
-            child: Text('End', style: GoogleFonts.lexend(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+    _showExitConfirmation();
   }
 
   Future<void> _saveWorkoutCompletion(WorkoutState state) async {
     if (_isWorkoutSaved) return;
     _isWorkoutSaved = true;
 
-    final duration = state.elapsedSeconds > 0 
-        ? state.elapsedSeconds 
+    final duration = state.elapsedSeconds > 0
+        ? state.elapsedSeconds
         : (state.workDuration * state.totalRounds + state.restDuration * state.totalRounds) * state.totalExercises;
-        
+
     final estimatedCalories = duration * 0.15;
-    
+
     int completedRoundsInCurrent = state.currentRound - 1;
     if (state.phase == WorkoutPhase.rest || state.status == WorkoutStatus.finished) {
       completedRoundsInCurrent++;
@@ -143,7 +123,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
 
     // Total rounds completed across all exercises
     // We cap current rounds at totalRounds to avoid overflow logic
-    int totalRoundsCompleted = ((state.currentExercise - 1) * state.totalRounds) + 
+    int totalRoundsCompleted = ((state.currentExercise - 1) * state.totalRounds) +
         (completedRoundsInCurrent > state.totalRounds ? state.totalRounds : completedRoundsInCurrent);
 
     final workout = Workout(
@@ -159,7 +139,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
     );
 
     await ref.read(workoutHistoryProvider.notifier).addWorkout(workout);
-    
+
     // Fire-and-forget: don't block workout save for challenge progress
     ref.read(challengeRepositoryProvider).updateAllChallengesProgress(
       distanceKm: 0,
@@ -172,7 +152,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
     if (!_isWorkoutSaved) {
       _saveWorkoutCompletion(state);
     }
-    
+
+    final l10n = AppLocalizations.of(context)!;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -190,7 +172,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
               child: Column(
                 children: [
                   Text(
-                    'Workout Complete!',
+                    l10n.workoutComplete,
                     style: GoogleFonts.lexend(
                       fontSize: 20.0,
                       fontWeight: FontWeight.w600,
@@ -200,7 +182,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                   ),
                   const SizedBox(height: 12.0),
                   Text(
-                    'Great job! You completed all exercises and rounds.',
+                    l10n.workoutCompleteMessage,
                     style: GoogleFonts.lexend(
                       fontSize: 14.0,
                       color: const Color(0xFF24252C).withOpacity(0.8),
@@ -230,7 +212,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                 padding: const EdgeInsets.symmetric(vertical: 18.0),
                 alignment: Alignment.center,
                 child: Text(
-                  'Done',
+                  l10n.doneButton,
                   style: GoogleFonts.lexend(
                     fontSize: 16.0,
                     color: const Color(0xFF900EBF),
@@ -246,23 +228,24 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
   }
 
   void _showExitConfirmation() {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
-              child: Column(
-                children: [
-                  Text(
-                    'End Workout?',
+            borderRadius: BorderRadius.circular(20.0),
+            side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
+                child: Column(
+                  children: [
+                    Text(
+                      l10n.endWorkoutTitle,
                     style: GoogleFonts.lexend(
                       fontSize: 20.0,
                       fontWeight: FontWeight.w600,
@@ -272,7 +255,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                   ),
                   const SizedBox(height: 12.0),
                   Text(
-                    'Are you sure you want to end this workout?',
+                    l10n.endWorkoutMessage,
                     style: GoogleFonts.lexend(
                       fontSize: 14.0,
                       color: const Color(0xFF24252C).withOpacity(0.8),
@@ -295,7 +278,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                         padding: const EdgeInsets.symmetric(vertical: 16.0),
                         alignment: Alignment.center,
                         child: Text(
-                          'Cancel',
+                          l10n.cancelButton,
                           style: GoogleFonts.lexend(
                             fontSize: 16.0,
                             color: const Color(0xFF989898),
@@ -323,7 +306,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                         padding: const EdgeInsets.symmetric(vertical: 16.0),
                         alignment: Alignment.center,
                         child: Text(
-                          'End',
+                          l10n.endButton,
                           style: GoogleFonts.lexend(
                             fontSize: 16.0,
                             color: const Color(0xFFFF5656),
@@ -348,10 +331,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
     return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 
-  String _formatDuration(int seconds) {
+  String _formatDuration(int seconds, AppLocalizations l10n) {
     final minutes = seconds ~/ 60;
     final secs = seconds % 60;
-    return '$minutes:${secs.toString().padLeft(2, '0')} mins';
+    return '$minutes:${secs.toString().padLeft(2, '0')} ${l10n.minsSuffix}';
   }
 
   @override
@@ -361,13 +344,11 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
     final screenHeight = size.height;
     final screenWidth = size.width;
     final isTablet = screenWidth > 600;
+    final l10n = AppLocalizations.of(context)!;
+    final isRTL = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isRTL ? 1.15 : 1.0;
 
     // ── Responsive Scale ──────────────────────────────────
-    // Change these 4 values to control ALL component sizes:
-    //   small  → phones with height < 680px
-    //   medium → phones with height 680–850px
-    //   large  → phones with height > 850px
-    //   tablet → devices with width > 600px
     const double smallScale  = 0.78;
     const double mediumScale = 0.88;
     const double largeScale  = 0.95;
@@ -387,11 +368,11 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
         if (!_isWorkoutSaved) {
           _saveWorkoutCompletion(next);
         }
-        
+
         // Show banner notification
         ref.read(realTimeNotificationServiceProvider).showInAppBanner(
-          'Workout Complete!',
-          'Great job! You completed all exercises and rounds.',
+          l10n.workoutComplete,
+          l10n.workoutCompleteMessage,
           showAlert: true,
           showSnackBar: false,
         );
@@ -415,7 +396,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
         currentIndex: _selectedIndex,
         onTap: (index) {
           if (index == 3) return;
-          
+
           if (state.status == WorkoutStatus.running || state.status == WorkoutStatus.paused) {
             _showExitConfirmation();
             return;
@@ -428,7 +409,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
             case 2: page = const RewardsScreen(); break;
             case 4: page = const ClubScreen(); break;
           }
-          
+
           if (page != null) {
             Navigator.pushReplacement(
               context,
@@ -445,22 +426,22 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                fit: BoxFit.cover,
              ),
           ),
-          
+
           SafeArea(
             bottom: false,
             child: Column(
               children: [
-                _buildHeader(context, isTablet, state, scale),
+                _buildHeader(context, isTablet, state, scale, l10n, isRTL, fontScale),
                 Expanded(
                   child: SingleChildScrollView(
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: (isTablet ? 20.0 : 15.0) * scale),
                       child: Column(
                         children: [
-                          SizedBox(height: (isTablet ? 20.0 : 20.0) * scale),
-                          _buildTimerCard(context, timerCardGradient, isTablet, state, scale),
+                          SizedBox(height: 20.0 * scale),
+                          _buildTimerCard(context, timerCardGradient, isTablet, state, scale, l10n, fontScale),
                           SizedBox(height: (isTablet ? 30.0 : 25.0) * scale),
-                          _buildConfigGrid(isTablet, state, scale),
+                          _buildConfigGrid(isTablet, state, scale, l10n, fontScale),
 
                           if (state.status == WorkoutStatus.running || state.status == WorkoutStatus.paused) ...[
                              SizedBox(height: 20.0 * scale),
@@ -484,9 +465,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                                      ),
                                    ),
                                    child: Text(
-                                     'Reset Workout',
+                                     l10n.resetWorkout,
                                      style: GoogleFonts.lexend(
-                                       fontSize: 16.0 * scale,
+                                       fontSize: 16.0 * scale * fontScale,
                                        fontWeight: FontWeight.w600,
                                      ),
                                    ),
@@ -494,7 +475,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                                ),
                             ),
                           ],
-                          
+
                           SizedBox(height: (isTablet ? 120.0 : 140.0) * scale),
                         ],
                       ),
@@ -504,14 +485,12 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
               ],
             ),
           ),
-
-
         ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isTablet, WorkoutState state, double scale) {
+  Widget _buildHeader(BuildContext context, bool isTablet, WorkoutState state, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final horizontalPadding = (isTablet ? 20.0 : 15.0) * scale;
     final topPadding = (isTablet ? 15.0 : 20.0) * scale;
     final iconSize = (isTablet ? 28.0 : 28.0) * scale;
@@ -532,16 +511,19 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                  );
                }
             },
-            child: SvgPicture.asset(
-              'assets/images/back_arrow_icon.svg', 
-              width: iconSize, 
-              height: iconSize
+            child: Transform.scale(
+              scaleX: isRTL ? -1.0 : 1.0,
+              child: SvgPicture.asset(
+                'assets/images/back_arrow_icon.svg',
+                width: iconSize,
+                height: iconSize,
+              ),
             ),
           ),
           Text(
-            'Workouts',
+            l10n.workoutsTitle,
             style: GoogleFonts.lexendDeca(
-              fontSize: 19.0 * scale,
+              fontSize: 19.0 * scale * fontScale,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF24252C),
             ),
@@ -554,8 +536,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                );
              },
              child: Icon(
-               Icons.history, 
-               size: iconSize, 
+               Icons.history,
+               size: iconSize,
                color: const Color(0xFF24252C)
              ),
           ),
@@ -564,7 +546,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildTimerCard(BuildContext context, Gradient gradient, bool isTablet, WorkoutState state, double scale) {
+  Widget _buildTimerCard(BuildContext context, Gradient gradient, bool isTablet, WorkoutState state, double scale, AppLocalizations l10n, double fontScale) {
     final cardHeight = (isTablet ? 160.0 : 148.0) * scale;
     final buttonSize = (isTablet ? 80.0 : 72.0) * scale;
     final hPadding = (isTablet ? 24.0 : 20.0) * scale;
@@ -594,9 +576,12 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Exercise ${state.currentExercise} of ${state.totalExercises}',
+                  l10n.exerciseProgress(
+                    state.currentExercise.toString(),
+                    state.totalExercises.toString(),
+                  ),
                   style: GoogleFonts.lexend(
-                    fontSize: 14.0 * scale,
+                    fontSize: 14.0 * scale * fontScale,
                     fontWeight: FontWeight.w400,
                     color: Colors.white,
                     height: 1.0,
@@ -614,9 +599,12 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                 ),
                 SizedBox(height: 5.0 * scale),
                 Text(
-                  'Round ${state.currentRound} of ${state.totalRounds}',
+                  l10n.roundProgress(
+                    state.currentRound.toString(),
+                    state.totalRounds.toString(),
+                  ),
                   style: GoogleFonts.poppins(
-                    fontSize: 13.0 * scale,
+                    fontSize: 13.0 * scale * fontScale,
                     fontWeight: FontWeight.w400,
                     color: Colors.white,
                     height: 1.0,
@@ -643,9 +631,6 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                   },
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    // Trigger the hint text to show up via the global notifier or local state
-                    // For now, let the button handle its own hint or pass a callback
-                    // We'll update state to show hint
                     setState(() {
                       _showHoldHint = true;
                     });
@@ -663,11 +648,11 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                   opacity: _showHoldHint ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 300),
                   child: Text(
-                    state.status == WorkoutStatus.running 
-                        ? 'Hold to Pause' 
-                        : 'Hold to Resume',
+                    state.status == WorkoutStatus.running
+                        ? l10n.holdToPause
+                        : l10n.holdToResume,
                     style: GoogleFonts.lexend(
-                      fontSize: 12.0 * scale,
+                      fontSize: 12.0 * scale * fontScale,
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFFF83A71),
                     ),
@@ -681,7 +666,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildSkipControls(bool isTablet, WorkoutState state, double scale) {
+  Widget _buildSkipControls(bool isTablet, WorkoutState state, double scale, AppLocalizations l10n, double fontScale) {
     if (state.status != WorkoutStatus.running || state.phase != WorkoutPhase.rest) {
       return const SizedBox.shrink();
     }
@@ -704,9 +689,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                 Icon(Icons.fast_forward_rounded, size: 18.0 * scale, color: const Color(0xFFFEB720)),
                 SizedBox(width: 6.0 * scale),
                 Text(
-                  'Skip Rest',
+                  l10n.skipRest,
                   style: GoogleFonts.lexend(
-                    fontSize: 12.0 * scale,
+                    fontSize: 12.0 * scale * fontScale,
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFFFEB720),
                   ),
@@ -719,72 +704,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildWorkoutControls(BuildContext context, WorkoutState state, double buttonSize, double scale) {
-    if (state.status == WorkoutStatus.idle) {
-      return Center(
-        child: GestureDetector(
-          onTap: _toggleTimer,
-          child: Container(
-            width: buttonSize,
-            height: buttonSize,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.16),
-                  offset: const Offset(0, 4),
-                  blurRadius: 25,
-                ),
-              ],
-            ),
-            child: Center(
-              child: Icon(
-                Icons.play_arrow_rounded,
-                size: 40.0 * scale,
-                color: const Color(0xFFF83A71),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Center(
-      child: GestureDetector(
-        onTap: _toggleTimer,
-        child: Container(
-          width: buttonSize,
-          height: buttonSize,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.16),
-                offset: const Offset(0, 4),
-                blurRadius: 25,
-              ),
-            ],
-          ),
-          child: Center(
-            child: Icon(
-              state.status == WorkoutStatus.running
-                  ? Icons.pause_rounded
-                  : Icons.play_arrow_rounded,
-              size: 40.0 * scale,
-              color: const Color(0xFFF83A71),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConfigGrid(bool isTablet, WorkoutState state, double scale) {
+  Widget _buildConfigGrid(bool isTablet, WorkoutState state, double scale, AppLocalizations l10n, double fontScale) {
     final gap = 12.0 * scale;
     final isActive = state.status == WorkoutStatus.running || state.status == WorkoutStatus.paused;
-    
+
     // During workout: highlight only the current phase card, grey out the rest
     final isWorkHighlighted = isActive && state.phase == WorkoutPhase.work;
     final isRestHighlighted = isActive && state.phase == WorkoutPhase.rest;
@@ -798,8 +721,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
             children: [
               _buildConfigCard(
                 context: context,
-                label: 'Work',
-                value: _formatDuration(state.workDuration),
+                label: l10n.workLabel,
+                value: _formatDuration(state.workDuration, l10n),
                 colorBg: isWorkHighlighted ? const Color(0xFFDCF7FE) : const Color(0xFFEBF9FC),
                 colorIconBg: const Color(0xFFD0F5FD),
                 colorIcon: const Color(0xFF34CDFD),
@@ -808,12 +731,13 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                 onTap: () => _navigateToTimeScreen('work', state),
                 isTablet: isTablet,
                 scale: scale,
+                fontScale: fontScale,
                 isDisabled: isActive && !isWorkHighlighted,
               ),
               SizedBox(height: gap),
               _buildConfigCard(
                 context: context,
-                label: 'Exercises',
+                label: l10n.exercisesLabel,
                 value: '${state.totalExercises}',
                 colorBg: const Color(0xFFEFEAFC),
                 colorIconBg: const Color(0xFFCDC0F4),
@@ -823,6 +747,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                 onTap: () => _navigateToNumberScreen('exercises', state),
                 isTablet: isTablet,
                 scale: scale,
+                fontScale: fontScale,
                 isDisabled: isActive,
               ),
             ],
@@ -835,8 +760,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
             children: [
               _buildConfigCard(
                 context: context,
-                label: 'Rest',
-                value: _formatDuration(state.restDuration),
+                label: l10n.restLabel,
+                value: _formatDuration(state.restDuration, l10n),
                 colorBg: isRestHighlighted ? const Color(0xFFFFF2D4) : const Color(0xFFFFF8E8),
                 colorIconBg: const Color(0xFFFFE8BA),
                 colorIcon: const Color(0xFFFEB720),
@@ -845,13 +770,14 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                 onTap: () => _navigateToTimeScreen('rest', state),
                 isTablet: isTablet,
                 scale: scale,
+                fontScale: fontScale,
                 isDisabled: isActive && !isRestHighlighted,
               ),
               SizedBox(height: gap),
               _buildConfigCard(
                 context: context,
-                label: 'Rounds',
-                value: '${state.totalRounds} Reps',
+                label: l10n.roundsLabel,
+                value: '${state.totalRounds} ${l10n.repsLabel}',
                 colorBg: const Color(0xFFFFECEB),
                 colorIconBg: const Color(0xFFFBC7C1),
                 colorIcon: const Color(0xFFFE413D),
@@ -860,6 +786,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                 onTap: () => _navigateToNumberScreen('rounds', state),
                 isTablet: isTablet,
                 scale: scale,
+                fontScale: fontScale,
                 isDisabled: isActive,
               ),
             ],
@@ -881,6 +808,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
     required VoidCallback onTap,
     required bool isTablet,
     required double scale,
+    required double fontScale,
     bool isDisabled = false,
   }) {
     final iconContainerSize = 43.0 * scale;
@@ -920,7 +848,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                   Text(
                     label,
                     style: GoogleFonts.lexend(
-                      fontSize: 16.0 * scale,
+                      fontSize: 16.0 * scale * fontScale,
                       fontWeight: FontWeight.w700,
                       color: Colors.black,
                       height: 1.1,
@@ -932,7 +860,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
                   Text(
                     value,
                     style: GoogleFonts.lexend(
-                      fontSize: 14.0 * scale,
+                      fontSize: 14.0 * scale * fontScale,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF8B88B5),
                       height: 1.1,
@@ -954,11 +882,13 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
       return;
     }
 
+    final l10n = AppLocalizations.of(context)!;
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddTimeScreen(
-          title: type == 'work' ? 'Work Duration' : 'Rest Duration',
+          title: type == 'work' ? l10n.workLabel : l10n.restLabel,
           initialSeconds: type == 'work' ? state.workDuration : state.restDuration,
         ),
       ),
@@ -978,11 +908,13 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with WidgetsBindi
       return;
     }
 
+    final l10n = AppLocalizations.of(context)!;
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddNumberScreen(
-          title: type == 'exercises' ? 'Exercises' : 'Rounds',
+          title: type == 'exercises' ? l10n.exercisesLabel : l10n.roundsLabel,
           initialValue: type == 'exercises' ? state.totalExercises : state.totalRounds,
           iconType: type,
           minValue: 1,

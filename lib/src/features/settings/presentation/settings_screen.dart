@@ -9,6 +9,8 @@ import '../../../../core/network/api_constants.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/presentation/auth_screen.dart';
 import '../../notifications/data/real_time_notification_service.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
+import '../../../../main.dart' show localeProvider;
 
 // ── Notification Preferences Provider ────────────────
 final notificationPrefsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
@@ -89,8 +91,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _prefs![keys[0]] = section;
       }
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to update preference')),
+          SnackBar(content: Text(l10n.failedToUpdatePreference)),
         );
       }
     } finally {
@@ -132,14 +135,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         'newPassword': newController.text,
       });
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ref.read(realTimeNotificationServiceProvider).showInAppBanner(
-          'Password Changed',
-          'Your password has been updated successfully.',
+          l10n.passwordChanged,
+          l10n.passwordUpdatedSuccess,
         );
       }
     } catch (e) {
       if (mounted) {
-        String msg = 'Failed to change password';
+        final l10n = AppLocalizations.of(context)!;
+        String msg = l10n.somethingWentWrong;
         if (e is DioException) {
           msg = e.response?.data['message'] ?? msg;
         }
@@ -149,25 +154,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _handleDeleteAccount(double scale) async {
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.15 : 1.0;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.0),
-          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
-              child: Column(
-                children: [
-                  Text(
-                    'Delete Account?',
+            side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
+                child: Column(
+                  children: [
+                    Text(
+                      l10n.deleteAccountTitle,
                     style: GoogleFonts.lexend(
-                      fontSize: 20.0,
+                      fontSize: 20.0 * fontScale,
                       fontWeight: FontWeight.w600,
                       color: _textDark,
                     ),
@@ -175,9 +184,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: 12.0),
                   Text(
-                    'This action is permanent and cannot be undone. All your data will be lost.',
+                    l10n.deleteAccountWarning,
                     style: GoogleFonts.lexend(
-                      fontSize: 14.0,
+                      fontSize: 14.0 * fontScale,
                       color: _textDark.withValues(alpha: 0.8),
                       height: 1.4,
                     ),
@@ -195,9 +204,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
                 alignment: Alignment.center,
                 child: Text(
-                  'Delete Account',
+                  l10n.deleteAccountButton,
                   style: GoogleFonts.lexend(
-                    fontSize: 16.0,
+                    fontSize: 16.0 * fontScale,
                     color: _dangerColor,
                     fontWeight: FontWeight.w600,
                   ),
@@ -216,9 +225,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
                 alignment: Alignment.center,
                 child: Text(
-                  'Cancel',
+                  l10n.cancelButton,
                   style: GoogleFonts.lexend(
-                    fontSize: 16.0,
+                    fontSize: 16.0 * fontScale,
                     color: _textMuted,
                     fontWeight: FontWeight.w500,
                   ),
@@ -277,6 +286,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ? 0.98
                 : 1.05;
 
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.15 : 1.0;
+
     final horizontalPadding = 18.0 * scale;
 
     return Scaffold(
@@ -310,7 +323,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           height: 40.0 * scale,
                           alignment: Alignment.center,
                           child: Transform.scale(
-                            scaleX: -1,
+                            scaleX: isAr ? 1.0 : -1.0,
                             child: CustomArrowIcon(
                               size: 28.0 * scale,
                               color: const Color(0xFF130F26),
@@ -319,9 +332,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ),
                       Text(
-                        'Settings',
+                        l10n.settingsTitle,
                         style: GoogleFonts.lexendDeca(
-                          fontSize: 19.0 * scale,
+                          fontSize: 19.0 * scale * fontScale,
                           fontWeight: FontWeight.w600,
                           color: _textDark,
                         ),
@@ -350,39 +363,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24 * scale),
                         children: [
                           // ── Notifications Section ──────
-                          _buildSectionTitle('Notifications', scale),
+                          _buildSectionTitle(l10n.notificationsSection, scale, fontScale),
                           SizedBox(height: 10 * scale),
                           _buildToggleItem(
                             icon: Icons.notifications_active_outlined,
-                            title: 'Push Notifications',
+                            title: l10n.pushNotifications,
                             value: _getPref('globalPreferences.push'),
                             onChanged: (v) => _updatePref('globalPreferences.push', v),
                             scale: scale,
+                            fontScale: fontScale,
                             loading: _prefsLoading,
                           ),
                           SizedBox(height: 8 * scale),
                           _buildToggleItem(
                             icon: Icons.chat_bubble_outline,
-                            title: 'In-App Notifications',
+                            title: l10n.inAppNotifications,
                             value: _getPref('globalPreferences.inApp'),
                             onChanged: (v) => _updatePref('globalPreferences.inApp', v),
                             scale: scale,
+                            fontScale: fontScale,
                             loading: _prefsLoading,
                           ),
 
                           SizedBox(height: 24 * scale),
 
+                          // ── Language Section ───────────
+                          _buildSectionTitle(isAr ? 'اللغة' : 'Language', scale, fontScale),
+                          SizedBox(height: 10 * scale),
+                          _buildLangItem(scale, fontScale, isAr),
+
+                          SizedBox(height: 24 * scale),
+
                           // ── About Section ──────────────
-                          _buildSectionTitle('About', scale),
+                          _buildSectionTitle(l10n.aboutSection, scale, fontScale),
                           SizedBox(height: 10 * scale),
                           _buildMenuItem(
                             icon: Icons.info_outline,
-                            title: 'App Version',
+                            title: l10n.appVersionLabel,
                             trailing: Text(
                               'v1.0.0',
-                              style: GoogleFonts.poppins(fontSize: 14 * scale, color: _textMuted),
+                              style: GoogleFonts.poppins(fontSize: 14 * scale * fontScale, color: _textMuted),
                             ),
                             scale: scale,
+                            fontScale: fontScale,
+                            isAr: isAr,
                           ),
 
                           SizedBox(height: 32 * scale),
@@ -398,9 +422,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ),
                               alignment: Alignment.center,
                               child: Text(
-                                'Log Out',
+                                l10n.logoutButton,
                                 style: GoogleFonts.poppins(
-                                  fontSize: 16 * scale,
+                                  fontSize: 16 * scale * fontScale,
                                   fontWeight: FontWeight.w600,
                                   color: _dangerColor,
                                 ),
@@ -422,14 +446,95 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Widget _buildLangItem(double scale, double fontScale, bool isAr) {
+    return PopupMenuButton<String>(
+      onSelected: (value) {
+        ref.read(localeProvider.notifier).setLocale(Locale(value));
+      },
+      color: Colors.white,
+      elevation: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      offset: Offset(0, 60 * scale),
+      constraints: BoxConstraints(minWidth: 170 * scale),
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'en',
+          height: 44 * scale,
+          padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 2 * scale),
+          child: Row(children: [
+            Text('English',
+                style: GoogleFonts.lexendDeca(
+                    fontSize: 14 * scale,
+                    fontWeight: FontWeight.w600,
+                    color: !isAr ? const Color(0xFF900EBF) : const Color(0xFF24252C))),
+            const Spacer(),
+            if (!isAr) Icon(Icons.check_rounded, size: 18 * scale, color: const Color(0xFF900EBF)),
+          ]),
+        ),
+        PopupMenuItem(
+          value: 'ar',
+          height: 44 * scale,
+          padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 2 * scale),
+          child: Row(children: [
+            Text('العربية',
+                style: GoogleFonts.cairo(
+                    fontSize: 14 * scale,
+                    fontWeight: FontWeight.w600,
+                    color: isAr ? const Color(0xFF900EBF) : const Color(0xFF24252C))),
+            const Spacer(),
+            if (isAr) Icon(Icons.check_rounded, size: 18 * scale, color: const Color(0xFF900EBF)),
+          ]),
+        ),
+      ],
+      child: Container(
+        height: 60 * scale,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: _cardBorder.withValues(alpha: 0.62)),
+          borderRadius: BorderRadius.circular(15 * scale),
+          boxShadow: [
+            BoxShadow(offset: const Offset(0, 3), blurRadius: 20, color: Colors.black.withValues(alpha: 0.04)),
+          ],
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 20 * scale),
+        child: Row(
+          children: [
+            Icon(Icons.language_rounded, size: 24 * scale, color: _accentColor),
+            SizedBox(width: 12 * scale),
+            Expanded(
+              child: Text(
+                isAr ? 'اللغة' : 'Language',
+                style: GoogleFonts.poppins(
+                  fontSize: 15 * scale * fontScale,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF1B2D51),
+                ),
+              ),
+            ),
+            Text(
+              isAr ? 'العربية' : 'English',
+              style: GoogleFonts.poppins(
+                fontSize: 14 * scale * fontScale,
+                fontWeight: FontWeight.w500,
+                color: _textMuted,
+              ),
+            ),
+            SizedBox(width: 6 * scale),
+            
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Section Title ────────────────────────────────────
-  Widget _buildSectionTitle(String title, double scale) {
+  Widget _buildSectionTitle(String title, double scale, double fontScale) {
     return Padding(
-      padding: EdgeInsets.only(left: 4 * scale),
+      padding: EdgeInsets.symmetric(horizontal: 4 * scale),
       child: Text(
         title,
         style: GoogleFonts.lexendDeca(
-          fontSize: 15 * scale,
+          fontSize: 15 * scale * fontScale,
           fontWeight: FontWeight.w600,
           color: _textDark,
         ),
@@ -442,6 +547,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required IconData icon,
     required String title,
     required double scale,
+    required double fontScale,
+    required bool isAr,
     VoidCallback? onTap,
     Widget? trailing,
     bool danger = false,
@@ -469,13 +576,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Text(
                 title,
                 style: GoogleFonts.poppins(
-                  fontSize: 15 * scale,
+                  fontSize: 15 * scale * fontScale,
                   fontWeight: FontWeight.w500,
                   color: danger ? _dangerColor : const Color(0xFF1B2D51),
                 ),
               ),
             ),
-            trailing ?? CustomChevronIcon(size: 10 * scale, color: _textDark),
+            trailing ?? Transform.scale(
+              scaleX: isAr ? -1.0 : 1.0,
+              child: CustomChevronIcon(size: 10 * scale, color: _textDark),
+            ),
           ],
         ),
       ),
@@ -489,6 +599,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required bool value,
     required ValueChanged<bool> onChanged,
     required double scale,
+    required double fontScale,
     bool loading = false,
   }) {
     return Container(
@@ -510,19 +621,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Text(
               title,
               style: GoogleFonts.poppins(
-                fontSize: 15 * scale,
+                fontSize: 15 * scale * fontScale,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF1B2D51),
               ),
             ),
           ),
-          loading
-              ? SizedBox(width: 20 * scale, height: 20 * scale, child: const CircularProgressIndicator(strokeWidth: 2))
-              : Switch.adaptive(
-                  value: value,
-                  activeTrackColor: _primaryColor,
-                  onChanged: onChanged,
-                ),
+          Opacity(
+            opacity: loading ? 0.4 : 1.0,
+            child: Switch.adaptive(
+              value: value,
+              activeTrackColor: _primaryColor,
+              onChanged: loading ? null : onChanged,
+            ),
+          ),
         ],
       ),
     );
@@ -558,15 +670,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               Icon(Icons.phone_android, size: 16 * scale, color: _textMuted),
               SizedBox(height: 2 * scale),
-              SizedBox(
-                height: 24 * scale,
-                child: _prefsLoading
-                    ? SizedBox(width: 16 * scale, height: 16 * scale, child: const CircularProgressIndicator(strokeWidth: 1.5))
-                    : Switch.adaptive(
-                        value: _getPref('$key.push'),
-                        activeTrackColor: _primaryColor,
-                        onChanged: (v) => _updatePref('$key.push', v),
-                      ),
+              Opacity(
+                opacity: _prefsLoading ? 0.4 : 1.0,
+                child: Switch.adaptive(
+                  value: _getPref('$key.push'),
+                  activeTrackColor: _primaryColor,
+                  onChanged: _prefsLoading ? null : (v) => _updatePref('$key.push', v),
+                ),
               ),
             ],
           ),
@@ -577,15 +687,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               Icon(Icons.email_outlined, size: 16 * scale, color: _textMuted),
               SizedBox(height: 2 * scale),
-              SizedBox(
-                height: 24 * scale,
-                child: _prefsLoading
-                    ? SizedBox(width: 16 * scale, height: 16 * scale, child: const CircularProgressIndicator(strokeWidth: 1.5))
-                    : Switch.adaptive(
-                        value: _getPref('$key.email'),
-                        activeTrackColor: _primaryColor,
-                        onChanged: (v) => _updatePref('$key.email', v),
-                      ),
+              Opacity(
+                opacity: _prefsLoading ? 0.4 : 1.0,
+                child: Switch.adaptive(
+                  value: _getPref('$key.email'),
+                  activeTrackColor: _primaryColor,
+                  onChanged: _prefsLoading ? null : (v) => _updatePref('$key.email', v),
+                ),
               ),
             ],
           ),
@@ -621,6 +729,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
   @override
   Widget build(BuildContext context) {
     final s = widget.scale;
+    final localL10n = AppLocalizations.of(context)!;
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -632,19 +741,19 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Change Password',
-              style: GoogleFonts.lexend(fontSize: 18 * s, fontWeight: FontWeight.w600, color: const Color(0xFF24252C)),
+              AppLocalizations.of(context)!.changePasswordTitle,
+              style: GoogleFonts.lexend(fontSize: 18 * s * (Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0), fontWeight: FontWeight.w600, color: const Color(0xFF24252C)),
             ),
             SizedBox(height: 20 * s),
-            _buildPasswordField('Current Password', widget.currentController, _obscureCurrent, () {
+            _buildPasswordField(AppLocalizations.of(context)!.currentPasswordLabel, widget.currentController, _obscureCurrent, () {
               setState(() => _obscureCurrent = !_obscureCurrent);
             }, s),
             SizedBox(height: 12 * s),
-            _buildPasswordField('New Password', widget.newController, _obscureNew, () {
+            _buildPasswordField(AppLocalizations.of(context)!.newPasswordLabel, widget.newController, _obscureNew, () {
               setState(() => _obscureNew = !_obscureNew);
             }, s),
             SizedBox(height: 12 * s),
-            _buildPasswordField('Confirm Password', widget.confirmController, _obscureConfirm, () {
+            _buildPasswordField(AppLocalizations.of(context)!.confirmPasswordLabel, widget.confirmController, _obscureConfirm, () {
               setState(() => _obscureConfirm = !_obscureConfirm);
             }, s),
             SizedBox(height: 24 * s),
@@ -653,27 +762,27 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: Text('Cancel', style: GoogleFonts.poppins(color: const Color(0xFF8B88B5))),
+                  child: Text(AppLocalizations.of(context)!.cancelButton, style: GoogleFonts.poppins(color: const Color(0xFF8B88B5))),
                 ),
                 SizedBox(width: 8 * s),
                 TextButton(
                   onPressed: () {
                     if (widget.newController.text != widget.confirmController.text) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Passwords do not match')),
+                        SnackBar(content: Text(localL10n.passwordsDoNotMatch)),
                       );
                       return;
                     }
                     if (widget.newController.text.length < 6) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Password must be at least 6 characters')),
+                        SnackBar(content: Text(localL10n.passwordLengthError)),
                       );
                       return;
                     }
                     Navigator.pop(context, true);
                   },
                   child: Text(
-                    'Save',
+                    localL10n.saveButton,
                     style: GoogleFonts.poppins(color: const Color(0xFF900EBF), fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -702,13 +811,13 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
         children: [
           Text(
             label,
-            style: GoogleFonts.lexendDeca(fontSize: 11 * s, fontWeight: FontWeight.w500, color: const Color(0xFF8B88B5)),
+            style: GoogleFonts.lexendDeca(fontSize: 11 * s * (Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0), fontWeight: FontWeight.w500, color: const Color(0xFF8B88B5)),
           ),
           SizedBox(height: 4 * s),
-          TextField(
+           TextField(
             controller: controller,
             obscureText: obscure,
-            style: GoogleFonts.poppins(fontSize: 15 * s, fontWeight: FontWeight.w500, color: const Color(0xFF24252C)),
+            style: GoogleFonts.poppins(fontSize: 15 * s * (Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0), fontWeight: FontWeight.w500, color: const Color(0xFF24252C)),
             decoration: InputDecoration(
               border: InputBorder.none,
               isDense: true,

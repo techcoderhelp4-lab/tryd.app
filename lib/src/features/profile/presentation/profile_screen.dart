@@ -22,6 +22,7 @@ import '../../notifications/data/real_time_notification_service.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import '../../auth/presentation/controllers/auth_controller.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
 
 // Responsive helper extension to cap values for larger screens
 extension ResponsiveDouble on num {
@@ -87,15 +88,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       await ref.read(userProfileProvider.future);
       
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ref.read(realTimeNotificationServiceProvider).showInAppBanner(
-          'Profile Updated!',
-          'Your profile picture has been successfully changed.',
+          l10n.profileUpdated,
+          l10n.profilePicChanged,
         );
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to upload image: $e')),
+          SnackBar(content: Text(l10n.failedToUploadImage(e.toString()))),
         );
       }
     } finally {
@@ -104,6 +107,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _editName(String currentName) async {
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.15 : 1.0;
+    
     final controller = TextEditingController(text: currentName);
     final newName = await showDialog<String>(
       context: context,
@@ -112,19 +119,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.0),
           side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Edit Name',
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.editNameTitle,
                     style: GoogleFonts.lexend(
-                      fontSize: 20.0,
+                      fontSize: 20.0 * fontScale,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF24252C),
                     ),
@@ -153,9 +160,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'Name',
+                            l10n.fullNameLabel,
                             style: GoogleFonts.lexendDeca(
-                              fontSize: 12.0,
+                              fontSize: 12.0 * fontScale,
                               fontWeight: FontWeight.w500,
                               height: 1.25,
                               color: const Color(0xFF8B88B5),
@@ -173,9 +180,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               height: 1.4,
                             ),
                             decoration: InputDecoration(
-                              hintText: 'Enter your name',
+                              hintText: l10n.fullNamePlaceholder,
                               hintStyle: GoogleFonts.poppins(
-                                fontSize: 16.0,
+                                fontSize: 16.0 * fontScale,
                                 fontWeight: FontWeight.w400,
                                 color: const Color(0xFF8B88B5).withOpacity(0.5),
                               ),
@@ -204,9 +211,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 18.0),
                       alignment: Alignment.center,
                       child: Text(
-                        'Cancel',
+                        l10n.cancelButton,
                         style: GoogleFonts.lexend(
-                          fontSize: 16.0,
+                          fontSize: 16.0 * fontScale,
                           color: const Color(0xFF8B88B5),
                           fontWeight: FontWeight.w500,
                         ),
@@ -229,9 +236,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 18.0),
                       alignment: Alignment.center,
                       child: Text(
-                        'Save',
+                        l10n.saveButton,
                         style: GoogleFonts.lexend(
-                          fontSize: 16.0,
+                          fontSize: 16.0 * fontScale,
                           color: const Color(0xFF900EBF),
                           fontWeight: FontWeight.w600,
                         ),
@@ -255,15 +262,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         await ref.read(userProfileProvider.future);
         
         if (mounted) {
+          final l10n_inner = AppLocalizations.of(context)!;
           ref.read(realTimeNotificationServiceProvider).showInAppBanner(
-            'Name Updated!',
-            'Your display name has been changed to $newName.',
+            l10n_inner.nameUpdated,
+            l10n_inner.nameChangedSuccess(newName),
           );
         }
       } catch (e) {
         if (mounted) {
+          final l10n_inner = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update name: $e')),
+            SnackBar(content: Text(l10n_inner.failedToUpdateName(e.toString()))),
           );
         }
       }
@@ -291,6 +300,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             : screenHeight < 850
                 ? mediumScale
                 : largeScale;
+
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.15 : 1.0;
 
     // Clamped horizontal padding
     final horizontalPadding = 18.0 * scale;
@@ -327,7 +340,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             SafeArea(
               child: Padding(
                 padding: EdgeInsets.only(top: isTablet ? 8.0 * scale : 16.0 * scale),
-                child: _buildHeader(context, isTablet, scale),
+                child: _buildHeader(context, isTablet, scale, l10n, fontScale, isAr),
               ),
             ),
 
@@ -376,7 +389,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     child: Text(
                                       user.name,
                                       style: GoogleFonts.lexendDeca(
-                                        fontSize: 18.0 * scale,
+                                        fontSize: 18.0 * scale * fontScale,
                                         fontWeight: FontWeight.w600,
                                         color: const Color(0xFF24252C),
                                       ),
@@ -399,46 +412,54 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 children: [
                                   _buildMenuItem(
                                     icon: Icons.emoji_events,
-                                    title: 'My Rewards',
+                                    title: l10n.myRewards,
                                     iconColor: const Color(0xFFF83A71),
                                     onTap: () => Navigator.push(
                                       context,
                                       MaterialPageRoute(builder: (context) => const RewardsScreen()),
                                     ),
                                     scale: scale,
+                                    fontScale: fontScale,
+                                    isAr: isAr,
                                   ),
                                   SizedBox(height: 8.0 * scale),
                                   _buildMenuItem(
                                     icon: Icons.history,
-                                    title: 'Activity',
+                                    title: l10n.activityLabel,
                                     iconColor: const Color(0xFFF83A71),
                                     onTap: () => Navigator.push(
                                       context,
                                       MaterialPageRoute(builder: (context) => const ActivityScreen()),
                                     ),
                                     scale: scale,
+                                    fontScale: fontScale,
+                                    isAr: isAr,
                                   ),
                                   SizedBox(height: 8.0 * scale),
                                   _buildMenuItem(
                                     icon: Icons.fitness_center,
-                                    title: 'My Workouts',
+                                    title: l10n.myWorkouts,
                                     iconColor: const Color(0xFFF83A71),
                                     onTap: () => Navigator.push(
                                       context,
                                       MaterialPageRoute(builder: (context) => const WorkoutScreen()),
                                     ),
                                     scale: scale,
+                                    fontScale: fontScale,
+                                    isAr: isAr,
                                   ),
                                   SizedBox(height: 8.0 * scale),
                                   _buildMenuItem(
                                     icon: Icons.settings,
-                                    title: 'Settings',
+                                    title: l10n.settingsLabel,
                                     iconColor: const Color(0xFFF83A71),
                                     onTap: () => Navigator.push(
                                       context,
                                       MaterialPageRoute(builder: (context) => const SettingsScreen()),
                                     ),
                                     scale: scale,
+                                    fontScale: fontScale,
+                                    isAr: isAr,
                                   ),
                                 ],
                               ),
@@ -534,13 +555,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ],
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => _buildErrorView(err.toString(), scale),
+        loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF900EBF))),
+        error: (err, stack) => _buildErrorView(err.toString(), scale, l10n, fontScale),
       ),
     );
   }
 
-  Widget _buildErrorView(String message, double scale) {
+  Widget _buildErrorView(String message, double scale, AppLocalizations l10n, double fontScale) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(24.0 * scale),
@@ -550,9 +571,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Icon(Icons.error_outline_rounded, color: const Color(0xFFFD3C6F), size: 64.0 * scale),
           SizedBox(height: 16.0 * scale),
           Text(
-            'Something went wrong',
+            l10n.loadProfileError,
             style: GoogleFonts.lexendDeca(
-              fontSize: 20.0 * scale,
+              fontSize: 20.0 * scale * fontScale,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF24252C),
             ),
@@ -562,7 +583,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             message,
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
-              fontSize: 14.0 * scale,
+              fontSize: 14.0 * scale * fontScale,
               color: const Color(0xFF8B88B5),
             ),
           ),
@@ -575,19 +596,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               padding: EdgeInsets.symmetric(horizontal: 32.0 * scale, vertical: 12.0 * scale),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0 * scale)),
             ),
-            child: const Text('Retry'),
+            child: Text(l10n.retryButton),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isTablet, double scale) {
+  Widget _buildHeader(BuildContext context, bool isTablet, double scale, AppLocalizations l10n, double fontScale, bool isAr) {
     // Responsive sizes for consistency
     final padding = 26.0 * scale;
     final iconContainerSize = 40.0 * scale;
     final arrowSize = 28.0 * scale;
-    final titleSize = 19.0 * scale;
+    final titleSize = 19.0 * scale * fontScale;
     final logoutSize = 26.0 * scale;
     
     return Padding(
@@ -607,7 +628,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               height: iconContainerSize,
               alignment: Alignment.center,
               child: Transform.scale(
-                scaleX: -1,
+                scaleX: isAr ? 1.0 : -1.0,
                 child: CustomArrowIcon(
                   size: arrowSize,
                   color: const Color(0xFF130F26),
@@ -616,7 +637,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ),
           Text(
-            'Profile',
+            l10n.profileTitle,
             style: GoogleFonts.lexendDeca(
               fontSize: titleSize,
               fontWeight: FontWeight.w600,
@@ -633,10 +654,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 );
               }
             },
-            child: Icon(
-              Icons.logout,
-              size: logoutSize,
-              color: Colors.black,
+            child: Transform.scale(
+              scaleX: isAr ? -1.0 : 1.0,
+              child: Icon(
+                Icons.logout,
+                size: logoutSize,
+                color: Colors.black,
+              ),
             ),
           ),
         ],
@@ -688,12 +712,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required String title,
     required Color iconColor,
     required double scale,
+    required double fontScale,
+    required bool isAr,
     VoidCallback? onTap,
   }) {
     // Responsive values for consistency
     final height = 65.0 * scale;
     final iconSize = 26.0 * scale;
-    final fontSize = 16.0 * scale;
+    final fontSize = 16.0 * scale * fontScale;
     final padding = 20.0 * scale;
     final chevronSize = 10.0 * scale;
     final radius = 15.0 * scale;
@@ -738,9 +764,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ],
             ),
-            CustomChevronIcon(
-              size: chevronSize,
-              color: const Color(0xFF24252C),
+            Transform.scale(
+              scaleX: isAr ? -1.0 : 1.0,
+              child: CustomChevronIcon(
+                size: chevronSize,
+                color: const Color(0xFF24252C),
+              ),
             ),
           ],
         ),
@@ -748,12 +777,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildFreePlanCard(double scale) {
+  Widget _buildFreePlanCard(double scale, AppLocalizations l10n, double fontScale) {
     // Responsive values for consistency
     final minHeight = 90.0 * scale;
-    final titleSize = 18.0 * scale;
-    final subtitleSize = 12.0 * scale;
-    final badgeFontSize = 12.0 * scale;
+    final titleSize = 18.0 * scale * fontScale;
+    final subtitleSize = 12.0 * scale * fontScale;
+    final badgeFontSize = 12.0 * scale * fontScale;
     final padding = 14.0 * scale;
     final radius = 15.0 * scale;
     
@@ -783,7 +812,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Free Plan',
+                  l10n.freePlan,
                   style: GoogleFonts.poppins(
                     fontSize: titleSize,
                     fontWeight: FontWeight.w600,
@@ -793,7 +822,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Basic tracking & community access',
+                  l10n.freePlanSubtitle,
                   style: GoogleFonts.poppins(
                     fontSize: subtitleSize,
                     fontWeight: FontWeight.w400,

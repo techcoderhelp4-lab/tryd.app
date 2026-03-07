@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
-import '../../../../widgets/custom_arrow_icon.dart';
 import '../../../../widgets/custom_clock_icon.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../widgets/gradient_button.dart';
 import '../../home/presentation/home_screen.dart';
 import 'running_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
 import '../../club/presentation/club_screen.dart';
 import '../../../../core/utils/responsive_utils.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
 
 class AddTimeScreen extends StatefulWidget {
   final String title;
@@ -78,6 +78,10 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
                 ? mediumScale
                 : largeScale;
 
+    final l10n = AppLocalizations.of(context)!;
+    final isRTL = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isRTL ? 1.2 : 1.0;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -92,14 +96,14 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
               ),
             ),
           ),
-          
+
           // Main content
           SafeArea(
             bottom: false,
             child: Column(
               children: [
                 SizedBox(height: 10.0 * scale),
-                _buildHeader(context, isTablet, scale),
+                _buildHeader(context, isTablet, scale, isRTL, fontScale),
                 Expanded(
                   child: SingleChildScrollView(
                     child: Padding(
@@ -109,11 +113,11 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
                           SizedBox(height: (isTablet ? 40.0 : 30.0) * scale),
                           _buildClockIcon(scale),
                           SizedBox(height: (isTablet ? 40.0 : 30.0) * scale),
-                          _buildTimeDisplay(scale),
+                          _buildTimeDisplay(scale, l10n, isRTL, fontScale),
                           SizedBox(height: (isTablet ? 50.0 : 40.0) * scale),
                           _buildWaveformSlider(scale),
                           SizedBox(height: (isTablet ? 50.0 : 40.0) * scale),
-                          _buildContinueButton(scale),
+                          _buildContinueButton(scale, l10n, isRTL, fontScale),
                           SizedBox(height: 20.0 * scale),
                         ],
                       ),
@@ -159,7 +163,7 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isTablet, double scale) {
+  Widget _buildHeader(BuildContext context, bool isTablet, double scale, bool isRTL, double fontScale) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: (isTablet ? 20.0 : 26.0) * scale),
       child: Row(
@@ -167,28 +171,36 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: Container(
+            child: SizedBox(
               width: 40.0 * scale,
               height: 40.0 * scale,
-              alignment: Alignment.center,
-              child: Transform.scale(
-                scaleX: -1,
-                child: CustomArrowIcon(
-                  size: 24.0 * scale,
-                  color: const Color(0xFF130F26),
+              child: Center(
+                child: Transform.scale(
+                  scaleX: isRTL ? -1.0 : 1.0,
+                  child: SvgPicture.asset(
+                    'assets/images/back_arrow_icon.svg',
+                    width: 24.0 * scale,
+                    height: 24.0 * scale,
+                  ),
                 ),
               ),
             ),
           ),
           Text(
-            widget.title, // Use actual title
-            style: GoogleFonts.lexendDeca(
-              fontSize: 19.0 * scale,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF24252C),
-            ),
+            widget.title,
+            style: isRTL
+                ? GoogleFonts.cairo(
+                    fontSize: 19.0 * scale * fontScale,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF24252C),
+                  )
+                : GoogleFonts.lexendDeca(
+                    fontSize: 19.0 * scale,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF24252C),
+                  ),
           ),
-          SizedBox(width: 40.0 * scale), // Spacer for alignment
+          SizedBox(width: 40.0 * scale),
         ],
       ),
     );
@@ -221,10 +233,10 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
     );
   }
 
-  Widget _buildTimeDisplay(double scale) {
+  Widget _buildTimeDisplay(double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     int minutes = _currentSeconds ~/ 60;
     int seconds = _currentSeconds % 60;
-    
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -240,12 +252,18 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
         ),
         SizedBox(width: 8.0 * scale),
         Text(
-          'mins',
-          style: GoogleFonts.roboto(
-            fontSize: 14.0 * scale,
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF221F48),
-          ),
+          l10n.minsSuffix,
+          style: isRTL
+              ? GoogleFonts.cairo(
+                  fontSize: 14.0 * scale * fontScale,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF221F48),
+                )
+              : GoogleFonts.roboto(
+                  fontSize: 14.0 * scale,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF221F48),
+                ),
         ),
       ],
     );
@@ -308,16 +326,22 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
     );
   }
 
-  Widget _buildContinueButton(double scale) {
+  Widget _buildContinueButton(double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 36.0 * scale),
       child: GradientButton(
-        text: 'Continue',
+        text: l10n.continueButton,
         onPressed: () {
-          // Return duration in seconds
           Navigator.pop(context, _currentSeconds);
         },
         height: 58.0 * scale,
+        textStyle: isRTL
+            ? GoogleFonts.cairo(
+                fontSize: 19.0 * fontScale,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              )
+            : null,
       ),
     );
   }

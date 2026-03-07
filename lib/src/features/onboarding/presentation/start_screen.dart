@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../../../../widgets/gradient_button.dart';
 import '../../auth/presentation/auth_screen.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class StartScreen extends StatelessWidget {
   const StartScreen({super.key});
@@ -13,6 +14,8 @@ class StartScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isRTL = Localizations.localeOf(context).languageCode == 'ar';
     final size = MediaQuery.of(context).size;
     final screenWidth = size.width;
     final screenHeight = size.height;
@@ -59,11 +62,11 @@ class StartScreen extends StatelessWidget {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _buildHeadline(scale),
+                            _buildHeadline(scale, l10n, isRTL),
                             SizedBox(height: 10.0 * scale),
-                            _buildSubtitle(scale),
+                            _buildSubtitle(scale, l10n, isRTL),
                             SizedBox(height: 32.0 * scale),
-                            _buildButton(context, scale),
+                            _buildButton(context, scale, l10n),
                             SizedBox(height: 30.0 * scale),
                           ],
                         ),
@@ -83,36 +86,50 @@ class StartScreen extends StatelessWidget {
   // or we can keep it if we structure it right, but inline inside SliverFillRemaining is easier for the Spacer.
   // We will keep helper methods for headline, subtitle etc.
 
-  Widget _buildHeadline(double scale) {
+  Widget _buildHeadline(double scale, AppLocalizations l10n, bool isRTL) {
     return Text(
-      'Every step brings you closer to your goals and greater rewards.',
+      l10n.startHeadline,
       textAlign: TextAlign.center,
-      style: GoogleFonts.lexendDeca(
-        fontSize: 24.0 * scale,
-        fontWeight: FontWeight.w600,
-        height: 1.25,
-        color: _primaryTextColor,
-        letterSpacing: -0.2,
-      ),
+      style: isRTL
+          ? GoogleFonts.cairo(
+              fontSize: 24.0 * scale,
+              fontWeight: FontWeight.w600,
+              height: 1.25,
+              color: _primaryTextColor,
+            )
+          : GoogleFonts.lexendDeca(
+              fontSize: 24.0 * scale,
+              fontWeight: FontWeight.w600,
+              height: 1.25,
+              color: _primaryTextColor,
+              letterSpacing: -0.2,
+            ),
     );
   }
 
-  Widget _buildSubtitle(double scale) {
+  Widget _buildSubtitle(double scale, AppLocalizations l10n, bool isRTL) {
     return Text(
-      'This productive tool is designed to help you better manage your task project-wise conveniently!',
+      l10n.startSubtitle,
       textAlign: TextAlign.center,
-      style: GoogleFonts.poppins(
-        fontSize: 14.0 * scale,
-        fontWeight: FontWeight.w400,
-        height: 1.5,
-        color: _secondaryTextColor,
-      ),
+      style: isRTL
+          ? GoogleFonts.cairo(
+              fontSize: 14.0 * scale,
+              fontWeight: FontWeight.w400,
+              height: 1.5,
+              color: _secondaryTextColor,
+            )
+          : GoogleFonts.poppins(
+              fontSize: 14.0 * scale,
+              fontWeight: FontWeight.w400,
+              height: 1.5,
+              color: _secondaryTextColor,
+            ),
     );
   }
 
-  Widget _buildButton(BuildContext context, double scale) {
+  Widget _buildButton(BuildContext context, double scale, AppLocalizations l10n) {
     return GradientButton(
-      text: "Get Started",
+      text: l10n.getStarted,
       onPressed: () {
         Navigator.of(context).push(
           MaterialPageRoute(

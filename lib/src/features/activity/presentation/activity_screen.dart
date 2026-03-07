@@ -19,6 +19,7 @@ import '../../rewards/presentation/rewards_screen.dart';
 import 'running_screen.dart';
 import 'workout_screen.dart';
 import '../../club/presentation/club_screen.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
@@ -51,12 +52,16 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                 ? mediumScale
                 : largeScale;
     
+    final l10n = AppLocalizations.of(context)!;
+    final isRTL = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isRTL ? 1.2 : 1.0;
+
     final workoutHistoryAsync = ref.watch(workoutHistoryProvider);
     final activityListAsync = ref.watch(activityListProvider);
-    
-    final period = _selectedFilter == 'W' ? 'week' 
-                 : _selectedFilter == 'M' ? 'month' 
-                 : _selectedFilter == 'Y' ? 'year' 
+
+    final period = _selectedFilter == 'W' ? 'week'
+                 : _selectedFilter == 'M' ? 'month'
+                 : _selectedFilter == 'Y' ? 'year'
                  : 'all';
     final statsAsync = ref.watch(activityStatsProvider(period));
 
@@ -112,7 +117,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
             child: Column(
               children: [
                 SizedBox(height: 15.0 * scale),
-                _buildHeader(context, isTablet, scale),
+                _buildHeader(context, isTablet, scale, l10n, isRTL, fontScale),
                 SizedBox(height: 20.0 * scale),
                 Expanded(
                   child: SingleChildScrollView(
@@ -122,37 +127,43 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Filter tabs
-                          _buildFilterTabs(isTablet, scale),
+                          _buildFilterTabs(isTablet, scale, l10n, isRTL, fontScale),
                           SizedBox(height: 20.0 * scale),
-                          
-                            statsAsync.when(
-                              data: (stats) => Column(
-                                children: [
-                                  _buildWeekCard(stats, isTablet, scale),
-                                  SizedBox(height: 16.0 * scale),
-                                  _buildWeeklyChart(stats.dailyStats, isTablet, scale),
-                                ],
-                              ),
-                              loading: () => _buildStatsSkeleton(isTablet, scale),
+
+                          statsAsync.when(
+                            data: (stats) => Column(
+                              children: [
+                                _buildWeekCard(stats, isTablet, scale, l10n, isRTL, fontScale),
+                                SizedBox(height: 16.0 * scale),
+                                _buildWeeklyChart(stats.dailyStats, isTablet, scale, isRTL),
+                              ],
+                            ),
+                            loading: () => _buildStatsSkeleton(isTablet, scale),
                             error: (e, _) => Center(child: Text("Error loading stats: $e")),
                           ),
-                          
+
                           SizedBox(height: 20.0 * scale),
                           // Recent Activities heading
                           Text(
-                            'Recent Activities',
-                            style: GoogleFonts.lexendDeca(
-                              fontSize: 18.0 * scale,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF221F48),
-                            ),
+                            l10n.recentActivities,
+                            style: isRTL
+                                ? GoogleFonts.cairo(
+                                    fontSize: 18.0 * scale * fontScale,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF221F48),
+                                  )
+                                : GoogleFonts.lexendDeca(
+                                    fontSize: 18.0 * scale,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF221F48),
+                                  ),
                           ),
                           SizedBox(height: 16.0 * scale),
                           // Activity List
                           activityListAsync.when(
                             data: (activities) {
                               final bool isBackgroundLoading = activityListAsync.isRefreshing || activityListAsync.isReloading;
-                              
+
                               if (allActivities.isEmpty) {
                                 if (isBackgroundLoading || workoutHistoryAsync.isRefreshing) {
                                   return Column(
@@ -164,14 +175,19 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                                 }
                                 return Center(child: Padding(
                                   padding: EdgeInsets.all(20.0 * scale),
-                                  child: Text("No recent activities", style: GoogleFonts.lexend(color: Colors.grey, fontSize: 14.0 * scale)),
+                                  child: Text(
+                                    l10n.noRecentActivities,
+                                    style: isRTL
+                                        ? GoogleFonts.cairo(color: Colors.grey, fontSize: 14.0 * scale * fontScale)
+                                        : GoogleFonts.lexend(color: Colors.grey, fontSize: 14.0 * scale),
+                                  ),
                                 ));
                               }
 
                               return Column(
                                 children: [
                                   if (isBackgroundLoading && activities.isEmpty)
-                                     ...List.generate(3, (index) => Padding(
+                                    ...List.generate(3, (index) => Padding(
                                       padding: EdgeInsets.only(bottom: 16.0 * scale),
                                       child: _buildActivitySkeleton(scale),
                                     ))
@@ -179,7 +195,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                                     ...allActivities.map((activity) {
                                       return Padding(
                                         padding: EdgeInsets.only(bottom: 16.0 * scale),
-                                        child: _buildActivityItem(activity, isTablet, scale),
+                                        child: _buildActivityItem(activity, isTablet, scale, l10n, isRTL, fontScale),
                                       );
                                     }),
                                 ],
@@ -239,7 +255,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
 
 
 
-  Widget _buildHeader(BuildContext context, bool isTablet, double scale) {
+  Widget _buildHeader(BuildContext context, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final horizontalPadding = 30.0 * scale;
     final iconContainerSize = 45.0 * scale;
     final arrowSize = 24.0 * scale;
@@ -261,7 +277,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
               height: iconContainerSize,
               alignment: Alignment.center,
               child: Transform.scale(
-                scaleX: -1,
+                scaleX: isRTL ? 1.0 : -1.0,
                 child: CustomArrowIcon(
                   size: arrowSize,
                   color: const Color(0xFF130F26),
@@ -270,22 +286,35 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
             ),
           ),
           Text(
-            'Activity',
-            style: GoogleFonts.lexendDeca(
-              fontSize: 19.0 * scale,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF24252C),
-            ),
+            l10n.activityTitle,
+            style: isRTL
+                ? GoogleFonts.cairo(
+                    fontSize: 19.0 * scale * fontScale,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF24252C),
+                  )
+                : GoogleFonts.lexendDeca(
+                    fontSize: 19.0 * scale,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF24252C),
+                  ),
           ),
-          SizedBox(width: iconContainerSize), // Spacer for alignment
+          SizedBox(width: iconContainerSize),
         ],
       ),
     );
   }
 
-  Widget _buildFilterTabs(bool isTablet, double scale) {
+  Widget _buildFilterTabs(bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final height = 60.0 * scale;
     final horizontalPadding = 17.0 * scale;
+
+    final buttons = [
+      _buildFilterButton('W', l10n.filterWeekLabel, isTablet, scale, isRTL, fontScale),
+      _buildFilterButton('M', l10n.filterMonthLabel, isTablet, scale, isRTL, fontScale),
+      _buildFilterButton('Y', l10n.filterYearLabel, isTablet, scale, isRTL, fontScale),
+      _buildFilterButton('All', l10n.filterAllLabel, isTablet, scale, isRTL, fontScale),
+    ];
 
     return Container(
       width: double.infinity,
@@ -308,28 +337,23 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildFilterButton('W', isTablet, scale),
-            _buildFilterButton('M', isTablet, scale),
-            _buildFilterButton('Y', isTablet, scale),
-            _buildFilterButton('All', isTablet, scale),
-          ],
+          children: isRTL ? buttons.reversed.toList() : buttons,
         ),
       ),
     );
   }
 
-  Widget _buildFilterButton(String text, bool isTablet, double scale) {
-    final isSelected = _selectedFilter == text;
+  Widget _buildFilterButton(String filterKey, String label, bool isTablet, double scale, bool isRTL, double fontScale) {
+    final isSelected = _selectedFilter == filterKey;
     final width = 64.0 * scale;
     final height = 40.0 * scale;
-    final fontSize = 14.0 * scale;
+    final fontSize = 13.0 * scale;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
         setState(() {
-          _selectedFilter = text;
+          _selectedFilter = filterKey;
         });
       },
       child: SizedBox(
@@ -344,38 +368,46 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                   color: const Color(0xFF900EBF),
                   alignment: Alignment.center,
                   child: Text(
-                    text,
-                    style: GoogleFonts.poppins(
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white,
-                    ),
+                    label,
+                    style: isRTL
+                        ? GoogleFonts.cairo(fontSize: fontSize * fontScale, fontWeight: FontWeight.w400, color: Colors.white)
+                        : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.white),
                   ),
                 ),
               )
             : Container(
                 alignment: Alignment.center,
                 child: Text(
-                  text,
-                  style: GoogleFonts.poppins(
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.black,
-                  ),
+                  label,
+                  style: isRTL
+                      ? GoogleFonts.cairo(fontSize: fontSize * fontScale, fontWeight: FontWeight.w400, color: Colors.black)
+                      : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.black),
                 ),
               ),
       ),
     );
   }
 
-  Widget _buildWeekCard(ActivityStats stats, bool isTablet, double scale) {
-    // Format duration (seconds to MM:SS)
+  Widget _buildWeekCard(ActivityStats stats, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final duration = Duration(seconds: stats.totalDuration);
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     final timeStr = '$minutes:${seconds.toString().padLeft(2, '0')}';
     final cardHeight = 220.0 * scale;
     final hPadding = 18.0 * scale;
+
+    final periodLabel = _selectedFilter == 'W' ? l10n.thisWeek
+        : _selectedFilter == 'M' ? l10n.thisMonth
+        : _selectedFilter == 'Y' ? l10n.thisYear
+        : l10n.allActivitiesLabel;
+
+    final statColumns = [
+      _buildStatColumn(l10n.countLabel, stats.activityCount.toString(), isTablet, scale, isRTL, fontScale),
+      SizedBox(width: 50.0 * scale),
+      _buildStatColumn(l10n.avgPaceShort, _formatPace(stats.averagePace), isTablet, scale, isRTL, fontScale),
+      SizedBox(width: 50.0 * scale),
+      _buildStatColumn(l10n.timeLabel, timeStr, isTablet, scale, isRTL, fontScale),
+    ];
 
     return Container(
       width: double.infinity,
@@ -389,35 +421,45 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
       ),
       child: Stack(
         children: [
-          // Header with calendar icon and "This Week"
+          // Header with calendar icon and period label
           Positioned(
-            left: hPadding,
+            left: isRTL ? null : hPadding,
+            right: isRTL ? hPadding : null,
             top: 22.0 * scale,
             child: Row(
-              children: [
-                CustomCalendarIcon(
-                  size: 24.0 * scale,
-                  color: const Color(0xFFF83A71),
-                ),
-                SizedBox(width: 7.0 * scale),
-                Text(
-                  _selectedFilter == 'W' ? 'This Week' 
-                  : _selectedFilter == 'M' ? 'This Month' 
-                  : _selectedFilter == 'Y' ? 'This Year'
-                  : 'All Activities',
-                  style: GoogleFonts.poppins(
-                    fontSize: 19.0 * scale,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF221F48),
-                    height: 1.15,
-                  ),
-                ),
-              ],
+              children: isRTL
+                  ? [
+                      Text(
+                        periodLabel,
+                        style: GoogleFonts.cairo(
+                          fontSize: 19.0 * scale * fontScale,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF221F48),
+                          height: 1.15,
+                        ),
+                      ),
+                      SizedBox(width: 7.0 * scale),
+                      CustomCalendarIcon(size: 24.0 * scale, color: const Color(0xFFF83A71)),
+                    ]
+                  : [
+                      CustomCalendarIcon(size: 24.0 * scale, color: const Color(0xFFF83A71)),
+                      SizedBox(width: 7.0 * scale),
+                      Text(
+                        periodLabel,
+                        style: GoogleFonts.poppins(
+                          fontSize: 19.0 * scale,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF221F48),
+                          height: 1.15,
+                        ),
+                      ),
+                    ],
             ),
           ),
           // Big number
           Positioned(
-            left: hPadding - 1,
+            left: isRTL ? null : hPadding - 1,
+            right: isRTL ? hPadding - 1 : null,
             top: 76.0 * scale,
             child: Text(
               stats.totalDistance.toStringAsFixed(2),
@@ -431,30 +473,33 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
           ),
           // Kilometers text
           Positioned(
-            left: 159.0 * scale,
+            left: isRTL ? null : 159.0 * scale,
+            right: isRTL ? 159.0 * scale : null,
             top: 80.0 * scale,
             child: Text(
-              'Kilometers',
-              style: GoogleFonts.roboto(
-                fontSize: 14.0 * scale,
-                fontWeight: FontWeight.w400,
-                color: const Color(0xFF221F48),
-                height: 2.2,
-              ),
+              l10n.kilometersLabel,
+              style: isRTL
+                  ? GoogleFonts.cairo(
+                      fontSize: 14.0 * scale * fontScale,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF221F48),
+                      height: 2.2,
+                    )
+                  : GoogleFonts.roboto(
+                      fontSize: 14.0 * scale,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF221F48),
+                      height: 2.2,
+                    ),
             ),
           ),
           // Stats row
           Positioned(
-            left: hPadding + 3,
+            left: isRTL ? null : hPadding + 3,
+            right: isRTL ? hPadding + 3 : null,
             bottom: 25.0 * scale,
             child: Row(
-              children: [
-                _buildStatColumn('Count', stats.activityCount.toString(), isTablet, scale),
-                SizedBox(width: 50.0 * scale),
-                _buildStatColumn('Avg pace', _formatPace(stats.averagePace), isTablet, scale),
-                SizedBox(width: 50.0 * scale),
-                _buildStatColumn('Time', timeStr, isTablet, scale),
-              ],
+              children: isRTL ? statColumns.reversed.toList() : statColumns,
             ),
           ),
         ],
@@ -462,18 +507,16 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  Widget _buildStatColumn(String label, String value, bool isTablet, double scale) {
+  Widget _buildStatColumn(String label, String value, bool isTablet, double scale, bool isRTL, double fontScale) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
-          style: GoogleFonts.roboto(
-            fontSize: 14.0 * scale,
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF221F48),
-          ),
+          style: isRTL
+              ? GoogleFonts.cairo(fontSize: 14.0 * scale * fontScale, fontWeight: FontWeight.w400, color: const Color(0xFF221F48))
+              : GoogleFonts.roboto(fontSize: 14.0 * scale, fontWeight: FontWeight.w400, color: const Color(0xFF221F48)),
         ),
         SizedBox(height: 2.0 * scale),
         Text(
@@ -488,8 +531,10 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  Widget _buildWeeklyChart(List<DailyStat> dailyStats, bool isTablet, double scale) {
-    final dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  Widget _buildWeeklyChart(List<DailyStat> dailyStats, bool isTablet, double scale, bool isRTL) {
+    final dayLabels = isRTL
+        ? ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س']
+        : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
     final List<double> weeklyData = List.filled(7, 0.0);
 
     for (var stat in dailyStats) {
@@ -613,7 +658,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                     Text('${maxDistance.toInt()}', style: _chartLabelStyle(isTablet, scale)),
                     Text('${(maxDistance * 0.6).toInt()}', style: _chartLabelStyle(isTablet, scale)),
                     Text('${(maxDistance * 0.2).toInt()}', style: _chartLabelStyle(isTablet, scale)),
-                    Text('0 km', style: _chartLabelStyle(isTablet, scale)),
+                    Text('0 ${isRTL ? 'كم' : 'km'}', style: _chartLabelStyle(isTablet, scale)),
                   ],
                 ),
               ),
@@ -643,7 +688,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
-  Widget _buildActivityItem(dynamic activity, bool isTablet, double scale) {
+  Widget _buildActivityItem(dynamic activity, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     String day = '';
     String km = '';
     String pace = '';
@@ -652,35 +697,33 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
-    final date = activity.date;
+    final date = activity.date as DateTime;
 
     if (date.year == today.year && date.month == today.month && date.day == today.day) {
-      day = 'Today';
+      day = l10n.todayLabel;
     } else if (date.year == yesterday.year && date.month == yesterday.month && date.day == yesterday.day) {
-      day = 'Yesterday';
+      day = l10n.yesterdayLabel;
     } else {
-      day = DateFormat('EEEE').format(date); // Sunday, Monday...
+      day = DateFormat('EEEE', isRTL ? 'ar' : 'en').format(date);
     }
 
     if (activity is Workout) {
-      // Mapping for HIIT
-      km = '${activity.exercises ?? 0} Ex';
-      pace = '${activity.rounds ?? 0} Rnds';
-      
+      km = '${activity.exercises ?? 0} ${l10n.exLabel}';
+      pace = '${activity.rounds ?? 0} ${l10n.roundsLabel}';
       final duration = Duration(seconds: activity.duration);
-      final minutes = duration.inMinutes;
-      final seconds = duration.inSeconds % 60;
-      time = '$minutes:${seconds.toString().padLeft(2, '0')}';
-
+      final mins = duration.inMinutes;
+      final secs = duration.inSeconds % 60;
+      time = '$mins:${secs.toString().padLeft(2, '0')}';
     } else if (activity is Activity) {
-      km = '${activity.distance.toStringAsFixed(2)} km';
+      km = '${activity.distance.toStringAsFixed(2)} ${l10n.kmSuffix}';
       pace = _formatPace(activity.averagePace);
       final duration = Duration(seconds: activity.duration);
-      final minutes = duration.inMinutes;
-      final seconds = duration.inSeconds % 60;
-      time = '$minutes:${seconds.toString().padLeft(2, '0')}';
+      final mins = duration.inMinutes;
+      final secs = duration.inSeconds % 60;
+      time = '$mins:${secs.toString().padLeft(2, '0')}';
     }
 
+    final isWorkout = activity is Workout;
     return _buildActivityCard(
       day: day,
       kilometers: km,
@@ -688,6 +731,10 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
       time: time,
       isTablet: isTablet,
       scale: scale,
+      l10n: l10n,
+      isRTL: isRTL,
+      fontScale: fontScale,
+      isWorkout: isWorkout,
     );
   }
 
@@ -698,9 +745,21 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     required String time,
     required bool isTablet,
     required double scale,
+    required AppLocalizations l10n,
+    required bool isRTL,
+    required double fontScale,
+    required bool isWorkout,
   }) {
     final cardHeight = 140.0 * scale;
     final hPadding = 18.0 * scale;
+
+    final statsRow = [
+      _buildActivityStat(isWorkout ? l10n.exercisesLabel : l10n.kilometersLabel, kilometers, isTablet, scale, isRTL, fontScale),
+      SizedBox(width: 56.0 * scale),
+      _buildActivityStat(isWorkout ? l10n.roundsLabel : l10n.avgPaceShort, avgPace, isTablet, scale, isRTL, fontScale),
+      SizedBox(width: 56.0 * scale),
+      _buildActivityStat(l10n.timeLabel, time, isTablet, scale, isRTL, fontScale),
+    ];
 
     return Container(
       width: double.infinity,
@@ -716,39 +775,46 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         children: [
           // Header with calendar icon and day name
           Positioned(
-            left: hPadding,
+            left: isRTL ? null : hPadding,
+            right: isRTL ? hPadding : null,
             top: 22.0 * scale,
             child: Row(
-              children: [
-                CustomCalendarIcon(
-                  size: 24.0 * scale,
-                  color: const Color(0xFFF83A71),
-                ),
-                SizedBox(width: 7.0 * scale),
-                Text(
-                  day,
-                  style: GoogleFonts.poppins(
-                    fontSize: 18.0 * scale,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF221F48),
-                    height: 1.2,
-                  ),
-                ),
-              ],
+              children: isRTL
+                  ? [
+                      Text(
+                        day,
+                        style: GoogleFonts.cairo(
+                          fontSize: 18.0 * scale * fontScale,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF221F48),
+                          height: 1.2,
+                        ),
+                      ),
+                      SizedBox(width: 7.0 * scale),
+                      CustomCalendarIcon(size: 24.0 * scale, color: const Color(0xFFF83A71)),
+                    ]
+                  : [
+                      CustomCalendarIcon(size: 24.0 * scale, color: const Color(0xFFF83A71)),
+                      SizedBox(width: 7.0 * scale),
+                      Text(
+                        day,
+                        style: GoogleFonts.poppins(
+                          fontSize: 18.0 * scale,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF221F48),
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
             ),
           ),
           // Stats row
           Positioned(
-            left: hPadding + 3,
+            left: isRTL ? null : hPadding + 3,
+            right: isRTL ? hPadding + 3 : null,
             bottom: 25.0 * scale,
             child: Row(
-              children: [
-                _buildActivityStat(kilometers.contains('Ex') ? 'Exercises' : 'Kilometers', kilometers, isTablet, scale),
-                SizedBox(width: 56.0 * scale),
-                _buildActivityStat(avgPace.contains('Rnds') ? 'Rounds' : 'Avg pace', avgPace, isTablet, scale),
-                SizedBox(width: 56.0 * scale),
-                _buildActivityStat('Time', time, isTablet, scale),
-              ],
+              children: isRTL ? statsRow.reversed.toList() : statsRow,
             ),
           ),
         ],
@@ -756,18 +822,16 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 
-  Widget _buildActivityStat(String label, String value, bool isTablet, double scale) {
+  Widget _buildActivityStat(String label, String value, bool isTablet, double scale, bool isRTL, double fontScale) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
-          style: GoogleFonts.roboto(
-            fontSize: 12.0 * scale,
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF8B88B5),
-          ),
+          style: isRTL
+              ? GoogleFonts.cairo(fontSize: 12.0 * scale * fontScale, fontWeight: FontWeight.w400, color: const Color(0xFF8B88B5))
+              : GoogleFonts.roboto(fontSize: 12.0 * scale, fontWeight: FontWeight.w400, color: const Color(0xFF8B88B5)),
         ),
         SizedBox(height: 2.0 * scale),
         Text(

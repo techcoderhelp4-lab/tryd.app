@@ -20,6 +20,7 @@ import '../domain/reward.dart';
 import '../domain/redemption.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class RewardsScreen extends ConsumerStatefulWidget {
   const RewardsScreen({super.key});
@@ -77,6 +78,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     final headerHeightTabIndex0 = tabHeightValue + tabSpacing0 + categoryHeightValue + categoryBottomSpacing;
     final headerHeightTabIndex1 = tabHeightValue + tabSpacing1;
 
+    final l10n = AppLocalizations.of(context)!;
+    final isRTL = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isRTL ? 1.2 : 1.0;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -91,7 +96,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               ),
             ),
           ),
-          
+
           SafeArea(
             bottom: false,
             child: RefreshIndicator(
@@ -110,12 +115,12 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     child: Column(
                       children: [
                         SizedBox(height: 24.0 * scale),
-                        _buildHeader(context, isTablet, scale),
+                        _buildHeader(context, isTablet, scale, l10n, isRTL, fontScale),
                         SizedBox(height: 16.0 * scale),
                         userAsync.when(
-                          data: (user) => _buildPointsSection(user.points ?? 0, isTablet, scale),
-                          loading: () => _buildPointsSection(null, isTablet, scale),
-                          error: (_, __) => _buildPointsSection(0, isTablet, scale),
+                          data: (user) => _buildPointsSection(user.points ?? 0, isTablet, scale, l10n, isRTL, fontScale),
+                          loading: () => _buildPointsSection(null, isTablet, scale, l10n, isRTL, fontScale),
+                          error: (_, __) => _buildPointsSection(0, isTablet, scale, l10n, isRTL, fontScale),
                         ),
                         SizedBox(height: 24.0 * scale),
                       ],
@@ -129,10 +134,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       child: Container(
                         child: Column(
                           children: [
-                            _buildTabs(isTablet, scale),
+                            _buildTabs(isTablet, scale, l10n, isRTL, fontScale),
                             if (_selectedTabIndex == 0) ...[
                               SizedBox(height: tabSpacing0),
-                              _buildCategories(isTablet, scale),
+                              _buildCategories(isTablet, scale, l10n, isRTL),
                               SizedBox(height: categoryBottomSpacing),
                             ] else
                               SizedBox(height: tabSpacing1),
@@ -141,7 +146,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       ),
                     ),
                   ),
-                  _buildRewardsList(rewardsAsync, redemptionsAsync, isTablet, headerHeightTabIndex0, scale),
+                  _buildRewardsList(rewardsAsync, redemptionsAsync, isTablet, headerHeightTabIndex0, scale, l10n, isRTL, fontScale),
                 ],
               ),
             ),
@@ -179,12 +184,12 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isTablet, double scale) {
+  Widget _buildHeader(BuildContext context, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final horizontalPadding = 26.0 * scale;
     final iconSize = 24.0 * scale;
     final buttonSize = 40.0 * scale;
     final titleSize = 19.0 * scale;
-    
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Row(
@@ -202,7 +207,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               height: buttonSize,
               alignment: Alignment.center,
               child: Transform.scale(
-                scaleX: -1,
+                scaleX: isRTL ? 1.0 : -1.0,
                 child: CustomArrowIcon(
                   size: iconSize,
                   color: const Color(0xFF130F26),
@@ -211,27 +216,27 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
             ),
           ),
           Text(
-            'Rewards',
-            style: GoogleFonts.lexendDeca(
-              fontSize: titleSize,
+            l10n.rewardsTitle,
+            style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+              fontSize: titleSize * fontScale,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF24252C),
             ),
           ),
-          SizedBox(width: buttonSize), // Spacer
+          SizedBox(width: buttonSize),
         ],
       ),
     );
   }
 
-  Widget _buildPointsSection(int? points, bool isTablet, double scale) {
+  Widget _buildPointsSection(int? points, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final horizontalPadding = 26.0 * scale;
     final iconBoxSize = 44.0 * scale;
     final crownSize = 24.0 * scale;
     final pointsFontSize = 24.0 * scale;
     final labelFontSize = 14.0 * scale;
     final gap = 16.0 * scale;
-    
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Row(
@@ -265,9 +270,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 ),
               ),
               Text(
-                'Your Available Points',
-                style: GoogleFonts.lexendDeca(
-                  fontSize: labelFontSize,
+                l10n.availablePointsLabel,
+                style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                  fontSize: labelFontSize * fontScale,
                   fontWeight: FontWeight.w400,
                   color: const Color(0xFF221F48),
                 ),
@@ -281,7 +286,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
 
   int _selectedTabIndex = 0;
 
-  Widget _buildTabs(bool isTablet, double scale) {
+  Widget _buildTabs(bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final horizontalMargin = 26.0 * scale;
     final tabHeight = 50.0 * scale;
     final tabRadius = 15.0 * scale;
@@ -311,13 +316,13 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 ? LayoutBuilder(
                     builder: (context, constraints) {
                       return GradientButton(
-                        text: 'Available Rewards',
+                        text: l10n.availableRewardsTab,
                         onPressed: () {}, // Already selected
                         width: constraints.maxWidth,
                         height: constraints.maxHeight,
                         showIcon: false,
-                        textStyle: GoogleFonts.poppins(
-                          fontSize: tabFontSize,
+                        textStyle: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          fontSize: tabFontSize * fontScale,
                           fontWeight: FontWeight.w500,
                           color: Colors.white,
                         ),
@@ -334,9 +339,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       color: Colors.transparent,
                       alignment: Alignment.center,
                       child: Text(
-                        'Available Rewards',
-                        style: GoogleFonts.poppins(
-                          fontSize: tabFontSize,
+                        l10n.availableRewardsTab,
+                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          fontSize: tabFontSize * fontScale,
                           fontWeight: FontWeight.w400,
                           color: const Color(0xFF8B88B5),
                         ),
@@ -349,13 +354,13 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 ? LayoutBuilder(
                     builder: (context, constraints) {
                       return GradientButton(
-                        text: 'My Redemptions',
+                        text: l10n.myRedemptionsTab,
                         onPressed: () {}, // Already selected
                         width: constraints.maxWidth,
                         height: constraints.maxHeight,
                         showIcon: false,
-                        textStyle: GoogleFonts.poppins(
-                          fontSize: tabFontSize,
+                        textStyle: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          fontSize: tabFontSize * fontScale,
                           fontWeight: FontWeight.w500,
                           color: Colors.white,
                         ),
@@ -372,9 +377,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       color: Colors.transparent,
                       alignment: Alignment.center,
                       child: Text(
-                        'My Redemptions',
-                        style: GoogleFonts.poppins(
-                          fontSize: tabFontSize,
+                        l10n.myRedemptionsTab,
+                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          fontSize: tabFontSize * fontScale,
                           fontWeight: FontWeight.w400,
                           color: const Color(0xFF8B88B5),
                         ),
@@ -387,7 +392,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  Widget _buildCategories(bool isTablet, double scale) {
+  Widget _buildCategories(bool isTablet, double scale, AppLocalizations l10n, bool isRTL) {
     final categoryHeight = 88.0 * scale;
     final categoryWidth = 64.0 * scale;
     final iconSize = 28.0 * scale;
@@ -395,6 +400,15 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     final horizontalPadding = 26.0 * scale;
     final gap = 12.0 * scale;
     final borderRadius = 15.0 * scale;
+    final fontScale = isRTL ? 1.2 : 1.0;
+    final Map<String, String> categoryLabels = {
+      'All': l10n.categoryAll,
+      'Coffee': l10n.categoryCoffee,
+      'Shop': l10n.categoryShop,
+      'Food': l10n.categoryFood,
+      'Gym': l10n.categoryGym,
+      'Books': l10n.categoryBooks,
+    };
     
     return SizedBox(
       height: categoryHeight,
@@ -443,9 +457,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     ),
                   SizedBox(height: 6.0 * scale),
                   Text(
-                    category['name'],
-                    style: GoogleFonts.lexendDeca(
-                      fontSize: labelSize,
+                    categoryLabels[category['name']] ?? category['name'],
+                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                      fontSize: labelSize * fontScale,
                       color: const Color(0xFF1B2D51),
                     ),
                   ),
@@ -458,7 +472,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  Widget _buildRewardsList(AsyncValue<List<Reward>> rewardsAsync, AsyncValue<List<Redemption>> redemptionsAsync, bool isTablet, double headerHeightTabIndex0, double scale) {
+  Widget _buildRewardsList(AsyncValue<List<Reward>> rewardsAsync, AsyncValue<List<Redemption>> redemptionsAsync, bool isTablet, double headerHeightTabIndex0, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final horizontalPadding = 20.0 * scale;
     final bottomPadding = 120.0 * scale;
     final itemSpacing = 16.0 * scale;
@@ -480,9 +494,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       Icon(Icons.redeem_outlined, size: 48.0 * scale, color: const Color(0xFF8B88B5).withOpacity(0.3)),
                       SizedBox(height: 12.0 * scale),
                       Text(
-                        'No rewards available',
-                        style: GoogleFonts.lexendDeca(
-                          fontSize: 16.0 * scale,
+                        l10n.noRewardsAvailable,
+                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                          fontSize: 16.0 * scale * fontScale,
                           color: const Color(0xFF8B88B5),
                           fontWeight: FontWeight.w400,
                         ),
@@ -521,7 +535,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         final isClaimed = limit != null && approved >= limit;
                         // For manual approval: block redeem while any is still pending
                         final isPending = !isClaimed && pending > 0 && reward.requiresApproval == true;
-                        return _buildRewardCard(reward, isTablet, scale, isClaimed: isClaimed, isPending: isPending);
+                        return _buildRewardCard(reward, isTablet, scale, l10n, isRTL, fontScale, isClaimed: isClaimed, isPending: isPending);
                       },
                       childCount: rewards.length * 2 - 1,
                     ),
@@ -546,9 +560,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       Icon(Icons.history_outlined, size: 48.0 * scale, color: const Color(0xFF8B88B5).withOpacity(0.3)),
                       SizedBox(height: 12.0 * scale),
                       Text(
-                        'No redemptions yet',
-                        style: GoogleFonts.lexendDeca(
-                          fontSize: 16.0 * scale,
+                        l10n.noRedemptionsYet,
+                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                          fontSize: 16.0 * scale * fontScale,
                           color: const Color(0xFF8B88B5),
                           fontWeight: FontWeight.w400,
                         ),
@@ -565,7 +579,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                   (context, index) {
                     if (index.isOdd) return SizedBox(height: itemSpacing);
                     final itemIndex = index ~/ 2;
-                    return _buildRedemptionCard(redemptions[itemIndex], isTablet, scale);
+                    return _buildRedemptionCard(redemptions[itemIndex], isTablet, scale, l10n, isRTL, fontScale);
                   },
                   childCount: redemptions.length * 2 - 1,
                 ),
@@ -661,7 +675,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  Widget _buildRewardCard(Reward reward, bool isTablet, double scale, {bool isClaimed = false, bool isPending = false}) {
+  Widget _buildRewardCard(Reward reward, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale, {bool isClaimed = false, bool isPending = false}) {
     final cardHeight = 109.0 * scale;
     final borderRadius = 15.0 * scale;
     final innerPadding = 12.0 * scale;
@@ -740,8 +754,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 children: [
                   Text(
                     reward.title,
-                    style: GoogleFonts.poppins(
-                      fontSize: titleFontSize,
+                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                      fontSize: titleFontSize * fontScale,
                       fontWeight: FontWeight.w400,
                       color: Colors.black,
                     ),
@@ -750,8 +764,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                   ),
                   Text(
                     reward.partner,
-                    style: GoogleFonts.lexendDeca(
-                      fontSize: partnerFontSize,
+                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                      fontSize: partnerFontSize * fontScale,
                       color: const Color(0xFF8B88B5),
                     ),
                     maxLines: 1,
@@ -765,16 +779,16 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       Text(
                         reward.requiredPoints.toString(),
                         style: GoogleFonts.lexendDeca(
-                          fontSize: pointsFontSize,
+                          fontSize: pointsFontSize * fontScale,
                           fontWeight: FontWeight.w600,
                           color: Colors.black,
                         ),
                       ),
                       SizedBox(width: 4.0 * scale),
                       Text(
-                        'points',
-                        style: GoogleFonts.poppins(
-                          fontSize: partnerFontSize,
+                        l10n.pointsLabel,
+                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          fontSize: partnerFontSize * fontScale,
                           color: const Color(0xFF8B88B5),
                         ),
                       ),
@@ -802,9 +816,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         borderRadius: BorderRadius.circular(18.0 * scale),
                       ),
                       child: Text(
-                        'Manual Approval',
-                        style: GoogleFonts.poppins(
-                          fontSize: badgeFontSize,
+                        l10n.manualApprovalBadge,
+                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          fontSize: badgeFontSize * fontScale,
                           color: Colors.black,
                         ),
                       ),
@@ -818,9 +832,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         Icon(Icons.check_circle, color: const Color(0xFF22D198), size: 16.0 * scale),
                         SizedBox(width: 4.0 * scale),
                         Text(
-                          'Claimed',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12.0 * scale,
+                          l10n.claimedLabel,
+                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                            fontSize: 12.0 * scale * fontScale,
                             fontWeight: FontWeight.w500,
                             color: const Color(0xFF22D198),
                           ),
@@ -834,9 +848,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         Icon(Icons.access_time, color: const Color(0xFFDC931F), size: 16.0 * scale),
                         SizedBox(width: 4.0 * scale),
                         Text(
-                          'Pending',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12.0 * scale,
+                          l10n.pendingLabel,
+                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                            fontSize: 12.0 * scale * fontScale,
                             fontWeight: FontWeight.w500,
                             color: const Color(0xFFDC931F),
                           ),
@@ -857,9 +871,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          'Redeem',
-                          style: GoogleFonts.poppins(
-                            fontSize: buttonFontSize,
+                          l10n.redeemButton,
+                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                            fontSize: buttonFontSize * fontScale,
                             fontWeight: FontWeight.w600,
                             color: const Color(0xFF900EBF),
                           ),
@@ -875,7 +889,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  Widget _buildRedemptionCard(Redemption redemption, bool isTablet, double scale) {
+  Widget _buildRedemptionCard(Redemption redemption, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final horizontalPadding = 22.0 * scale;
     final borderRadius = 15.0 * scale;
     final titleFontSize = 14.0 * scale;
@@ -885,6 +899,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     final messageBoxPadding = 10.0 * scale;
     final messageFontSize = 12.0 * scale;
     final couponHeight = 52.0 * scale;
+
+    final dateLocale = isRTL ? 'ar' : 'en';
 
     if (redemption.status == 'rejected') {
       // ── Rejected Card ──
@@ -904,17 +920,17 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               children: [
                 Text(
                   redemption.reward.title,
-                  style: GoogleFonts.lexendDeca(
-                    fontSize: titleFontSize,
+                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                    fontSize: titleFontSize * fontScale,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
                 ),
                 SizedBox(height: 4.0 * scale),
                 Text(
-                  'Requested on ${DateFormat('MMM d, yyyy').format(redemption.createdAt)}',
-                  style: GoogleFonts.poppins(
-                    fontSize: dateFontSize,
+                  l10n.requestedOnDate(DateFormat('dd MMM yyyy', dateLocale).format(redemption.createdAt)),
+                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                    fontSize: dateFontSize * fontScale,
                     color: const Color(0xFF818181),
                   ),
                 ),
@@ -924,9 +940,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     Icon(Icons.star, color: const Color(0xFFFFA500), size: starSize),
                     SizedBox(width: 3.0 * scale),
                     Text(
-                      '${redemption.pointsDeducted} points',
-                      style: GoogleFonts.poppins(
-                        fontSize: pointsFontSize,
+                      '${redemption.pointsDeducted} ${l10n.pointsLabel}',
+                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        fontSize: pointsFontSize * fontScale,
                         fontWeight: FontWeight.w500,
                         color: Colors.black,
                       ),
@@ -939,9 +955,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         borderRadius: BorderRadius.circular(4.0 * scale),
                       ),
                       child: Text(
-                        'Refunded',
-                        style: GoogleFonts.poppins(
-                          fontSize: 10.0 * scale,
+                        l10n.refundedLabel,
+                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          fontSize: 10.0 * scale * fontScale,
                           fontWeight: FontWeight.w500,
                           color: const Color(0xFF22D198),
                         ),
@@ -967,10 +983,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                   Expanded(
                     child: Text(
                       redemption.adminNote != null && redemption.adminNote!.isNotEmpty
-                          ? 'Rejected: ${redemption.adminNote}'
-                          : 'Your request was rejected. Points have been refunded to your account.',
-                      style: GoogleFonts.poppins(
-                        fontSize: messageFontSize,
+                          ? l10n.rejectedWithNote(redemption.adminNote!)
+                          : l10n.requestRejectedDefault,
+                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        fontSize: messageFontSize * fontScale,
                         color: const Color(0xFFE53E3E),
                         height: 1.2,
                       ),
@@ -995,67 +1011,67 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-             Column(
-               crossAxisAlignment: CrossAxisAlignment.start,
-               children: [
-                 Text(
-                   redemption.reward.title,
-                   style: GoogleFonts.lexendDeca(
-                     fontSize: titleFontSize,
-                     fontWeight: FontWeight.w600,
-                     color: Colors.black,
-                   ),
-                 ),
-                                   SizedBox(height: 4.0 * scale),
-                 Text(
-                   'Requested on ${DateFormat('MMM d, yyyy').format(redemption.createdAt)}',
-                   style: GoogleFonts.poppins(
-                     fontSize: dateFontSize,
-                     color: const Color(0xFF818181),
-                   ),
-                 ),
-                                   SizedBox(height: 4.0 * scale),
-                  Row(
-                    children: [
-                      Icon(Icons.star, color: const Color(0xFFFFA500), size: starSize),
-                      SizedBox(width: 3.0 * scale),
-                      Text(
-                        '${redemption.pointsDeducted} points',
-                        style: GoogleFonts.poppins(
-                          fontSize: pointsFontSize,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ],
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  redemption.reward.title,
+                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                    fontSize: titleFontSize * fontScale,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
                   ),
-               ],
-             ),
-             SizedBox(height: 16.0 * scale),
-             Container(
-               padding: EdgeInsets.all(messageBoxPadding),
-               decoration: BoxDecoration(
-                 border: Border.all(color: const Color(0xFFECB953).withOpacity(0.9)),
-                 borderRadius: BorderRadius.circular(6.0 * scale),
-               ),
-               child: Row(
-               crossAxisAlignment: CrossAxisAlignment.start,
-                 children: [
-                   Icon(Icons.access_time, color: const Color(0xFFDC931F), size: 18.0 * scale),
-                   SizedBox(width: 8.0 * scale),
-                   Expanded(
-                     child: Text(
-                       'Your request is being reviewed. You\'ll be notified once approved.',
-                       style: GoogleFonts.poppins(
-                         fontSize: messageFontSize,
-                         color: const Color(0xFFDC931F),
-                         height: 1.2,
-                       ),
-                     ),
-                   ),
-                 ],
-               ),
-             ),
+                ),
+                SizedBox(height: 4.0 * scale),
+                Text(
+                  l10n.requestedOnDate(DateFormat('dd MMM yyyy', dateLocale).format(redemption.createdAt)),
+                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                    fontSize: dateFontSize * fontScale,
+                    color: const Color(0xFF818181),
+                  ),
+                ),
+                SizedBox(height: 4.0 * scale),
+                Row(
+                  children: [
+                    Icon(Icons.star, color: const Color(0xFFFFA500), size: starSize),
+                    SizedBox(width: 3.0 * scale),
+                    Text(
+                      '${redemption.pointsDeducted} ${l10n.pointsLabel}',
+                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        fontSize: pointsFontSize * fontScale,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: 16.0 * scale),
+            Container(
+              padding: EdgeInsets.all(messageBoxPadding),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFECB953).withOpacity(0.9)),
+                borderRadius: BorderRadius.circular(6.0 * scale),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.access_time, color: const Color(0xFFDC931F), size: 18.0 * scale),
+                  SizedBox(width: 8.0 * scale),
+                  Expanded(
+                    child: Text(
+                      l10n.requestPendingMessage,
+                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        fontSize: messageFontSize * fontScale,
+                        color: const Color(0xFFDC931F),
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       );
@@ -1068,116 +1084,116 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
           border: Border.all(color: const Color(0xFFF5F3F3)),
           borderRadius: BorderRadius.circular(borderRadius),
           boxShadow: [
-             BoxShadow(
-               color: Colors.black.withOpacity(0.04),
-               blurRadius: 24,
-               offset: const Offset(0, 3),
-             ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 24,
+              offset: const Offset(0, 3),
+            ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-             Column(
-               crossAxisAlignment: CrossAxisAlignment.start,
-               children: [
-                 Text(
-                   redemption.reward.title,
-                   style: GoogleFonts.lexendDeca(
-                     fontSize: titleFontSize,
-                     fontWeight: FontWeight.w600,
-                     color: Colors.black,
-                   ),
-                 ),
-                                   SizedBox(height: 4.0 * scale),
-                 Text(
-                   'Redeemed on ${DateFormat('MMM d, yyyy').format(redemption.createdAt)}',
-                   style: GoogleFonts.poppins(
-                     fontSize: dateFontSize,
-                     color: const Color(0xFF818181),
-                   ),
-                 ),
-                                   SizedBox(height: 4.0 * scale),
-                 Row(
-                   children: [
-                     Icon(Icons.star, color: const Color(0xFFFFA500), size: starSize),
-                     SizedBox(width: 4.0 * scale),
-                     Text(
-                       '${redemption.pointsDeducted} points',
-                       style: GoogleFonts.poppins(
-                         fontSize: pointsFontSize,
-                         fontWeight: FontWeight.w500,
-                         color: Colors.black,
-                       ),
-                     ),
-                   ],
-                 ),
-               ],
-             ),
-             if (redemption.couponCode != null) ...[
-               SizedBox(height: 16.0 * scale),
-               CustomPaint(
-                 foregroundPainter: DashedRectPainter(
-                   color: const Color(0xFFF7A1BA),
-                   strokeWidth: 1.0,
-                   gap: 5.0,
-                   borderRadius: 13.0 * scale,
-                 ),
-                 child: Container(
-                   height: couponHeight,
-                   padding: EdgeInsets.symmetric(horizontal: 16.0 * scale),
-                   decoration: BoxDecoration(
-                     color: Colors.white,
-                     borderRadius: BorderRadius.circular(13.0 * scale),
-                   ),
-                   child: Row(
-                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                     children: [
-                       Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         mainAxisAlignment: MainAxisAlignment.center,
-                         children: [
-                           Text(
-                             'Your Coupon Code',
-                             style: GoogleFonts.poppins(
-                               fontSize: dateFontSize,
-                               fontWeight: FontWeight.w400,
-                               color: const Color(0xFF818181),
-                             ),
-                           ),
-                           Text(
-                             redemption.couponCode!,
-                             style: GoogleFonts.lexendDeca(
-                               fontSize: titleFontSize,
-                               fontWeight: FontWeight.w600,
-                               color: Colors.black,
-                             ),
-                           ),
-                         ],
-                       ),
-                       GestureDetector(
-                         onTap: () {
-                           Clipboard.setData(ClipboardData(text: redemption.couponCode!));
-                            ref.read(realTimeNotificationServiceProvider).showInAppBanner(
-                              'Code Copied!',
-                              'Coupon code copied to clipboard.',
-                            );
-                         },
-                         child: Container(
-                           padding: EdgeInsets.symmetric(
-                             horizontal: 12.0 * scale,
-                             vertical: 6.0 * scale,
-                           ),
-                           decoration: BoxDecoration(
-                             color: const Color(0xFFF7A1BA).withOpacity(0.15),
-                             borderRadius: BorderRadius.circular(6.0 * scale),
-                           ),
-                           child: Text(
-                             'Copy',
-                             style: GoogleFonts.poppins(
-                               fontSize: dateFontSize,
-                               fontWeight: FontWeight.w600,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  redemption.reward.title,
+                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                    fontSize: titleFontSize * fontScale,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                SizedBox(height: 4.0 * scale),
+                Text(
+                  l10n.redeemedOnDate(DateFormat('dd MMM yyyy', dateLocale).format(redemption.createdAt)),
+                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                    fontSize: dateFontSize * fontScale,
+                    color: const Color(0xFF818181),
+                  ),
+                ),
+                SizedBox(height: 4.0 * scale),
+                Row(
+                  children: [
+                    Icon(Icons.star, color: const Color(0xFFFFA500), size: starSize),
+                    SizedBox(width: 4.0 * scale),
+                    Text(
+                      '${redemption.pointsDeducted} ${l10n.pointsLabel}',
+                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        fontSize: pointsFontSize * fontScale,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            if (redemption.couponCode != null) ...[
+              SizedBox(height: 16.0 * scale),
+              CustomPaint(
+                foregroundPainter: DashedRectPainter(
+                  color: const Color(0xFFF7A1BA),
+                  strokeWidth: 1.0,
+                  gap: 5.0,
+                  borderRadius: 13.0 * scale,
+                ),
+                child: Container(
+                  height: couponHeight,
+                  padding: EdgeInsets.symmetric(horizontal: 16.0 * scale),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(13.0 * scale),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            l10n.yourCouponCode,
+                            style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                              fontSize: dateFontSize * fontScale,
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFF818181),
+                            ),
+                          ),
+                          Text(
+                            redemption.couponCode!,
+                            style: GoogleFonts.lexendDeca(
+                              fontSize: titleFontSize,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: redemption.couponCode!));
+                          ref.read(realTimeNotificationServiceProvider).showInAppBanner(
+                            l10n.codeCopiedTitle,
+                            l10n.codeCopiedMessage,
+                          );
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12.0 * scale,
+                            vertical: 6.0 * scale,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7A1BA).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6.0 * scale),
+                          ),
+                          child: Text(
+                            l10n.copyButton,
+                            style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                              fontSize: dateFontSize * fontScale,
+                              fontWeight: FontWeight.w600,
                                color: const Color(0xFFF83A71),
                              ),
                            ),
@@ -1250,7 +1266,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 Padding(
                   padding: EdgeInsets.only(left: horizontalPadding, top: horizontalPadding),
                   child: Text(
-                    'Confirm Redemption',
+                    AppLocalizations.of(context)!.confirmRedemptionTitle,
                     style: GoogleFonts.poppins(
                       fontSize: titleFontSize,
                       fontWeight: FontWeight.w600,
@@ -1327,7 +1343,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Points Required',
+                            AppLocalizations.of(context)!.pointsRequired,
                             style: GoogleFonts.poppins(
                               fontSize: balanceLabelSize,
                               fontWeight: FontWeight.w400,
@@ -1368,7 +1384,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Current Balance',
+                            AppLocalizations.of(context)!.currentBalance,
                             style: GoogleFonts.poppins(
                               fontSize: balanceLabelSize,
                               fontWeight: FontWeight.w400,
@@ -1376,7 +1392,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                             ),
                           ),
                           Text(
-                            'After Redemption',
+                            AppLocalizations.of(context)!.afterRedemption,
                             style: GoogleFonts.poppins(
                               fontSize: balanceLabelSize,
                               fontWeight: FontWeight.w400,
@@ -1393,7 +1409,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                '${NumberFormat('#,###').format(points)} pts',
+                                '${NumberFormat('#,###').format(points)} ${AppLocalizations.of(context)!.ptsSuffix}',
                                 style: GoogleFonts.poppins(
                                   fontSize: balanceValueSize,
                                   fontWeight: FontWeight.w500,
@@ -1401,7 +1417,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                 ),
                               ),
                               Text(
-                                '${NumberFormat('#,###').format(math.max(0, points - reward.requiredPoints))} pts',
+                                '${NumberFormat('#,###').format(math.max(0, points - reward.requiredPoints))} ${AppLocalizations.of(context)!.ptsSuffix}',
                                 style: GoogleFonts.poppins(
                                   fontSize: balanceValueSize,
                                   fontWeight: FontWeight.w500,
@@ -1432,7 +1448,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              'Cancel',
+                              AppLocalizations.of(context)!.cancelButton,
                               style: GoogleFonts.poppins(
                                 fontSize: buttonFontSize,
                                 fontWeight: FontWeight.w600,
@@ -1463,7 +1479,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
-                                  'Confirm Redeem',
+                                  AppLocalizations.of(context)!.confirmRedeemButton,
                                   style: GoogleFonts.poppins(
                                     fontSize: buttonFontSize,
                                     fontWeight: FontWeight.w600,
@@ -1506,9 +1522,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
         ref.invalidate(rewardsListProvider);
 
         if (parentContext.mounted) {
+          final l10n = AppLocalizations.of(parentContext)!;
           ref.read(realTimeNotificationServiceProvider).showInAppBanner(
-            'Reward Redeemed!',
-            '${reward.title} has been added to your redemptions.',
+            l10n.rewardRedeemedTitle,
+            l10n.rewardRedeemedMessage(reward.title),
           );
         }
         _isRedeeming = false;

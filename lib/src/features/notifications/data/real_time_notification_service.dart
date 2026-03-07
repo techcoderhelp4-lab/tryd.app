@@ -31,6 +31,12 @@ class RealTimeNotificationService {
   io.Socket? _socket;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  bool _isMuted = false;
+
+  void setMuted(bool muted) {
+    _isMuted = muted;
+    debugPrint('NotificationService: UI Muted set to $muted');
+  }
 
   RealTimeNotificationService(this._ref);
 
@@ -62,10 +68,10 @@ class RealTimeNotificationService {
        FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
          print('NotificationService: Received FCM message: ${message.messageId}');
          if (message.notification != null) {
-           await _showLocalNotificationFromFCM(message);
            showInAppBanner(
              message.notification!.title ?? 'New Notification',
              message.notification!.body ?? '',
+             showAlert: true,
            );
          }
          
@@ -219,8 +225,7 @@ class RealTimeNotificationService {
 
   void _handleSocketNotification(dynamic data) {
     final notification = AppNotification.fromJson(data);
-    _showLocalNotification(notification);
-    showInAppBanner(notification.title, notification.message);
+    showInAppBanner(notification.title, notification.message, showAlert: true);
     _ref.invalidate(unreadNotificationCountProvider);
     _ref.invalidate(notificationsListProvider);
 
@@ -233,7 +238,11 @@ class RealTimeNotificationService {
     }
   }
 
-  void showInAppBanner(String title, String message, {bool showAlert = false, bool showSnackBar = true}) {
+  void clearAllBanners() {
+    scaffoldMessengerKey.currentState?.clearSnackBars();
+  }
+
+  void showInAppBanner(String title, String message, {bool showAlert = true, bool showSnackBar = true, bool force = false}) {
     // 1. Show System Alert (Tryd Alert) if requested
     if (showAlert) {
       _showLocalNotification(AppNotification(
@@ -245,9 +254,19 @@ class RealTimeNotificationService {
       ));
     }
 
-    if (!showSnackBar) return;
+    if (showSnackBar) {
+      if (_isMuted && !force) {
+         debugPrint('NotificationService: SnackBar skipped because UI is Muted');
+      } else {
+         _showSnackBar(title, message);
+      }
+    }
+  }
 
-    // 2. Show In-App SnackBar (Tryd Banner)
+  void _showSnackBar(String title, String message) {
+    scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+    
+    const duration = Duration(milliseconds: 2000);
     scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(
         content: Column(
@@ -280,7 +299,7 @@ class RealTimeNotificationService {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        duration: const Duration(seconds: 4),
+        duration: duration,
         action: SnackBarAction(
           label: 'DISMISS',
           textColor: Colors.white,
@@ -290,6 +309,11 @@ class RealTimeNotificationService {
         ),
       ),
     );
+
+    // Foolproof Auto-dismiss: Force hide after duration + small buffer
+    Timer(duration + const Duration(milliseconds: 100), () {
+      scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+    });
   }
 
   Future<void> _showLocalNotificationFromFCM(RemoteMessage message) async {

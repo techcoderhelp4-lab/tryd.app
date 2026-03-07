@@ -7,6 +7,7 @@ import '../data/auth_repository.dart';
 import 'otp_verification_screen.dart';
 import 'signup_details_screen.dart';
 import '../../../../core/utils/snackbar_utils.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -41,7 +42,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final emailRegex = RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
 
     if (email.isEmpty || !emailRegex.hasMatch(email)) {
-      CustomSnackBar.show(context, message: 'Please enter a valid email address');
+      CustomSnackBar.show(context, message: AppLocalizations.of(context)!.invalidEmail);
       return;
     }
 
@@ -50,7 +51,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     setState(() {
       _isLoading = true;
-      _loadingText = 'Checking...';
+      _loadingText = AppLocalizations.of(context)!.checking;
     });
 
     try {
@@ -61,7 +62,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       if (!mounted) return;
 
       if (userExists) {
-        setState(() => _loadingText = 'Sending OTP...');
+        setState(() => _loadingText = AppLocalizations.of(context)!.sendingOtp);
         await authRepo.sendOtp(email);
 
         if (mounted) {
@@ -75,7 +76,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           );
         }
       } else {
-        setState(() => _loadingText = 'Sending OTP...');
+        setState(() => _loadingText = AppLocalizations.of(context)!.sendingOtp);
         await authRepo.sendOtp(email);
 
         if (mounted) {
@@ -95,7 +96,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       }
     } catch (e) {
       if (mounted) {
-        CustomSnackBar.show(context, message: 'Something went wrong. Try again.');
+        CustomSnackBar.show(context, message: AppLocalizations.of(context)!.somethingWentWrong);
       }
     } finally {
       if (mounted) {
@@ -111,9 +112,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final screenWidth = size.width;
-    final screenHeight = size.height;
-    final isTablet = screenWidth > 600;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = size.height + bottomInset;
+    final isTablet = screenWidth > 600;
+    final l10n = AppLocalizations.of(context)!;
 
     const double smallScale = 0.80;
     const double mediumScale = 0.90;
@@ -127,6 +129,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             : screenHeight < 850
                 ? mediumScale
                 : largeScale;
+
+    final fontScale = Localizations.localeOf(context).languageCode == 'ar' ? 1.2 : 1.0;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -163,13 +167,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                 SizedBox(height: 40.0 * scale),
                                 _buildLogo(scale),
                                 SizedBox(height: 40.0 * scale),
-                                _buildTitle(scale),
+                                _buildTitle(scale, l10n, fontScale),
                                 SizedBox(height: 18.0 * scale),
-                                _buildSubtitle(scale),
+                                _buildSubtitle(scale, l10n, fontScale),
                                 SizedBox(height: 30.0 * scale),
-                                _buildInputFields(scale),
+                                _buildInputFields(scale, l10n, fontScale),
                                 SizedBox(height: 18.0 * scale),
-                                _buildSubmitButton(scale),
+                                _buildSubmitButton(scale, l10n, fontScale),
                                 SizedBox(height: bottomInset > 0 ? bottomInset * 0.3 : 20.0 * scale),
                               ],
                             ),
@@ -198,25 +202,25 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 
-  Widget _buildTitle(double scale) {
+  Widget _buildTitle(double scale, AppLocalizations l10n, double fontScale) {
     return Text(
-      'Enter your email address\nto get started.',
+      l10n.loginTitle,
       textAlign: TextAlign.center,
       style: GoogleFonts.lexendDeca(
-        fontSize: 20.0 * scale,
-        fontWeight: FontWeight.w600,
+        fontSize: 22.0 * scale * fontScale,
+        fontWeight: FontWeight.w700,
         height: 1.25,
         color: _primaryTextColor,
       ),
     );
   }
 
-  Widget _buildSubtitle(double scale) {
+  Widget _buildSubtitle(double scale, AppLocalizations l10n, double fontScale) {
     return Text(
-      'Sign in or join to reach your\npeak performance today',
+      l10n.loginSubtitle,
       textAlign: TextAlign.center,
       style: GoogleFonts.poppins(
-        fontSize: 14.0 * scale,
+        fontSize: 16.0 * scale * fontScale,
         fontWeight: FontWeight.w400,
         height: 1.5,
         color: _labelColor,
@@ -224,74 +228,94 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 
-  Widget _buildInputFields(double scale) {
+  Widget _buildInputFields(double scale, AppLocalizations l10n, double fontScale) {
     return AutofillGroup(
-      child: Container(
-        decoration: BoxDecoration(
-          color: _inputBgColor,
-          borderRadius: BorderRadius.circular(17),
-          boxShadow: [
-            BoxShadow(
-              offset: const Offset(0, 2),
-              blurRadius: 8,
-              spreadRadius: 0,
-              color: const Color(0xFF000000).withValues(alpha: 0.04),
+      child: ListenableBuilder(
+        listenable: _emailFocusNode,
+        builder: (context, child) {
+          final isFocused = _emailFocusNode.hasFocus;
+          return Container(
+            decoration: BoxDecoration(
+              color: _inputBgColor,
+              borderRadius: BorderRadius.circular(17),
+              border: Border.all(
+                color: isFocused ? Colors.black.withValues(alpha: 0.1) : Colors.transparent,
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  offset: const Offset(0, 4),
+                  blurRadius: 12,
+                  spreadRadius: 0,
+                  color: const Color(0xFF000000).withValues(alpha: 0.05),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0 * scale, vertical: 16.0 * scale),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Email Address',
-                style: GoogleFonts.lexendDeca(
-                  fontSize: 12.0 * scale,
-                  fontWeight: FontWeight.w500,
-                  height: 1.25,
-                  color: _labelColor,
-                  letterSpacing: 0.2,
-                ),
-              ),
-              SizedBox(height: 8.0 * scale),
-              TextField(
-                controller: _emailController,
-                focusNode: _emailFocusNode,
-                autofocus: true,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.done,
-                autofillHints: const [AutofillHints.email],
-                onSubmitted: (_) => _handleSubmit(),
-                style: GoogleFonts.poppins(
-                  fontSize: 16.0 * scale,
-                  fontWeight: FontWeight.w500,
-                  color: _inputTextColor,
-                  height: 1.4,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'example@mail.com',
-                  hintStyle: GoogleFonts.poppins(
-                    fontSize: 16.0 * scale,
-                    fontWeight: FontWeight.w400,
-                    color: _labelColor.withValues(alpha: 0.5),
+            child: child,
+          );
+        },
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0 * scale, vertical: 16.0 * scale),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.emailLabel,
+                  style: GoogleFonts.lexendDeca(
+                    fontSize: 14.0 * scale * fontScale,
+                    fontWeight: FontWeight.w500,
+                    height: 1.25,
+                    color: _labelColor,
+                    letterSpacing: 0.2,
                   ),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
                 ),
-              ),
-            ],
+                SizedBox(height: 8.0 * scale),
+                TextField(
+                  controller: _emailController,
+                  focusNode: _emailFocusNode,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.done,
+                  textAlign: TextAlign.left,
+                  textDirection: TextDirection.ltr,
+                  autofillHints: const [AutofillHints.email],
+                  onSubmitted: (_) => _handleSubmit(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 18.0 * scale * fontScale,
+                    fontWeight: FontWeight.w500,
+                    color: _inputTextColor,
+                    height: 1.4,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: l10n.emailPlaceholder,
+                    hintStyle: GoogleFonts.poppins(
+                      fontSize: 16.0 * scale * fontScale,
+                      fontWeight: FontWeight.w400,
+                      color: _labelColor.withValues(alpha: 0.5),
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSubmitButton(double scale) {
+  Widget _buildSubmitButton(double scale, AppLocalizations l10n, double fontScale) {
     return GradientButton(
-      text: _isLoading ? _loadingText : 'Continue',
+      text: _isLoading ? _loadingText : l10n.continueButton,
+      textStyle: GoogleFonts.poppins(
+        fontSize: 16.0 * scale * fontScale,
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
+      ),
       height: 58.0 * scale,
       onPressed: _isLoading ? () {} : _handleSubmit,
     );

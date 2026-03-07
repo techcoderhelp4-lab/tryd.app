@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import '../../../../widgets/gradient_button.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../../../core/utils/responsive_utils.dart';
@@ -45,6 +46,10 @@ class ChallengeDetailScreen extends ConsumerWidget {
                 ? mediumScale
                 : largeScale;
 
+    final l10n = AppLocalizations.of(context)!;
+    final isRTL = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isRTL ? 1.2 : 1.0;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -60,7 +65,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
-          
+
           // Main Content
           SafeArea(
             bottom: false,
@@ -70,8 +75,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
                    Column(
                     children: [
                       // App bar
-                      _buildAppBar(context, scale),
-                      
+                      _buildAppBar(context, scale, l10n, isRTL, fontScale),
+
                       // Scrollable Content
                       Expanded(
                         child: RefreshIndicator(
@@ -85,13 +90,13 @@ class ChallengeDetailScreen extends ConsumerWidget {
                             padding: EdgeInsets.symmetric(horizontal: 14.0 * scale),
                             child: Column(
                               children: [
-                                _buildChallengeHeroCard(context, challenge, scale),
+                                _buildChallengeHeroCard(context, challenge, scale, l10n, isRTL, fontScale),
                                 SizedBox(height: 22.0 * scale),
-                                _buildWinPointsCard(context, challenge, scale),
+                                _buildWinPointsCard(context, challenge, scale, l10n, isRTL, fontScale),
                                 SizedBox(height: 22.0 * scale),
-                                _buildDetailsCard(context, challenge, scale),
+                                _buildDetailsCard(context, challenge, scale, l10n, isRTL, fontScale),
                                 SizedBox(height: 20.0 * scale),
-                                _buildJoinButton(context, ref, challenge, scale),
+                                _buildJoinButton(context, ref, challenge, scale, l10n, isRTL, fontScale),
                                 SizedBox(height: 120.0 * scale), // Spacing for bottom nav
                               ],
                             ),
@@ -140,10 +145,10 @@ class ChallengeDetailScreen extends ConsumerWidget {
                   children: [
                      Icon(Icons.error_outline, color: Colors.red, size: 48.0 * scale),
                     SizedBox(height: 16.0 * scale),
-                    Text('Error loading challenge', style: GoogleFonts.lexendDeca(fontSize: 14 * scale)),
+                    Text(l10n.errorLoadingChallenge, style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(fontSize: 14 * scale * fontScale)),
                     TextButton(
                       onPressed: () => ref.refresh(challengeDetailsProvider(challengeId)),
-                      child: Text('Retry', style: TextStyle(fontSize: 14 * scale)),
+                      child: Text(l10n.retryButton, style: TextStyle(fontSize: 14 * scale * fontScale)),
                     ),
                   ],
                 ),
@@ -155,39 +160,42 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAppBar(BuildContext context, double scale) {
+  Widget _buildAppBar(BuildContext context, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 26.0 * scale, vertical: 28.0 * scale),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: SvgPicture.asset(
-              'assets/images/back_arrow_icon.svg',
-              width: 24.0 * scale,
-              height: 24.0 * scale,
+            child: Transform.scale(
+              scaleX: isRTL ? -1.0 : 1.0,
+              child: SvgPicture.asset(
+                'assets/images/back_arrow_icon.svg',
+                width: 24.0 * scale,
+                height: 24.0 * scale,
+              ),
             ),
           ),
           Expanded(
             child: Text(
-              'Challenge Detail',
+              l10n.challengeDetailTitle,
               textAlign: TextAlign.center,
-              style: GoogleFonts.lexendDeca(
-                fontSize: 19.0 * scale,
+              style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                fontSize: 19.0 * scale * fontScale,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF24252C),
                 height: 1.25,
               ),
             ),
           ),
-          SizedBox(width: 24.0 * scale), // Balance spacing
+          SizedBox(width: 24.0 * scale),
         ],
       ),
     );
   }
 
-  Widget _buildChallengeHeroCard(BuildContext context, Challenge challenge, double scale) {
-    final dateFormat = DateFormat('MMM d, yyyy');
+  Widget _buildChallengeHeroCard(BuildContext context, Challenge challenge, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
+    final dateFormat = DateFormat('MMM d, yyyy', isRTL ? 'ar' : 'en');
     final now = DateTime.now();
     final timeLeft = challenge.endDate.difference(now).inDays;
     final hasEnded = challenge.endDate.isBefore(now);
@@ -195,12 +203,12 @@ class ChallengeDetailScreen extends ConsumerWidget {
 
     String timeLabel;
     if (hasEnded) {
-      timeLabel = 'Challenge Ended';
+      timeLabel = isRTL ? 'التحدي انتهى' : 'Challenge Ended';
     } else if (isUpcoming) {
       final daysToStart = challenge.startDate.difference(now).inDays;
-      timeLabel = 'Starts in $daysToStart Days';
+      timeLabel = isRTL ? 'يبدأ في $daysToStart أيام' : 'Starts in $daysToStart Days';
     } else {
-      timeLabel = '$timeLeft Days Left';
+      timeLabel = isRTL ? '$timeLeft أيام متبقية' : '$timeLeft Days Left';
     }
 
     return Container(
@@ -247,11 +255,11 @@ class ChallengeDetailScreen extends ConsumerWidget {
             // Gradient section
             Container(
               width: double.infinity,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [Color(0xFF910EBF), Color(0xFFFD3B6E)],
+                  begin: isRTL ? Alignment.centerRight : Alignment.centerLeft,
+                  end: isRTL ? Alignment.centerLeft : Alignment.centerRight,
+                  colors: const [Color(0xFF910EBF), Color(0xFFFD3B6E)],
                 ),
               ),
               padding: EdgeInsets.all(20.0 * scale),
@@ -265,8 +273,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
                         // Title
                         Text(
                           challenge.title,
-                          style: GoogleFonts.lexendDeca(
-                            fontSize: 22.0 * scale,
+                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                            fontSize: 22.0 * scale * fontScale,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                             height: 1.2,
@@ -281,9 +289,11 @@ class ChallengeDetailScreen extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(222.0 * scale),
                           ),
                           child: Text(
-                            'You will win ${NumberFormat.compact().format(challenge.rewardPoints)} points',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11.0 * scale,
+                            isRTL
+                                ? 'ستربح ${NumberFormat.compact().format(challenge.rewardPoints)} نقطة'
+                                : 'You will win ${NumberFormat.compact().format(challenge.rewardPoints)} points',
+                            style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                              fontSize: 11.0 * scale * fontScale,
                               fontWeight: FontWeight.w500,
                               color: Colors.white,
                             ),
@@ -302,8 +312,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
                                 SizedBox(width: 6.0 * scale),
                                 Text(
                                   dateFormat.format(challenge.startDate),
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11.0 * scale,
+                                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                                    fontSize: 11.0 * scale * fontScale,
                                     fontWeight: FontWeight.w400,
                                     color: Colors.white,
                                   ),
@@ -317,8 +327,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
                                 SizedBox(width: 6.0 * scale),
                                 Text(
                                   timeLabel,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11.0 * scale,
+                                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                                    fontSize: 11.0 * scale * fontScale,
                                     fontWeight: FontWeight.w400,
                                     color: Colors.white,
                                   ),
@@ -352,9 +362,9 @@ class ChallengeDetailScreen extends ConsumerWidget {
                           ),
                         ),
                         Text(
-                          'KM',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13.0 * scale,
+                          l10n.kmLabel,
+                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                            fontSize: 13.0 * scale * fontScale,
                             fontWeight: FontWeight.w400,
                             color: Colors.white,
                           ),
@@ -371,8 +381,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWinPointsCard(BuildContext context, Challenge challenge, double scale) {
-    final dateFormat = DateFormat('d MMM');
+  Widget _buildWinPointsCard(BuildContext context, Challenge challenge, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
+    final dateFormat = DateFormat('d MMM', isRTL ? 'ar' : 'en');
     return Container(
       width: double.infinity,
       constraints: BoxConstraints(minHeight: 73.0 * scale),
@@ -385,15 +395,36 @@ class ChallengeDetailScreen extends ConsumerWidget {
         padding: EdgeInsets.symmetric(horizontal: 23.0 * scale, vertical: 15.0 * scale),
         child: Row(
           children: [
+            if (isRTL) ...[
+              Container(
+                width: 41.0 * scale,
+                height: 41.0 * scale,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF900EBF).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8.0 * scale),
+                ),
+                child: Center(
+                  child: SvgPicture.asset(
+                    'assets/images/crown_icon.svg',
+                    width: 24.0 * scale,
+                    height: 24.0 * scale,
+                    colorFilter: const ColorFilter.mode(Color(0xFF900EBF), BlendMode.srcIn),
+                  ),
+                ),
+              ),
+              SizedBox(width: 12.0 * scale),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Win ${NumberFormat.compact().format(challenge.rewardPoints)} points',
-                    style: GoogleFonts.lexendDeca(
-                      fontSize: 18.0 * scale,
+                    isRTL
+                        ? 'اربح ${NumberFormat.compact().format(challenge.rewardPoints)} نقطة'
+                        : 'Win ${NumberFormat.compact().format(challenge.rewardPoints)} points',
+                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                      fontSize: 18.0 * scale * fontScale,
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                       height: 1.22,
@@ -401,9 +432,11 @@ class ChallengeDetailScreen extends ConsumerWidget {
                   ),
                   SizedBox(height: 4.0 * scale),
                   Text(
-                    'Complete ${challenge.targetKm.toStringAsFixed(0)} km by ${dateFormat.format(challenge.endDate)}',
-                    style: GoogleFonts.lexendDeca(
-                      fontSize: 11.0 * scale,
+                    isRTL
+                        ? 'أكمل ${challenge.targetKm.toStringAsFixed(0)} كم بحلول ${dateFormat.format(challenge.endDate)}'
+                        : 'Complete ${challenge.targetKm.toStringAsFixed(0)} km by ${dateFormat.format(challenge.endDate)}',
+                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                      fontSize: 11.0 * scale * fontScale,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF6E6A7C),
                       height: 1.25,
@@ -412,7 +445,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            Container(
+            if (!isRTL) Container(
               width: 41.0 * scale,
               height: 41.0 * scale,
               decoration: BoxDecoration(
@@ -437,8 +470,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetailsCard(BuildContext context, Challenge challenge, double scale) {
-    final dateFormat = DateFormat('d MMM');
+  Widget _buildDetailsCard(BuildContext context, Challenge challenge, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
+    final dateFormat = DateFormat('d MMM', isRTL ? 'ar' : 'en');
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(22.0 * scale),
@@ -456,31 +489,31 @@ class ChallengeDetailScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          _buildDetailRow(context, 'Total Distance', '${challenge.targetKm.toStringAsFixed(0)} Km', scale),
+          _buildDetailRow(context, l10n.totalDistance, '${challenge.targetKm.toStringAsFixed(0)} ${l10n.kmLabel}', scale, isRTL, fontScale),
           SizedBox(height: 7.0 * scale),
-          _buildDetailRow(context, 'Duration', '${dateFormat.format(challenge.startDate)}-${dateFormat.format(challenge.endDate)}', scale),
+          _buildDetailRow(context, isRTL ? 'المدة' : 'Duration', '${dateFormat.format(challenge.startDate)}-${dateFormat.format(challenge.endDate)}', scale, isRTL, fontScale),
           SizedBox(height: 7.0 * scale),
-          _buildDetailRow(context, 'Participants', '${NumberFormat.decimalPattern().format(challenge.participantCount)} Runners', scale),
+          _buildDetailRow(context, l10n.participantsLabel, '${NumberFormat.decimalPattern().format(challenge.participantCount)} ${isRTL ? "عداء" : "Runners"}', scale, isRTL, fontScale),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(BuildContext context, String label, String value, double scale) {
+  Widget _buildDetailRow(BuildContext context, String label, String value, double scale, bool isRTL, double fontScale) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: GoogleFonts.poppins(
-            fontSize: 12.0 * scale,
+          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+            fontSize: 12.0 * scale * fontScale,
             color: const Color(0xFF8B88B5),
           ),
         ),
         Text(
           value,
-          style: GoogleFonts.lexendDeca(
-            fontSize: 14.0 * scale,
+          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+            fontSize: 14.0 * scale * fontScale,
             fontWeight: FontWeight.w600,
             color: const Color(0xFF24252C),
           ),
@@ -489,7 +522,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildJoinButton(BuildContext context, WidgetRef ref, Challenge challenge, double scale) {
+  Widget _buildJoinButton(BuildContext context, WidgetRef ref, Challenge challenge, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final now = DateTime.now();
     final hasEnded = challenge.endDate.isBefore(now);
     final isUpcoming = challenge.startDate.isAfter(now);
@@ -497,7 +530,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
     // If already joined, always allow viewing
     if (challenge.isJoined) {
       return GradientButton(
-        text: 'Go to Challenge',
+        text: l10n.goToChallenge,
         onPressed: () {
           Navigator.push(
             context,
@@ -511,7 +544,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
     // Challenge has ended - show disabled state
     if (hasEnded) {
       return GradientButton(
-        text: 'Challenge Ended',
+        text: l10n.challengeEndedButton,
         onPressed: () {},
         enabled: false,
         disabledColor: const Color(0xFF96AAD2),
@@ -524,7 +557,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
     if (isUpcoming) {
       final daysToStart = challenge.startDate.difference(now).inDays;
       return GradientButton(
-        text: 'Starts in $daysToStart days',
+        text: isRTL ? 'يبدأ في $daysToStart أيام' : 'Starts in $daysToStart days',
         onPressed: () {},
         enabled: false,
         disabledColor: const Color(0xFF900EBF),
@@ -535,15 +568,15 @@ class ChallengeDetailScreen extends ConsumerWidget {
 
     // Active challenge - allow joining
     return GradientButton(
-      text: 'Join Challenge',
+      text: l10n.joinChallenge,
       onPressed: () async {
         try {
           await ref.read(challengeRepositoryProvider).joinChallenge(challenge.id);
 
           if (context.mounted) {
             ref.read(realTimeNotificationServiceProvider).showInAppBanner(
-              'Challenge Joined!',
-              'You are now part of the ${challenge.title}. Let\'s go!',
+              l10n.challengeJoinedTitle,
+              isRTL ? 'أنت الآن جزء من ${challenge.title}. هيا بنا!' : 'You are now part of the ${challenge.title}. Let\'s go!',
             );
 
             // Refresh challenges list and details

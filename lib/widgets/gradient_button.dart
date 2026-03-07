@@ -15,6 +15,7 @@ class GradientButton extends StatelessWidget {
   final Color? disabledColor;
   final Color? primaryColor;
   final Color? textColor;
+  final bool showShadow;
 
   const GradientButton({
     super.key,
@@ -28,6 +29,7 @@ class GradientButton extends StatelessWidget {
     this.disabledColor,
     this.primaryColor,
     this.textColor,
+    this.showShadow = true,
   });
 
   static const Color _primaryColor = Color(0xFF900EBF);
@@ -47,7 +49,7 @@ class GradientButton extends StatelessWidget {
         height: height ?? _defaultHeight,
         child: Stack(
           children: [
-            if (enabled)
+            if (enabled && showShadow)
               Positioned(
                 bottom: -3,
                 left: 0,

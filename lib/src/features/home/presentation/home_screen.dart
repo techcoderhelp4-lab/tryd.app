@@ -16,7 +16,10 @@ import '../../notifications/presentation/notifications_screen.dart';
 import '../../notifications/data/notification_repository.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../onboarding/presentation/start_screen.dart';
+import '../../settings/presentation/settings_screen.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
+import '../../../../main.dart' show localeProvider;
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -34,6 +37,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final screenHeight = size.height;
     final screenWidth = size.width;
     final isTablet = screenWidth > 600;
+    final l10n = AppLocalizations.of(context)!;
 
     // ── Responsive Scale ──────────────────────────────────
     // Change these 4 values to control ALL component sizes:
@@ -53,6 +57,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             : screenHeight < 850
                 ? mediumScale
                 : largeScale;
+
+    final fontScale = Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0;
 
     final userAsync = ref.watch(userProfileProvider);
     final activityAsync = ref.watch(activitySummaryProvider('month'));
@@ -102,7 +108,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   child: Column(
                     children: [
-                      _buildHeader(context, horizontalPadding, user, isTablet, scale),
+                      _buildHeader(context, horizontalPadding, user, isTablet, scale, l10n),
                       SizedBox(height: (isTablet ? 10.0 : 12.0) * scale),
                       Divider(
                         height: 1,
@@ -114,7 +120,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                         child: Column(
                           children: [
-                            _buildPointsCard(context, user.points ?? 0, isTablet, scale),
+                            _buildPointsCard(context, user.points ?? 0, isTablet, scale, l10n),
                             SizedBox(height: 8.0 * scale),
                           ],
                         ),
@@ -129,9 +135,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: Column(
                             children: [
                               SizedBox(height: 8.0 * scale),
-                              _buildCurrentMonthCard(context, activityData, isTablet, scale),
+                              _buildCurrentMonthCard(context, activityData, isTablet, scale, l10n),
                               SizedBox(height: (isTablet ? 12.0 : 16.0) * scale),
-                              _buildStatsGrid(context, activityData, isTablet, scale),
+                              _buildStatsGrid(context, activityData, isTablet, scale, l10n),
                               SizedBox(height: bottomPadding),
                             ],
                           ),
@@ -176,9 +182,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ],
                           ),
                         ),
-                        error: (err, stack) => Padding(
-                          padding: EdgeInsets.all(isTablet ? 30.0 : 20.0),
-                          child: Text('Failed to load stats', style: GoogleFonts.poppins(color: Colors.red)),
+                        error: (err, stack) => Container(
+                          padding: EdgeInsets.all(20.0 * scale),
+                          margin: EdgeInsets.only(top: 8.0 * scale),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(15.0 * scale),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  l10n.activityLoadError,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14 * scale * fontScale,
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.refresh, color: Colors.red, size: 18),
+                                onPressed: () => ref.invalidate(activitySummaryProvider('month')),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -209,8 +239,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           }
                         },
                         icon: Icon(Icons.logout, size: 18.0 * scale, color: const Color(0xFFF83A71)),
-                        label: Text('Logout', style: GoogleFonts.poppins(
-                          fontSize: 13.0 * scale,
+                        label: Text(l10n.logoutLabel, style: GoogleFonts.poppins(
+                          fontSize: 13.0 * scale * fontScale,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFFF83A71),
                         )),
@@ -218,58 +248,64 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ],
                 ),
-                error: (err, stack) => Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Text('Error: $err', 
-                          style: GoogleFonts.poppins(color: Colors.red), 
-                          textAlign: TextAlign.center
+                error: (err, stack) {
+                  // For debugging: debugPrint('Home error: $err');
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Text(
+                            l10n.somethingWentWrong,
+                            style: GoogleFonts.poppins(
+                              color: const Color(0xFF221F48),
+                              fontSize: 16 * fontScale,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => ref.invalidate(userProfileProvider),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF900EBF),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: Text('Retry', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () async {
-                          try {
-                            await ref.read(authControllerProvider.notifier).logout();
-                            if (context.mounted) {
-                              Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(builder: (_) => const StartScreen()),
-                                (route) => false,
-                              );
+                        ElevatedButton(
+                          onPressed: () async {
+                            try {
+                              await ref.read(authControllerProvider.notifier).logout();
+                              if (context.mounted) {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(builder: (_) => const StartScreen()),
+                                  (route) => false,
+                                );
+                              }
+                            } catch (e) {
+                              // If logout fails, at least we tried. Just navigate if possible.
+                              if (context.mounted) {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(builder: (_) => const StartScreen()),
+                                  (route) => false,
+                                );
+                              }
                             }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Logout failed: $e'))
-                              );
-                            }
-                          }
-                        },
-                        child: Text('Log Out', 
-                          style: GoogleFonts.poppins(
-                            color: const Color(0xFFF83A71),
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline
-                          )
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF900EBF),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            l10n.loginLabel,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15 * fontScale,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
+                      ],
+                    ),
+                  );
+                },
               ),
   
             ],
@@ -280,7 +316,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
 
-  Widget _buildHeader(BuildContext context, double horizontalPadding, User user, bool isTablet, double scale) {
+  Widget _buildHeader(BuildContext context, double horizontalPadding, User user, bool isTablet, double scale, AppLocalizations l10n) {
+    final fontScale = Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0;
     final avatarSize = (isTablet ? 45.0 : 50.0) * scale;
     final topPadding = (isTablet ? 12.0 : 18.0) * scale;
     final bottomPadding = (isTablet ? 8.0 : 12.0) * scale;
@@ -319,40 +356,104 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           SizedBox(width: (isTablet ? 12.0 : 16.0) * scale),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Hello!',
-                  style: GoogleFonts.lexendDeca(
-                    fontSize: 16.0 * scale,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF24252C),
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.helloGreeting,
+                    style: GoogleFonts.lexendDeca(
+                      fontSize: 16.0 * scale * fontScale,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF24252C),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2.0),
-                Text(
-                  user.name,
-                  style: GoogleFonts.lexendDeca(
-                    fontSize: 22.0 * scale,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF24252C),
+                  const SizedBox(height: 2.0),
+                  Text(
+                    user.name,
+                    style: GoogleFonts.lexendDeca(
+                      fontSize: 22.0 * scale * fontScale,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF24252C),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           SizedBox(width: 8.0 * scale),
+          _buildLangToggle(scale),
+          SizedBox(width: 4.0 * scale),
           _buildNotificationBell(context, isTablet, scale),
         ],
       ),
     );
   }
 
+  Widget _buildLangToggle(double scale) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    return PopupMenuButton<String>(
+      onSelected: (value) {
+        ref.read(localeProvider.notifier).setLocale(Locale(value));
+      },
+      color: Colors.white,
+      elevation: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      offset: Offset(0, 40 * scale),
+      constraints: BoxConstraints(minWidth: 170 * scale),
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'en',
+          height: 44 * scale,
+          padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 2 * scale),
+          child: Row(
+            children: [
+              Text('English',
+                  style: GoogleFonts.lexendDeca(
+                      fontSize: 14 * scale,
+                      fontWeight: FontWeight.w600,
+                      color: !isAr ? const Color(0xFF900EBF) : const Color(0xFF24252C))),
+              const Spacer(),
+              if (!isAr)
+                Icon(Icons.check_rounded, size: 18 * scale, color: const Color(0xFF900EBF)),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'ar',
+          height: 44 * scale,
+          padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 2 * scale),
+          child: Row(
+            children: [
+              Text('العربية',
+                  style: GoogleFonts.cairo(
+                      fontSize: 14 * scale,
+                      fontWeight: FontWeight.w600,
+                      color: isAr ? const Color(0xFF900EBF) : const Color(0xFF24252C))),
+              const Spacer(),
+              if (isAr)
+                Icon(Icons.check_rounded, size: 18 * scale, color: const Color(0xFF900EBF)),
+            ],
+          ),
+        ),
+      ],
+      child: Icon(
+        Icons.language_rounded,
+        size: 34.0 * scale,
+        color: const Color(0xFF24252C),
+      ),
+    );
+  }
+
   Widget _buildNotificationBell(BuildContext context, bool isTablet, double scale) {
+    final fontScale = Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0;
     final unreadCountAsync = ref.watch(unreadNotificationCountProvider);
     final iconSize = (isTablet ? 32.0 : 36.0) * scale;
 
@@ -394,7 +495,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: Text(
                         count > 9 ? '9+' : count.toString(),
                         style: GoogleFonts.lexendDeca(
-                          fontSize: 11.5 * scale,
+                          fontSize: 11.5 * scale * fontScale,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                           height: 1.0,
@@ -413,7 +514,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildPointsCard(BuildContext context, int points, bool isTablet, double scale) {
+  Widget _buildPointsCard(BuildContext context, int points, bool isTablet, double scale, AppLocalizations l10n) {
+    final fontScale = Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0;
     final cardHeight = (isTablet ? 60.0 : 66.0) * scale;
     final iconContainerSize = (isTablet ? 38.0 : 44.0) * scale;
     final borderRadius = (isTablet ? 14.0 : 16.0) * scale;
@@ -454,7 +556,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Text(
                     points.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
                     style: GoogleFonts.poppins(
-                      fontSize: 24.0 * scale,
+                      fontSize: 24.0 * scale * fontScale,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF221F48),
                     ),
@@ -463,9 +565,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 SizedBox(height: (isTablet ? 1.0 : 4.0) * scale),
                 Text(
-                  'Your Available Points',
+                  l10n.availablePointsLabel,
                   style: GoogleFonts.lexendDeca(
-                    fontSize: 14.0 * scale,
+                    fontSize: 14.0 * scale * fontScale,
                     fontWeight: FontWeight.w400,
                     color: const Color(0xFF221F48),
                   ),
@@ -511,7 +613,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildCurrentMonthCard(BuildContext context, Map<String, dynamic> data, bool isTablet, double scale) {
+  Widget _buildCurrentMonthCard(BuildContext context, Map<String, dynamic> data, bool isTablet, double scale, AppLocalizations l10n) {
+    final fontScale = Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0;
     final distance = data['distance']?.toStringAsFixed(2) ?? '0.00';
     final cardHeight = (isTablet ? 70.0 : 80.0) * scale;
     final iconSize = (isTablet ? 38.0 : 43.0) * scale;
@@ -565,17 +668,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Current Month',
+                    l10n.currentMonthLabel,
                     style: GoogleFonts.poppins(
-                      fontSize: 13.0 * scale,
+                      fontSize: 13.0 * scale * fontScale,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF24252C),
                     ),
                   ),
                   Text(
-                    '$distance km',
+                    '$distance ${l10n.kmSuffix}',
                     style: GoogleFonts.poppins(
-                      fontSize: 19.0 * scale,
+                      fontSize: 19.0 * scale * fontScale,
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFF221F48),
                     ),
@@ -594,7 +697,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildStatsGrid(BuildContext context, Map<String, dynamic> data, bool isTablet, double scale) {
+  Widget _buildStatsGrid(BuildContext context, Map<String, dynamic> data, bool isTablet, double scale, AppLocalizations l10n) {
     final steps = data['steps']?.toString() ?? '0';
     final rawCalories = (data['calories'] ?? data['caloriesBurned'] ?? 0);
     final calories = rawCalories is num ? rawCalories.toStringAsFixed(1) : rawCalories.toString();
@@ -623,7 +726,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 svgIcon: 'assets/images/footsteps_icon.svg',
                 iconColor: const Color(0xFF34CDFD),
                 value: steps,
-                label: 'Steps Count',
+                label: l10n.stepsCountLabel,
                 height: 152.0 * scale,
                 iconTopPadding: 22.0 * scale,
                 isTablet: isTablet,
@@ -637,8 +740,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 svgIcon: 'assets/images/clock_icon.svg',
                 iconColor: const Color(0xFF5D37E5),
                 value: duration,
-                label: 'Durations',
-                suffix: 'mins',
+                label: l10n.durationsLabel,
+                suffix: l10n.minsSuffix,
                 height: 130.0 * scale,
                 iconTopPadding: 16.0 * scale,
                 isTablet: isTablet,
@@ -658,7 +761,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 svgIcon: 'assets/images/fire_icon.svg',
                 iconColor: const Color(0xFFFEB720),
                 value: calories,
-                label: 'Burned Calories',
+                label: l10n.burnedCaloriesLabel,
                 height: 130.0 * scale,
                 iconTopPadding: 15.0 * scale,
                 isTablet: isTablet,
@@ -672,7 +775,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 icon: Icons.favorite,
                 iconColor: const Color(0xFFFE413D),
                 value: bpm,
-                label: 'Average BPM',
+                label: l10n.averageBpmLabel,
                 height: 152.0 * scale,
                 iconTopPadding: 23.0 * scale,
                 isTablet: isTablet,
@@ -702,6 +805,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     double? svgWidth,
     double? svgHeight,
   }) {
+    final fontScale = Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0;
     final iconContainerSize = 43.0 * scale;
     final innerPaddingHorizontal = 20.0 * scale;
     final innerPaddingBottom = 15.0 * scale;
@@ -749,7 +853,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Text(
                     value,
                     style: GoogleFonts.poppins(
-                      fontSize: 19.0 * scale,
+                      fontSize: 19.0 * scale * fontScale,
                       fontWeight: FontWeight.w700,
                       color: Colors.black,
                       height: 1.1,
@@ -764,7 +868,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Text(
                       suffix,
                       style: GoogleFonts.poppins(
-                        fontSize: 13.0 * scale,
+                        fontSize: 13.0 * scale * fontScale,
                         fontWeight: FontWeight.w400,
                         color: const Color(0xFF8B88B5),
                       ),
@@ -777,7 +881,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Text(
               label,
               style: GoogleFonts.poppins(
-                fontSize: 16.0 * scale,
+                fontSize: 16.0 * scale * fontScale,
                 fontWeight: FontWeight.w400,
                 color: const Color(0xFF8B88B5),
                 height: 1.1,

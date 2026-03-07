@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../src/features/activity/presentation/running_screen.dart';
+import '../src/generated/l10n/app_localizations.dart';
 
 class CustomBottomNavigation extends StatelessWidget {
   final int currentIndex;
@@ -15,6 +16,8 @@ class CustomBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isRTL = Localizations.localeOf(context).languageCode == 'ar';
     final size = MediaQuery.of(context).size;
     final screenWidth = size.width;
     final screenHeight = size.height;
@@ -92,32 +95,36 @@ class CustomBottomNavigation extends StatelessWidget {
                 children: [
                   _buildNavItem(
                     svgIcon: 'assets/images/home_icon.svg',
-                    label: 'Home',
+                    label: l10n.navHome,
                     isActive: currentIndex == 0,
                     onTap: () => onTap(0),
                     scale: scale,
+                    isRTL: isRTL,
                   ),
                   _buildNavItem(
                     svgIcon: 'assets/images/run_icon.svg',
-                    label: 'Run',
+                    label: l10n.navRun,
                     isActive: currentIndex == 1,
                     onTap: () => onTap(1),
                     scale: scale,
+                    isRTL: isRTL,
                   ),
                   SizedBox(width: 60.0 * scale), // Space for center FAB
                   _buildNavItem(
                     svgIcon: 'assets/images/workout_icon.svg',
-                    label: 'Workout',
+                    label: l10n.navWorkout,
                     isActive: currentIndex == 3,
                     onTap: () => onTap(3),
                     scale: scale,
+                    isRTL: isRTL,
                   ),
                   _buildNavItem(
                     svgIcon: 'assets/images/club_icon.svg',
-                    label: 'Club',
+                    label: l10n.navClub,
                     isActive: currentIndex == 4,
                     onTap: () => onTap(4),
                     scale: scale,
+                    isRTL: isRTL,
                   ),
                 ],
               ),
@@ -134,6 +141,7 @@ class CustomBottomNavigation extends StatelessWidget {
     required bool isActive,
     required VoidCallback onTap,
     required double scale,
+    required bool isRTL,
   }) {
     final color = isActive ? const Color(0xFF900EBF) : const Color(0xFF8B88B5);
 
@@ -157,12 +165,19 @@ class CustomBottomNavigation extends StatelessWidget {
             SizedBox(height: 4.0 * scale),
             Text(
               label,
-              style: GoogleFonts.lexend(
-                fontSize: 12.0 * scale,
-                fontWeight: FontWeight.w500,
-                color: color,
-                height: 1.5,
-              ),
+              style: isRTL
+                  ? GoogleFonts.cairo(
+                      fontSize: 12.0 * scale,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                      height: 1.5,
+                    )
+                  : GoogleFonts.lexend(
+                      fontSize: 12.0 * scale,
+                      fontWeight: FontWeight.w500,
+                      color: color,
+                      height: 1.5,
+                    ),
             ),
           ],
         ),

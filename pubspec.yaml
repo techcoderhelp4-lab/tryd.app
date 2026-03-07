@@ -45,6 +45,8 @@ dependencies:
   flutter_riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5
   intl_phone_field: ^3.2.0
+  flutter_localizations:
+    sdk: flutter
   intl: ^0.20.2
   image_picker: ^1.2.1
   path_provider: ^2.1.5
@@ -67,6 +69,7 @@ dependencies:
   battery_plus: ^6.1.1
   file_picker: ^8.1.7
   flutter_native_splash: ^2.4.0
+  share_plus: ^10.0.0
 
 dev_dependencies:
   flutter_test:
@@ -111,6 +114,7 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  generate: true
 
   assets:
     - assets/images/

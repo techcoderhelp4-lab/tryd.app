@@ -12,6 +12,7 @@ import '../../home/presentation/home_screen.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import 'package:tryd/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
 import 'package:intl_phone_field/country_picker_dialog.dart';
 
 class SignupDetailsScreen extends ConsumerStatefulWidget {
@@ -36,6 +37,8 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _nameFocusNode = FocusNode();
+  final _phoneFocusNode = FocusNode();
 
   bool _isSigningUp = false;
   bool _isResending = false;
@@ -109,7 +112,7 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
         _startTimer();
         // Focus first OTP field
         _otpFocusNodes[0].requestFocus();
-        CustomSnackBar.show(context, message: 'OTP resent successfully', isError: false);
+        CustomSnackBar.show(context, message: AppLocalizations.of(context)!.resendCode, isError: false);
       }
     } catch (e) {
       if (mounted) {
@@ -132,38 +135,40 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
         return;
       }
 
-      if (digits.length > 1) {
-        // Paste handling
-        for (int i = 0; i < digits.length && (index + i) < 4; i++) {
-          _otpControllers[index + i].text = digits[i];
-        }
-        int nextFocus = (index + digits.length).clamp(0, 3);
-        _otpFocusNodes[nextFocus].requestFocus();
-        setState(() {});
-        return;
-      } else {
-        _otpControllers[index].text = digits[0];
-        _otpControllers[index].selection = TextSelection.fromPosition(
-          TextPosition(offset: 1),
-        );
+      // Paste handling
+      for (int i = 0; i < digits.length && (index + i) < 4; i++) {
+        _otpControllers[index + i].text = digits[i];
       }
+      
+      // Move focus to the correct position
+      int lastFilledIndex = index + digits.length - 1;
+      if (lastFilledIndex >= 3) {
+        _otpFocusNodes[3].unfocus();
+      } else {
+        _otpFocusNodes[lastFilledIndex + 1].requestFocus();
+      }
+      
+      if (mounted) setState(() {});
+      return;
     }
-
-    if (mounted) setState(() {});
 
     if (value.isNotEmpty) {
       if (index < 3) {
         _otpFocusNodes[index + 1].requestFocus();
+      } else {
+        _otpFocusNodes[index].unfocus();
       }
-    } else if (value.isEmpty && index > 0) {
-      _otpFocusNodes[index - 1].requestFocus();
     }
+    
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _nameFocusNode.dispose();
+    _phoneFocusNode.dispose();
     _timer?.cancel();
     for (var c in _otpControllers) {
       c.dispose();
@@ -177,7 +182,7 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
   Future<void> _handleSignup() async {
     final otp = _getOtpCode();
     if (otp.length < 4) {
-      CustomSnackBar.show(context, message: 'Please enter complete OTP');
+      CustomSnackBar.show(context, message: AppLocalizations.of(context)!.enterCompleteOtp);
       return;
     }
 
@@ -186,7 +191,7 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
     final phoneNumber = _phoneController.text.trim();
     final digitsOnly = phoneNumber.replaceAll(RegExp(r'\D'), '');
     if (digitsOnly.length < 8) {
-      CustomSnackBar.show(context, message: 'Please enter a valid phone number');
+      CustomSnackBar.show(context, message: AppLocalizations.of(context)!.invalidPhone);
       return;
     }
 
@@ -214,7 +219,7 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
     } catch (e) {
       debugPrint('Signup error: $e');
       if (mounted) {
-        String errorMessage = 'Verification or Signup failed. Try again.';
+        String errorMessage = AppLocalizations.of(context)!.signupFailed;
         if (e is DioException) {
           errorMessage = e.response?.data['message'] ?? e.message ?? 'Network error occurred';
         } else {
@@ -231,9 +236,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final screenWidth = size.width;
-    final screenHeight = size.height;
-    final isTablet = screenWidth > 600;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = size.height + bottomInset;
+    final isTablet = screenWidth > 600;
 
     const double smallScale = 0.70;
     const double mediumScale = 0.78;
@@ -247,6 +252,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
             : screenHeight < 850
                 ? mediumScale
                 : largeScale;
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.2 : 1.0;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -281,33 +289,35 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                                 SizedBox(height: 24.0 * scale),
                                 _buildLogo(scale),
                                 SizedBox(height: 16.0 * scale),
-                                _buildTitle(scale),
+                                _buildTitle(scale, l10n, fontScale),
                                 SizedBox(height: 32.0 * scale),
                                 Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 14.0 * scale),
                                   child: _buildInputField(
-                                    label: 'Full Name',
-                                    placeholder: 'Enter full name',
+                                    label: l10n.fullNameLabel,
+                                    placeholder: l10n.fullNamePlaceholder,
                                     controller: _nameController,
+                                    focusNode: _nameFocusNode,
                                     scale: scale,
+                                    fontScale: fontScale,
                                   ),
                                 ),
                                 SizedBox(height: 18.0 * scale),
                                 Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 14.0 * scale),
-                                  child: _buildPhoneField(scale),
+                                  child: _buildPhoneField(scale, l10n, fontScale),
                                 ),
                                 SizedBox(height: 38.0 * scale),
-                                _buildOtpField(scale),
+                                _buildOtpField(scale, l10n, fontScale),
                                 SizedBox(height: 16.0 * scale),
-                                _buildResendSection(scale),
+                                _buildResendSection(scale, l10n, fontScale),
                                 SizedBox(height: 44.0 * scale),
                                 GradientButton(
-                                  text: _isSigningUp ? 'Signing up...' : 'Complete Signup',
+                                  text: _isSigningUp ? l10n.signingUp : l10n.completeSignup,
                                   onPressed: _isSigningUp ? () {} : _handleSignup,
                                   height: 66.0 * scale,
                                   textStyle: GoogleFonts.lexendDeca(
-                                    fontSize: 21.0 * scale,
+                                    fontSize: 21.0 * scale * fontScale,
                                     fontWeight: FontWeight.w600,
                                     height: 1.26,
                                     color: Colors.white,
@@ -325,9 +335,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
               },
             ),
           ),
-          Positioned(
+          PositionedDirectional(
             top: 20,
-            left: 20,
+            start: 20,
             child: SafeArea(
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
@@ -340,7 +350,7 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: Transform.scale(
-                    scaleX: -1,
+                    scaleX: isAr ? 1.0 : -1.0,
                     child: CustomArrowIcon(
                       size: 32.0 * scale,
                       color: const Color(0xFF130F26),
@@ -394,27 +404,27 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
     );
   }
 
-  Widget _buildTitle(double scale) {
+  Widget _buildTitle(double scale, AppLocalizations l10n, double fontScale) {
     return Text(
-      'Complete your profile',
+      l10n.signupTitle,
       textAlign: TextAlign.center,
       style: GoogleFonts.lexendDeca(
-        fontSize: 20.0 * scale,
-        fontWeight: FontWeight.w600,
+        fontSize: 22.0 * scale * fontScale,
+        fontWeight: FontWeight.w700,
         height: 1.25,
         color: _primaryTextColor,
       ),
     );
   }
 
-  Widget _buildOtpField(double scale) {
+  Widget _buildOtpField(double scale, AppLocalizations l10n, double fontScale) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          'Verification Code',
+          l10n.verificationCodeLabel,
           style: GoogleFonts.lexendDeca(
-            fontSize: 16.0 * scale,
+            fontSize: 16.0 * scale * fontScale,
             fontWeight: FontWeight.w600,
             color: _primaryTextColor,
           ),
@@ -425,9 +435,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
           text: TextSpan(
             children: [
               TextSpan(
-                text: 'Code sent to ',
+                text: l10n.codeSentTo,
                 style: GoogleFonts.poppins(
-                  fontSize: 13.0 * scale,
+                  fontSize: 16.0 * scale * fontScale,
                   color: _labelColor,
                   fontWeight: FontWeight.w400,
                 ),
@@ -435,7 +445,7 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
               TextSpan(
                 text: widget.email,
                 style: GoogleFonts.poppins(
-                  fontSize: 13.0 * scale,
+                  fontSize: 16.0 * scale * fontScale,
                   color: const Color(0xFF900EBF),
                   fontWeight: FontWeight.w600,
                 ),
@@ -446,45 +456,57 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
         SizedBox(height: 20.0 * scale),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 24.0 * scale),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (int i = 0; i < 4; i++) ...[
-                Expanded(
-                  child: AspectRatio(
-                    aspectRatio: 1.0,
-                    child: _buildOtpDigitBox(i, scale),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (int i = 0; i < 4; i++) ...[
+                  Expanded(
+                    child: AspectRatio(
+                      aspectRatio: 1.0,
+                      child: _buildOtpDigitBox(i, scale, fontScale),
+                    ),
                   ),
-                ),
-                if (i < 3) SizedBox(width: 10.0 * scale),
+                  if (i < 3) SizedBox(width: 10.0 * scale),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildOtpDigitBox(int index, double scale) {
-    final hasValue = _otpControllers[index].text.isNotEmpty;
-    return Container(
-      decoration: BoxDecoration(
-        color: _inputBgColor,
-        borderRadius: BorderRadius.circular(17),
-        border: Border.all(
-          color: hasValue ? const Color(0xFF900EBF).withValues(alpha: 0.3) : Colors.transparent,
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0, 0),
-            blurRadius: 5.8,
-            spreadRadius: 0,
-            color: const Color(0xFFAFA9A9).withValues(alpha: 0.12),
+  Widget _buildOtpDigitBox(int index, double scale, double fontScale) {
+    return ListenableBuilder(
+      listenable: _otpFocusNodes[index],
+      builder: (context, child) {
+        final isFocused = _otpFocusNodes[index].hasFocus;
+        final hasValue = _otpControllers[index].text.isNotEmpty;
+        return Container(
+          decoration: BoxDecoration(
+            color: _inputBgColor,
+            borderRadius: BorderRadius.circular(15), // Slightly more rounded
+            border: Border.all(
+              color: isFocused 
+                  ? const Color(0xFF900EBF) 
+                  : (hasValue ? const Color(0xFF900EBF).withValues(alpha: 0.2) : Colors.transparent),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                offset: const Offset(0, 4),
+                blurRadius: 10,
+                spreadRadius: 0,
+                color: (isFocused ? const Color(0xFF900EBF) : const Color(0xFFAFA9A9)).withValues(alpha: 0.1),
+              ),
+            ],
           ),
-        ],
-      ),
-      alignment: Alignment.center,
+          alignment: Alignment.center,
+          child: child,
+        );
+      },
       child: TextField(
         controller: _otpControllers[index],
         focusNode: _otpFocusNodes[index],
@@ -492,7 +514,7 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
         keyboardType: TextInputType.number,
         textInputAction: index == 3 ? TextInputAction.done : TextInputAction.next,
         style: GoogleFonts.poppins(
-          fontSize: 22.0 * scale,
+          fontSize: 22.0 * scale * fontScale,
           fontWeight: FontWeight.w600,
           height: 1.5,
           color: _inputTextColor,
@@ -517,7 +539,7 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
     );
   }
 
-  Widget _buildResendSection(double scale) {
+  Widget _buildResendSection(double scale, AppLocalizations l10n, double fontScale) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 6.0 * scale),
       child: Row(
@@ -529,10 +551,10 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
             children: [
               Flexible(
                 child: Text(
-                  "Didn't receive code? ",
+                  l10n.didntReceiveCode,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
-                    fontSize: 14.0 * scale,
+                    fontSize: 15.0 * scale * fontScale,
                     fontWeight: FontWeight.w400,
                     color: _labelColor,
                   ),
@@ -542,9 +564,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                 GestureDetector(
                   onTap: _isResending ? null : _handleResend,
                   child: Text(
-                    _isResending ? 'Sending...' : 'Resend code',
+                    _isResending ? l10n.sending : l10n.resendCode,
                     style: GoogleFonts.poppins(
-                      fontSize: 14.0 * scale,
+                      fontSize: 15.0 * scale * fontScale,
                       fontWeight: FontWeight.w600,
                       color: _isResending ? _labelColor : _linkColor,
                     ),
@@ -554,7 +576,7 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                 Text(
                   '0:${_timerRemaining.toString().padLeft(2, '0')}',
                   style: GoogleFonts.poppins(
-                    fontSize: 14.0 * scale,
+                    fontSize: 15.0 * scale * fontScale,
                     fontWeight: FontWeight.w500,
                     color: _labelColor,
                   ),
@@ -565,9 +587,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
         GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Text(
-            'Change Email',
+            l10n.changeEmail,
             style: GoogleFonts.poppins(
-              fontSize: 12.0 * scale,
+              fontSize: 14.0 * scale * fontScale,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF900EBF),
             ),
@@ -578,87 +600,103 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
     );
   }
 
-  Widget _buildPhoneField(double scale) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _inputBgColor,
-        borderRadius: BorderRadius.circular(17),
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0, 2),
-            blurRadius: 8,
-            spreadRadius: 0,
-            color: const Color(0xFF000000).withValues(alpha: 0.04),
+  Widget _buildPhoneField(double scale, AppLocalizations l10n, double fontScale) {
+    return ListenableBuilder(
+      listenable: _phoneFocusNode,
+      builder: (context, child) {
+        final isFocused = _phoneFocusNode.hasFocus;
+        return Container(
+          decoration: BoxDecoration(
+            color: _inputBgColor,
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              color: isFocused ? Colors.black.withValues(alpha: 0.1) : Colors.transparent,
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                offset: const Offset(0, 4),
+                blurRadius: 10,
+                spreadRadius: 0,
+                color: const Color(0xFF000000).withValues(alpha: 0.05),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 0, vertical: 12.0 * scale),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.0 * scale),
-              child: Text(
-                'Phone Number',
-                style: GoogleFonts.lexendDeca(
-                  fontSize: 12.0 * scale,
+          child: child,
+        );
+      },
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 0, vertical: 12.0 * scale),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.0 * scale),
+                child: Text(
+                  l10n.phoneNumberLabel,
+                  style: GoogleFonts.lexendDeca(
+                    fontSize: 14.0 * scale * fontScale,
+                    fontWeight: FontWeight.w500,
+                    height: 1.25,
+                    color: _labelColor,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+              SizedBox(height: 4.0 * scale),
+              IntlPhoneField(
+                controller: _phoneController,
+                focusNode: _phoneFocusNode,
+                textAlign: TextAlign.left,
+                decoration: InputDecoration(
+                  hintText: l10n.phoneNumberPlaceholder,
+                  hintStyle: GoogleFonts.poppins(
+                    fontSize: 22.0 * scale * fontScale,
+                    fontWeight: FontWeight.w400,
+                    color: _labelColor.withValues(alpha: 0.5),
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 6.0 * scale),
+                  counterText: '',
+                  errorStyle: const TextStyle(fontSize: 0, height: 0),
+                ),
+                style: GoogleFonts.poppins(
+                  fontSize: 20.0 * scale * fontScale,
                   fontWeight: FontWeight.w500,
-                  height: 1.25,
-                  color: _labelColor,
-                  letterSpacing: 0.2,
+                  color: _inputTextColor,
                 ),
-              ),
-            ),
-            SizedBox(height: 4.0 * scale),
-            IntlPhoneField(
-              controller: _phoneController,
-              decoration: InputDecoration(
-                hintText: '1234 5678',
-                hintStyle: GoogleFonts.poppins(
-                  fontSize: 22.0 * scale,
-                  fontWeight: FontWeight.w400,
-                  color: _labelColor.withValues(alpha: 0.5),
+                initialCountryCode: 'KW',
+                disableLengthCheck: true,
+                autovalidateMode: AutovalidateMode.disabled,
+                onChanged: (phone) {
+                  _completePhoneNumber = phone.completeNumber;
+                },
+                pickerDialogStyle: PickerDialogStyle(
+                  backgroundColor: Colors.white,
+                  countryCodeStyle: GoogleFonts.poppins(fontSize: 14 * scale),
+                  countryNameStyle: GoogleFonts.poppins(fontSize: 14 * scale),
+                  searchFieldPadding: EdgeInsets.all(16 * scale),
                 ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                errorBorder: InputBorder.none,
-                focusedErrorBorder: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 6.0 * scale),
-                counterText: '',
-                errorStyle: const TextStyle(fontSize: 0, height: 0),
+                dropdownTextStyle: GoogleFonts.poppins(
+                  fontSize: 20.0 * scale,
+                  fontWeight: FontWeight.w500,
+                  color: _inputTextColor,
+                ),
+                showCountryFlag: true,
+                dropdownIconPosition: IconPosition.trailing,
+                dropdownIcon: Icon(Icons.arrow_drop_down, color: _labelColor, size: 20 * scale),
+                flagsButtonPadding: EdgeInsets.only(left: 24.0 * scale),
               ),
-              style: GoogleFonts.poppins(
-                fontSize: 20.0 * scale,
-                fontWeight: FontWeight.w500,
-                color: _inputTextColor,
-              ),
-              initialCountryCode: 'KW',
-              disableLengthCheck: true,
-              autovalidateMode: AutovalidateMode.disabled,
-              onChanged: (phone) {
-                _completePhoneNumber = phone.completeNumber;
-              },
-              pickerDialogStyle: PickerDialogStyle(
-                backgroundColor: Colors.white,
-                countryCodeStyle: GoogleFonts.poppins(fontSize: 14 * scale),
-                countryNameStyle: GoogleFonts.poppins(fontSize: 14 * scale),
-                searchFieldPadding: EdgeInsets.all(16 * scale),
-              ),
-              dropdownTextStyle: GoogleFonts.poppins(
-                fontSize: 20.0 * scale,
-                fontWeight: FontWeight.w500,
-                color: _inputTextColor,
-              ),
-              showCountryFlag: true,
-              dropdownIconPosition: IconPosition.trailing,
-              dropdownIcon: Icon(Icons.arrow_drop_down, color: _labelColor, size: 20 * scale),
-              flagsButtonPadding: EdgeInsets.only(left: 24.0 * scale),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -668,64 +706,83 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
     required String label,
     required String placeholder,
     required TextEditingController controller,
+    required FocusNode focusNode,
     required double scale,
+    required double fontScale,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _inputBgColor,
-        borderRadius: BorderRadius.circular(17),
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0, 2),
-            blurRadius: 8,
-            spreadRadius: 0,
-            color: const Color(0xFF000000).withValues(alpha: 0.04),
+    return ListenableBuilder(
+      listenable: focusNode,
+      builder: (context, child) {
+        final isFocused = focusNode.hasFocus;
+        return Container(
+          decoration: BoxDecoration(
+            color: _inputBgColor,
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              color: isFocused ? Colors.black.withValues(alpha: 0.1) : Colors.transparent,
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                offset: const Offset(0, 4),
+                blurRadius: 10,
+                spreadRadius: 0,
+                color: const Color(0xFF000000).withValues(alpha: 0.05),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 16.0 * scale),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.lexendDeca(
-                fontSize: 12.0 * scale,
-                fontWeight: FontWeight.w500,
-                height: 1.25,
-                color: _labelColor,
-                letterSpacing: 0.2,
-              ),
-            ),
-            SizedBox(height: 8.0 * scale),
-            TextFormField(
-              controller: controller,
-              obscureText: obscureText,
-              keyboardType: keyboardType,
-              style: GoogleFonts.poppins(
-                fontSize: 18.0 * scale,
-                fontWeight: FontWeight.w500,
-                color: _inputTextColor,
-                height: 1.4,
-              ),
-              decoration: InputDecoration(
-                hintText: placeholder,
-                hintStyle: GoogleFonts.poppins(
-                  fontSize: 16.0 * scale,
-                  fontWeight: FontWeight.w400,
-                  color: _labelColor.withValues(alpha: 0.5),
+          child: child,
+        );
+      },
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 16.0 * scale),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.lexendDeca(
+                  fontSize: 14.0 * scale * fontScale,
+                  fontWeight: FontWeight.w500,
+                  height: 1.25,
+                  color: _labelColor,
+                  letterSpacing: 0.2,
                 ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
               ),
-              validator: (v) => v!.isEmpty ? 'Required' : null,
-            ),
-          ],
+              SizedBox(height: 8.0 * scale),
+              TextFormField(
+                controller: controller,
+                focusNode: focusNode,
+                obscureText: obscureText,
+                keyboardType: keyboardType,
+                textAlign: TextAlign.left,
+                textDirection: TextDirection.ltr,
+                style: GoogleFonts.poppins(
+                  fontSize: 18.0 * scale * fontScale,
+                  fontWeight: FontWeight.w500,
+                  color: _inputTextColor,
+                  height: 1.4,
+                ),
+                decoration: InputDecoration(
+                  hintText: placeholder,
+                  hintStyle: GoogleFonts.poppins(
+                    fontSize: 16.0 * scale * fontScale,
+                    fontWeight: FontWeight.w400,
+                    color: _labelColor.withValues(alpha: 0.5),
+                  ),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+            ],
+          ),
         ),
       ),
     );

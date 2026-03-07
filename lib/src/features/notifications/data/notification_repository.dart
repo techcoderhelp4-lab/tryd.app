@@ -40,15 +40,27 @@ class NotificationRepository {
   }
 
   Future<void> markAsRead(String id) async {
-    await _dio.put(ApiConstants.notificationMarkRead(id));
+    try {
+      await _dio.put(ApiConstants.notificationMarkRead(id));
+    } catch (e) {
+      // Log or handle error
+    }
   }
 
   Future<void> markAllAsRead() async {
-    await _dio.put(ApiConstants.notificationsMarkAllRead);
+    try {
+      await _dio.put(ApiConstants.notificationsMarkAllRead);
+    } catch (e) {
+      // Log or handle error
+    }
   }
 
   Future<void> deleteNotification(String id) async {
-    await _dio.delete(ApiConstants.notificationDelete(id));
+    try {
+      await _dio.delete(ApiConstants.notificationDelete(id));
+    } catch (e) {
+      // Log or handle error
+    }
   }
 }
 

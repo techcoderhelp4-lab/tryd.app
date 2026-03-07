@@ -11,6 +11,7 @@ import '../../notifications/data/real_time_notification_service.dart';
 import 'dart:async';
 import '../../../../widgets/custom_arrow_icon.dart';
 import 'package:tryd/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String email;
@@ -62,6 +63,22 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _otpFocusNodes[0].requestFocus();
     });
+
+    // Handle backspace on empty fields (onChanged doesn't fire for empty fields)
+    for (int i = 1; i < 4; i++) {
+      final index = i;
+      _otpFocusNodes[index].onKeyEvent = (node, event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.backspace &&
+            _otpControllers[index].text.isEmpty) {
+          _otpControllers[index - 1].clear();
+          _otpFocusNodes[index - 1].requestFocus();
+          if (mounted) setState(() {});
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      };
+    }
   }
 
   void _startTimer() {
@@ -96,15 +113,15 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         // Focus first field
         _otpFocusNodes[0].requestFocus();
         ref.read(realTimeNotificationServiceProvider).showInAppBanner(
-          'OTP Resent',
-          'A new verification code has been sent to your email.',
+          AppLocalizations.of(context)!.otpResentSuccess,
+          AppLocalizations.of(context)!.otpResentSubtitle,
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to resend OTP', style: GoogleFonts.poppins()),
+            content: Text(AppLocalizations.of(context)!.otpResentFailed, style: GoogleFonts.poppins()),
             backgroundColor: Colors.red,
           ),
         );
@@ -131,7 +148,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     if (otp.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please enter complete OTP', style: GoogleFonts.poppins()),
+          content: Text(AppLocalizations.of(context)!.enterCompleteOtp, style: GoogleFonts.poppins()),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 2),
         ),
@@ -168,7 +185,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     } catch (e) {
       debugPrint('Verification error: $e');
       if (mounted) {
-        String errorMessage = 'Verification failed. Check OTP.';
+        String errorMessage = AppLocalizations.of(context)!.verificationFailed;
         if (e is DioException) {
           errorMessage = e.response?.data['message'] ?? e.message ?? 'Network error occurred';
         } else {
@@ -194,24 +211,24 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         return;
       }
 
-      if (digits.length > 1) {
-        // Paste handling
-        for (int i = 0; i < digits.length && (index + i) < 4; i++) {
-          _otpControllers[index + i].text = digits[i];
-        }
-        int nextFocus = (index + digits.length).clamp(0, 3);
-        _otpFocusNodes[nextFocus].requestFocus();
-
+      // Paste handling
+      for (int i = 0; i < digits.length && (index + i) < 4; i++) {
+        _otpControllers[index + i].text = digits[i];
+      }
+      
+      // Move focus to the correct position
+      int lastFilledIndex = index + digits.length - 1;
+      if (lastFilledIndex >= 3) {
+        _otpFocusNodes[3].unfocus();
         if (_getOtpCode().length == 4) {
           _handleVerification();
         }
-        return;
       } else {
-        _otpControllers[index].text = digits[0];
-        _otpControllers[index].selection = TextSelection.fromPosition(
-          TextPosition(offset: 1),
-        );
+        _otpFocusNodes[lastFilledIndex + 1].requestFocus();
       }
+      
+      if (mounted) setState(() {});
+      return;
     }
 
     if (value.isNotEmpty) {
@@ -221,10 +238,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         _otpFocusNodes[index].unfocus();
         _handleVerification();
       }
-    } else if (value.isEmpty && index > 0) {
-      // Backspace: move to previous field
-      _otpFocusNodes[index - 1].requestFocus();
     }
+    
+    if (mounted) setState(() {});
   }
 
   String _getOtpCode() {
@@ -238,6 +254,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     final screenHeight = size.height;
     final isTablet = screenWidth > 600;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final l10n = AppLocalizations.of(context)!;
 
     const double smallScale = 0.80;
     const double mediumScale = 0.90;
@@ -251,6 +268,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
             : screenHeight < 850
                 ? mediumScale
                 : largeScale;
+    
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.2 : 1.0;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -285,20 +305,20 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                               SizedBox(height: 40.0 * scale),
                               _buildLogo(scale),
                               SizedBox(height: 40.0 * scale),
-                              _buildTitle(scale),
+                              _buildTitle(scale, l10n, fontScale),
                               SizedBox(height: 18.0 * scale),
-                              _buildSubtitle(scale),
+                              _buildSubtitle(scale, l10n, fontScale),
                               SizedBox(height: 20.0 * scale),
                               Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 16.0 * scale),
-                                child: _buildOtpField(scale),
+                                child: _buildOtpField(scale, fontScale),
                               ),
                               SizedBox(height: 24.0 * scale),
-                              _buildVerifyButton(scale),
+                              _buildVerifyButton(scale, l10n, fontScale),
                               SizedBox(height: 24.0 * scale),
                               Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 16.0 * scale),
-                                child: _buildResendSection(scale),
+                                child: _buildResendSection(scale, l10n, fontScale),
                               ),
                               SizedBox(height: bottomInset > 0 ? bottomInset * 0.3 : 20.0 * scale),
                             ],
@@ -311,9 +331,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
               },
             ),
           ),
-          Positioned(
+          PositionedDirectional(
             top: 20,
-            left: 20,
+            start: 20,
             child: SafeArea(
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
@@ -326,7 +346,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: Transform.scale(
-                    scaleX: -1,
+                    scaleX: isAr ? 1.0 : -1.0,
                     child: CustomArrowIcon(
                       size: 32.0 * scale,
                       color: const Color(0xFF130F26),
@@ -380,30 +400,28 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     );
   }
 
-  Widget _buildTitle(double scale) {
+  Widget _buildTitle(double scale, AppLocalizations l10n, double fontScale) {
     return Text(
-      widget.registrationData != null
-          ? 'Verify your number to complete signup'
-          : 'Enter verification code to login',
+      l10n.verifyTitle,
       textAlign: TextAlign.center,
       maxLines: 1,
       overflow: TextOverflow.visible,
       softWrap: false,
       style: GoogleFonts.lexendDeca(
-        fontSize: 18.0 * scale,
-        fontWeight: FontWeight.w600,
+        fontSize: 22.0 * scale * fontScale,
+        fontWeight: FontWeight.w700,
         height: 1.25,
         color: _primaryTextColor,
       ),
     );
   }
 
-  Widget _buildSubtitle(double scale) {
+  Widget _buildSubtitle(double scale, AppLocalizations l10n, double fontScale) {
     return Text(
-      'We have sent the OTP to ${widget.email}',
+      l10n.verifySubtitle(widget.email),
       textAlign: TextAlign.center,
       style: GoogleFonts.poppins(
-        fontSize: 14.0 * scale,
+        fontSize: 16.0 * scale * fontScale,
         fontWeight: FontWeight.w400,
         height: 1.5,
         color: _labelColor,
@@ -411,39 +429,51 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     );
   }
 
-  Widget _buildOtpField(double scale) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        for (int i = 0; i < 4; i++) ...[
-          Expanded(child: _buildOtpDigitBox(i, scale)),
-          if (i < 3) SizedBox(width: 10.0 * scale),
+  Widget _buildOtpField(double scale, double fontScale) {
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (int i = 0; i < 4; i++) ...[
+            Expanded(child: _buildOtpDigitBox(i, scale, fontScale)),
+            if (i < 3) SizedBox(width: 10.0 * scale),
+          ],
         ],
-      ],
+      ),
     );
   }
 
-  Widget _buildOtpDigitBox(int index, double scale) {
-    final hasValue = _otpControllers[index].text.isNotEmpty;
-    return Container(
-      height: 62.0 * scale,
-      decoration: BoxDecoration(
-        color: _inputBgColor,
-        borderRadius: BorderRadius.circular(17),
-        border: Border.all(
-          color: hasValue ? const Color(0xFF900EBF).withValues(alpha: 0.3) : Colors.transparent,
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0, 0),
-            blurRadius: 5.8,
-            spreadRadius: 0,
-            color: const Color(0xFFAFA9A9).withValues(alpha: 0.12),
+  Widget _buildOtpDigitBox(int index, double scale, double fontScale) {
+    return ListenableBuilder(
+      listenable: _otpFocusNodes[index],
+      builder: (context, child) {
+        final isFocused = _otpFocusNodes[index].hasFocus;
+        final hasValue = _otpControllers[index].text.isNotEmpty;
+        return Container(
+          height: 62.0 * scale,
+          decoration: BoxDecoration(
+            color: _inputBgColor,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: isFocused 
+                  ? const Color(0xFF900EBF) 
+                  : (hasValue ? const Color(0xFF900EBF).withValues(alpha: 0.2) : Colors.transparent),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                offset: const Offset(0, 4),
+                blurRadius: 10,
+                spreadRadius: 0,
+                color: (isFocused ? const Color(0xFF900EBF) : const Color(0xFFAFA9A9)).withValues(alpha: 0.1),
+              ),
+            ],
           ),
-        ],
-      ),
-      alignment: Alignment.center,
+          alignment: Alignment.center,
+          child: child,
+        );
+      },
       child: TextField(
         controller: _otpControllers[index],
         focusNode: _otpFocusNodes[index],
@@ -451,7 +481,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         keyboardType: TextInputType.number,
         textInputAction: index == 3 ? TextInputAction.done : TextInputAction.next,
         style: GoogleFonts.poppins(
-          fontSize: 22.0 * scale,
+          fontSize: 22.0 * scale * fontScale,
           fontWeight: FontWeight.w600,
           height: 1.5,
           color: _inputTextColor,
@@ -476,24 +506,29 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     );
   }
 
-  Widget _buildVerifyButton(double scale) {
+  Widget _buildVerifyButton(double scale, AppLocalizations l10n, double fontScale) {
     return GradientButton(
-      text: _isVerifying ? 'Verifying...' : 'Verify OTP',
+      text: _isVerifying ? l10n.verifying : l10n.verifyButton,
+      textStyle: GoogleFonts.poppins(
+        fontSize: 16.0 * scale * fontScale,
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
+      ),
       height: 58.0 * scale,
       onPressed: _isVerifying ? () {} : _handleVerification,
     );
   }
 
-  Widget _buildResendSection(double scale) {
+  Widget _buildResendSection(double scale, AppLocalizations l10n, double fontScale) {
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              "If you didn't receive a code!  ",
+              l10n.resendText + "  ",
               style: GoogleFonts.poppins(
-                fontSize: 14.0 * scale,
+                fontSize: 16.0 * scale * fontScale,
                 fontWeight: FontWeight.w500,
                 color: _labelColor,
               ),
@@ -502,9 +537,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
               GestureDetector(
                 onTap: _isResending ? null : _handleResend,
                 child: Text(
-                  _isResending ? 'Sending...' : 'Resend',
+                  _isResending ? l10n.sending : l10n.resendButton,
                   style: GoogleFonts.poppins(
-                    fontSize: 14.0 * scale,
+                    fontSize: 16.0 * scale * fontScale,
                     fontWeight: FontWeight.w600,
                     color: _isResending ? _labelColor : _linkColor,
                   ),
@@ -514,7 +549,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
               Text(
                 '0:${_timerRemaining.toString().padLeft(2, '0')}',
                 style: GoogleFonts.poppins(
-                  fontSize: 14.0 * scale,
+                  fontSize: 14.0 * scale * fontScale,
                   fontWeight: FontWeight.w500,
                   color: _labelColor,
                 ),
@@ -531,10 +566,10 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Change Email Address',
+              l10n.changeEmail,
               style: GoogleFonts.poppins(
-                fontSize: 14.0 * scale,
-                fontWeight: FontWeight.w500,
+                fontSize: 15.0 * scale * fontScale,
+                fontWeight: FontWeight.w600,
                 color: _linkColor,
               ),
             ),

@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../widgets/gradient_button.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../challenges/presentation/challenge_detail_screen.dart';
@@ -15,6 +14,7 @@ import '../../challenges/data/challenge_repository.dart';
 import '../../challenges/domain/challenge.dart';
 import 'package:intl/intl.dart';
 import '../../../../widgets/skeleton_loading.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
 
 class ClubScreen extends ConsumerStatefulWidget {
   const ClubScreen({super.key});
@@ -52,11 +52,15 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                 ? mediumScale
                 : largeScale;
 
+    final l10n = AppLocalizations.of(context)!;
+    final isRTL = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isRTL ? 1.2 : 1.0;
+
     final horizontalPadding = 16.0 * scale;
     final heroHeight = 330.0 * scale;
-    final titleFontSize = 22.0 * scale;
-    final subtitleFontSize = 13.0 * scale;
-    final sectionTitleSize = 18.0 * scale;
+    final titleFontSize = 22.0 * scale * fontScale;
+    final subtitleFontSize = 13.0 * scale * fontScale;
+    final sectionTitleSize = 18.0 * scale * fontScale;
     final bottomNavSpacing = 140.0 * scale;
 
     return Scaffold(
@@ -131,33 +135,28 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                     SizedBox(height: 30.0 * scale),
                     // Title
                     Text(
-                      'Challenges',
-                      style: GoogleFonts.lexendDeca(
-                        fontSize: titleFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1B2D51),
-                      ),
+                      l10n.challengesTitle,
+                      style: isRTL
+                          ? GoogleFonts.cairo(fontSize: titleFontSize, fontWeight: FontWeight.w700, color: const Color(0xFF1B2D51))
+                          : GoogleFonts.lexendDeca(fontSize: titleFontSize, fontWeight: FontWeight.w600, color: const Color(0xFF1B2D51)),
                     ),
                     SizedBox(height: 18.0 * scale),
                     // Subtitle
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: (isTablet ? 30.0 : 30.0) * scale),
                       child: Text(
-                        'Join Challenge and surprise points waiting for you once you finish the challenge.',
+                        l10n.challengesSubtitle,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                          fontSize: subtitleFontSize,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF1B2D51),
-                          height: 1.5,
-                        ),
+                        style: isRTL
+                            ? GoogleFonts.cairo(fontSize: subtitleFontSize, fontWeight: FontWeight.w400, color: const Color(0xFF1B2D51), height: 1.5)
+                            : GoogleFonts.poppins(fontSize: subtitleFontSize, fontWeight: FontWeight.w400, color: const Color(0xFF1B2D51), height: 1.5),
                       ),
                     ),
                     SizedBox(height: 22.0 * scale),
                     // Tab Buttons
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                      child: _buildTabButtons(isTablet, scale),
+                      child: _buildTabButtons(isTablet, scale, l10n, isRTL, fontScale),
                     ),
                     SizedBox(height: 23.0 * scale),
                     // Content based on selected tab
@@ -176,12 +175,10 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'My Challenges',
-                                  style: GoogleFonts.lexendDeca(
-                                    fontSize: sectionTitleSize,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF1B2D51),
-                                  ),
+                                  l10n.myChallengesTab,
+                                  style: isRTL
+                                      ? GoogleFonts.cairo(fontSize: sectionTitleSize, fontWeight: FontWeight.w700, color: const Color(0xFF1B2D51))
+                                      : GoogleFonts.lexendDeca(fontSize: sectionTitleSize, fontWeight: FontWeight.w600, color: const Color(0xFF1B2D51)),
                                 ),
                                 SizedBox(height: 10.0 * scale),
                                 if (activeChallenges.isEmpty)
@@ -189,8 +186,8 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                                     padding: const EdgeInsets.symmetric(vertical: 20),
                                     child: Center(
                                       child: Text(
-                                        'No active challenges.',
-                                        style: GoogleFonts.poppins(color: Colors.grey),
+                                        l10n.noActiveChallenges,
+                                        style: isRTL ? GoogleFonts.cairo(color: Colors.grey) : GoogleFonts.poppins(color: Colors.grey),
                                       ),
                                     ),
                                   )
@@ -202,18 +199,19 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                                       isActive: true,
                                       isTablet: isTablet,
                                       scale: scale,
+                                      l10n: l10n,
+                                      isRTL: isRTL,
+                                      fontScale: fontScale,
                                     ),
                                   )),
 
                                 if (expiredChallenges.isNotEmpty) ...[
                                   SizedBox(height: 20.0 * scale),
                                   Text(
-                                    'Previous Challenges',
-                                    style: GoogleFonts.lexendDeca(
-                                      fontSize: sectionTitleSize,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF1B2D51),
-                                    ),
+                                    l10n.previousChallenges,
+                                    style: isRTL
+                                        ? GoogleFonts.cairo(fontSize: sectionTitleSize, fontWeight: FontWeight.w700, color: const Color(0xFF1B2D51))
+                                        : GoogleFonts.lexendDeca(fontSize: sectionTitleSize, fontWeight: FontWeight.w600, color: const Color(0xFF1B2D51)),
                                   ),
                                   SizedBox(height: 10.0 * scale),
                                   ...expiredChallenges.map((challenge) => Padding(
@@ -223,6 +221,9 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                                       isActive: false,
                                       isTablet: isTablet,
                                       scale: scale,
+                                      l10n: l10n,
+                                      isRTL: isRTL,
+                                      fontScale: fontScale,
                                     ),
                                   )),
                                 ],
@@ -230,21 +231,22 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                             );
                           } else {
                             return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (availableChallenges.isEmpty)
                                   Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 20),
                                     child: Center(
                                       child: Text(
-                                        'No available challenges to join.',
-                                        style: GoogleFonts.poppins(color: Colors.grey),
+                                        l10n.noAvailableChallenges,
+                                        style: isRTL ? GoogleFonts.cairo(color: Colors.grey) : GoogleFonts.poppins(color: Colors.grey),
                                       ),
                                     ),
                                   )
                                 else
                                   ...availableChallenges.map((challenge) => Padding(
                                     padding: EdgeInsets.only(bottom: 12.0 * scale),
-                                    child: _buildJoinChallengeCard(challenge, isTablet, scale),
+                                    child: _buildJoinChallengeCard(challenge, isTablet, scale, l10n, isRTL, fontScale),
                                   )),
                               ],
                             );
@@ -283,10 +285,10 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
   }
 
 
-  Widget _buildTabButtons(bool isTablet, double scale) {
+  Widget _buildTabButtons(bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final containerHeight = (isTablet ? 50.0 : 50.0) * scale;
     final buttonHeight = (isTablet ? 36.0 : 36.0) * scale;
-    final fontSize = (isTablet ? 12.0 : 13.0) * scale;
+    final fontSize = (isTablet ? 12.0 : 13.0) * scale * fontScale;
     final borderRadius = (isTablet ? 12.0 : 12.0) * scale;
 
     return Container(
@@ -311,32 +313,24 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
             Expanded(
               child: _selectedTab == 'My Challenges'
                   ? GradientButton(
-                      text: 'My Challenges',
+                      text: l10n.myChallengesTab,
                       onPressed: () {},
                       height: buttonHeight,
                       showIcon: false,
-                      textStyle: GoogleFonts.poppins(
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white,
-                      ),
+                      textStyle: isRTL
+                          ? GoogleFonts.cairo(fontSize: fontSize, fontWeight: FontWeight.w600, color: Colors.white)
+                          : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.white),
                     )
                   : GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedTab = 'My Challenges';
-                        });
-                      },
+                      onTap: () => setState(() => _selectedTab = 'My Challenges'),
                       child: Container(
                         height: buttonHeight,
                         alignment: Alignment.center,
                         child: Text(
-                          'My Challenges',
-                          style: GoogleFonts.poppins(
-                            fontSize: fontSize,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.black,
-                          ),
+                          l10n.myChallengesTab,
+                          style: isRTL
+                              ? GoogleFonts.cairo(fontSize: fontSize, fontWeight: FontWeight.w500, color: Colors.black)
+                              : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.black),
                         ),
                       ),
                     ),
@@ -344,32 +338,24 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
             Expanded(
               child: _selectedTab == 'Join a Challenge'
                   ? GradientButton(
-                      text: 'Join a Challenge',
+                      text: l10n.joinAChallengeTab,
                       onPressed: () {},
                       height: buttonHeight,
                       showIcon: false,
-                      textStyle: GoogleFonts.poppins(
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white,
-                      ),
+                      textStyle: isRTL
+                          ? GoogleFonts.cairo(fontSize: fontSize, fontWeight: FontWeight.w600, color: Colors.white)
+                          : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.white),
                     )
                   : GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedTab = 'Join a Challenge';
-                        });
-                      },
+                      onTap: () => setState(() => _selectedTab = 'Join a Challenge'),
                       child: Container(
                         height: buttonHeight,
                         alignment: Alignment.center,
                         child: Text(
-                          'Join a Challenge',
-                          style: GoogleFonts.poppins(
-                            fontSize: fontSize,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.black,
-                          ),
+                          l10n.joinAChallengeTab,
+                          style: isRTL
+                              ? GoogleFonts.cairo(fontSize: fontSize, fontWeight: FontWeight.w500, color: Colors.black)
+                              : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.black),
                         ),
                       ),
                     ),
@@ -380,20 +366,25 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
     );
   }
 
-  String _challengeDateLabel(Challenge challenge, bool isActive) {
+  String _challengeDateLabel(Challenge challenge, bool isActive, AppLocalizations l10n, bool isRTL) {
     final now = DateTime.now();
     final daysLeft = challenge.endDate.difference(now).inDays;
+    final km = challenge.targetKm.toStringAsFixed(0);
+    final locale = isRTL ? 'ar' : 'en';
 
     if (!isActive) {
-      // Expired
-      return 'Ended ${DateFormat('dd MMM yyyy').format(challenge.endDate)}';
+      return isRTL
+          ? 'انتهى ${DateFormat('dd MMM yyyy', locale).format(challenge.endDate)}'
+          : 'Ended ${DateFormat('dd MMM yyyy').format(challenge.endDate)}';
     } else if (now.isBefore(challenge.startDate)) {
-      // Upcoming
       final daysToStart = challenge.startDate.difference(now).inDays;
-      return 'Starts in $daysToStart days  •  ${challenge.targetKm.toStringAsFixed(0)} KM';
+      return isRTL
+          ? 'يبدأ خلال $daysToStart أيام  •  $km ${l10n.kmLabel}'
+          : 'Starts in $daysToStart days  •  $km ${l10n.kmLabel}';
     } else {
-      // Active
-      return '$daysLeft days left  •  ${challenge.targetKm.toStringAsFixed(0)} KM';
+      return isRTL
+          ? '$daysLeft أيام متبقية  •  $km ${l10n.kmLabel}'
+          : '$daysLeft days left  •  $km ${l10n.kmLabel}';
     }
   }
 
@@ -402,12 +393,15 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
     required bool isActive,
     required bool isTablet,
     required double scale,
+    required AppLocalizations l10n,
+    required bool isRTL,
+    required double fontScale,
   }) {
     final cardHeight = (isTablet ? 98.0 : 104.0) * scale;
     final borderRadius = (isTablet ? 12.0 : 12.0) * scale;
-    final titleFontSize = (isTablet ? 12.0 : 13.0) * scale;
-    final descFontSize = (isTablet ? 10.0 : 10.5) * scale;
-    final progressFontSize = (isTablet ? 11.0 : 12.0) * scale;
+    final titleFontSize = (isTablet ? 12.0 : 13.0) * scale * fontScale;
+    final descFontSize = (isTablet ? 10.0 : 10.5) * scale * fontScale;
+    final progressFontSize = (isTablet ? 11.0 : 12.0) * scale * fontScale;
     final badgeHeight = (isTablet ? 40.0 : 45.0) * scale;
     final badgeWidth = 42.0 * scale;
     final badgeNumSize = 17.0 * scale;
@@ -480,12 +474,10 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                         SizedBox(width: 6.0 * scale),
                         Expanded(
                           child: Text(
-                            _challengeDateLabel(challenge, isActive),
-                            style: GoogleFonts.lexendDeca(
-                              fontSize: progressFontSize,
-                              fontWeight: FontWeight.w400,
-                              color: isActive ? const Color(0xFF24252C) : const Color(0xFF8B88B5),
-                            ),
+                            _challengeDateLabel(challenge, isActive, l10n, isRTL),
+                            style: isRTL
+                                ? GoogleFonts.cairo(fontSize: progressFontSize, fontWeight: FontWeight.w400, color: isActive ? const Color(0xFF24252C) : const Color(0xFF8B88B5))
+                                : GoogleFonts.lexendDeca(fontSize: progressFontSize, fontWeight: FontWeight.w400, color: isActive ? const Color(0xFF24252C) : const Color(0xFF8B88B5)),
                           ),
                         ),
                       ],
@@ -517,7 +509,7 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                           ),
                         ),
                         Text(
-                          'KM',
+                          l10n.kmLabel,
                           style: GoogleFonts.roboto(
                             fontSize: badgeLabelSize,
                             fontWeight: FontWeight.w500,
@@ -544,19 +536,19 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
     );
   }
 
-  Widget _buildJoinChallengeCard(Challenge challenge, bool isTablet, double scale) {
+  Widget _buildJoinChallengeCard(Challenge challenge, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final now = DateTime.now();
     final isUpcoming = challenge.startDate.isAfter(now);
     final timeLeft = challenge.endDate.difference(now).inDays;
     final cardHeight = (isTablet ? 230.0 : 250.0) * scale;
     final imageHeight = (isTablet ? 110.0 : 125.0) * scale;
-    final titleFontSize = (isTablet ? 12.0 : 13.5) * scale;
-    final descFontSize = (isTablet ? 10.0 : 10.5) * scale;
+    final titleFontSize = (isTablet ? 12.0 : 13.5) * scale * fontScale;
+    final descFontSize = (isTablet ? 10.0 : 10.5) * scale * fontScale;
     final badgeWidth = (isTablet ? 40.0 : 43.0) * scale;
     final badgeHeight = (isTablet ? 40.0 : 45.0) * scale;
-    final badgeNumSize = (isTablet ? 16.0 : 17.0) * scale;
-    final badgeLabelSize = (isTablet ? 9.0 : 10.0) * scale;
-    final footerFontSize = (isTablet ? 10.0 : 10.5) * scale;
+    final badgeNumSize = (isTablet ? 16.0 : 17.0) * scale * fontScale;
+    final badgeLabelSize = (isTablet ? 9.0 : 10.0) * scale * fontScale;
+    final footerFontSize = (isTablet ? 10.0 : 10.5) * scale * fontScale;
 
     return GestureDetector(
       onTap: () async {
@@ -623,7 +615,7 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                           challenge.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.lexendDeca(
+                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
                             fontSize: titleFontSize,
                             fontWeight: FontWeight.w500,
                             color: const Color(0xFF24252C),
@@ -634,7 +626,7 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                           challenge.description,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.lexendDeca(
+                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
                             fontSize: descFontSize,
                             fontWeight: FontWeight.w400,
                             color: const Color(0xFF6E6A7C),
@@ -663,8 +655,8 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                           ),
                         ),
                         Text(
-                          'KM',
-                          style: GoogleFonts.roboto(
+                          l10n.kmLabel,
+                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.roboto)(
                             fontSize: badgeLabelSize,
                             fontWeight: FontWeight.w500,
                             color: const Color(0xFFF83A71),
@@ -690,9 +682,13 @@ class _ClubScreenState extends ConsumerState<ClubScreen> {
                   Expanded(
                     child: Text(
                       isUpcoming
-                          ? 'Starts in ${challenge.startDate.difference(now).inDays} days  |  ${NumberFormat.compact().format(challenge.rewardPoints)} pts you will win'
-                          : '$timeLeft Days remaining  |  ${NumberFormat.compact().format(challenge.rewardPoints)} pts you will win',
-                      style: GoogleFonts.lexendDeca(
+                          ? (isRTL
+                              ? 'يبدأ في ${challenge.startDate.difference(now).inDays} أيام  |  ${NumberFormat.compact().format(challenge.rewardPoints)} نقطة ستربحها'
+                              : 'Starts in ${challenge.startDate.difference(now).inDays} days  |  ${NumberFormat.compact().format(challenge.rewardPoints)} pts you will win')
+                          : (isRTL
+                              ? '$timeLeft أيام متبقية  |  ${NumberFormat.compact().format(challenge.rewardPoints)} نقطة ستربحها'
+                              : '$timeLeft Days remaining  |  ${NumberFormat.compact().format(challenge.rewardPoints)} pts you will win'),
+                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
                         fontSize: footerFontSize,
                         fontWeight: FontWeight.w400,
                         color: const Color(0xFF8B88B5),

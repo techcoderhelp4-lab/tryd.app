@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../../../widgets/skeleton_loading.dart';
 import '../../../../core/utils/responsive_utils.dart';
@@ -27,8 +28,57 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   final ScrollController _scrollController = ScrollController();
   static const double _rowHeight = 65.0; // Approximate height of each row
 
+  bool _isUserVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+  }
+
+  void _scrollListener() {
+    final leaderboardAsync = ref.read(challengeLeaderboardProvider(widget.challengeId));
+    leaderboardAsync.whenData((data) {
+      if (!mounted) return;
+      
+      final screenWidth = MediaQuery.of(context).size.width;
+      final screenHeight = MediaQuery.of(context).size.height;
+      final isTablet = screenWidth > 600;
+      
+      const double smallScale  = 0.85;
+      const double mediumScale = 0.98;
+      const double largeScale  = 1.05;
+      const double tabletScale = 1.25;
+
+      final double scale = isTablet
+          ? tabletScale
+          : screenHeight < 680
+              ? smallScale
+              : screenHeight < 850
+                  ? mediumScale
+                  : largeScale;
+
+      // 146 (card) + 15 (gap) + 40 (table header header height)
+      final initialOffset = (250.0 + 160.0) * scale;
+      final userTop = initialOffset + ((data.currentUserRank - 1) * _rowHeight * scale);
+      
+      final viewportTop = _scrollController.offset;
+      final viewportBottom = viewportTop + _scrollController.position.viewportDimension;
+
+      // We consider user visible if their row is within the viewport
+      final isVisible = (userTop < viewportBottom - 20) && (userTop > viewportTop + 20);
+
+      if (_isUserVisible != isVisible) {
+        setState(() {
+          _isUserVisible = isVisible;
+        });
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     super.dispose();
   }
@@ -36,11 +86,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   void _scrollToUser(int rank, int totalItems, double scale) {
     if (rank <= 1) return;
     
-    // Calculate approximate offset: 
-    // Header section + active card + table header = roughly 350-400
-    // Each row = _rowHeight * scale
     final headerOffset = (250.0 + 160.0) * scale;
-    final targetOffset = headerOffset + ((rank - 1) * _rowHeight * scale);
+    final targetOffset = headerOffset + ((rank - 1) * _rowHeight * scale) - (100 * scale);
     
     _scrollController.animateTo(
       targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
@@ -71,6 +118,11 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             : screenHeight < 850
                 ? mediumScale
                 : largeScale;
+
+    final l10n = AppLocalizations.of(context)!;
+    final isRTL = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isRTL ? 1.2 : 1.0;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -91,7 +143,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             bottom: false,
             child: Column(
               children: [
-                _buildAppBar(context, scale),
+                _buildAppBar(context, scale, l10n, isRTL, fontScale),
                 Expanded(
                   child: leaderboardAsync.when(
                     data: (data) => Padding(
@@ -109,12 +161,12 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                             SliverToBoxAdapter(
                               child: Column(
                                 children: [
-                                  _buildActiveChallengeCard(context, data.challenge, scale),
+                                  _buildActiveChallengeCard(context, data.challenge, scale, l10n, isRTL, fontScale),
                                   SizedBox(height: 15.0 * scale),
                                 ],
                               ),
                             ),
-                            _buildTableHeader(scale),
+                            _buildTableHeader(scale, l10n, isRTL, fontScale),
                             SliverList(
                               delegate: SliverChildBuilderDelegate(
                                 (context, index) {
@@ -154,15 +206,14 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             ),
           ),
 
-          // Pinned Bottom User Rank - Positioned clearly above bottom nav
           leaderboardAsync.when(
-            data: (data) => (data.currentUserRank > 5) ? Positioned(
+            data: (data) => (data.currentUserRank > 5 && !_isUserVisible) ? Positioned(
               left: 15.0 * scale,
               right: 15.0 * scale,
               bottom: (137.0 * scale) + MediaQuery.of(context).padding.bottom + 10.0, 
               child: GestureDetector(
                 onTap: () => _scrollToUser(data.currentUserRank, data.leaderboard.length, scale),
-                child: _buildStickyUserRank(context, data, scale),
+                child: _buildStickyUserRank(context, data, scale, l10n, isRTL),
               ),
             ) : const SizedBox.shrink(),
             loading: () => const SizedBox.shrink(),
@@ -204,12 +255,12 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     );
   }
 
-  Widget _buildStickyUserRank(BuildContext context, LeaderboardData data, double scale) {
+  Widget _buildStickyUserRank(BuildContext context, LeaderboardData data, double scale, AppLocalizations l10n, bool isRTL) {
     final me = data.leaderboard.firstWhere(
       (entry) => entry.isCurrentUser,
       orElse: () => LeaderboardEntry(
         rank: data.currentUserRank,
-        user: LeaderboardUserInfo(id: '', name: 'You'),
+        user: LeaderboardUserInfo(id: '', name: isRTL ? 'أنت' : 'You'),
         completedKm: data.challenge.userProgress ?? 0,
         isCurrentUser: true,
       ),
@@ -222,7 +273,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         border: Border.all(color: const Color(0xFF2CFC44), width: 2.0 * scale),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -231,9 +282,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       child: _buildParticipantRow(
         context: context,
         rank: '${me.rank}.',
-        name: me.user.name.isEmpty ? 'You' : me.user.name,
-        rankLabel: 'Your Position',
-        km: '${me.completedKm.toStringAsFixed(2)} KM',
+        name: me.user.name.isEmpty ? (isRTL ? 'أنت' : 'You') : me.user.name,
+        rankLabel: l10n.yourPositionLabel,
+        km: '${me.completedKm.toStringAsFixed(2)} ${l10n.kmLabel}',
         isYou: true,
         profilePicture: me.user.profilePicture,
         scale: scale,
@@ -241,7 +292,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     );
   }
 
-  Widget _buildAppBar(BuildContext context, double scale) {
+  Widget _buildAppBar(BuildContext context, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     return Padding(
       padding: EdgeInsets.fromLTRB(26.0 * scale, 28.0 * scale, 26.0 * scale, 20.0 * scale),
       child: Row(
@@ -249,22 +300,25 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: SvgPicture.asset(
-              'assets/images/back_arrow_icon.svg',
-              width: 24.0 * scale,
-              height: 24.0 * scale,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF24252C),
-                BlendMode.srcIn,
+            child: Transform.scale(
+              scaleX: isRTL ? -1.0 : 1.0,
+              child: SvgPicture.asset(
+                'assets/images/back_arrow_icon.svg',
+                width: 24.0 * scale,
+                height: 24.0 * scale,
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFF24252C),
+                  BlendMode.srcIn,
+                ),
               ),
             ),
           ),
           Expanded(
             child: Text(
-              'Leaderboard',
+              l10n.leaderboardTitle,
               textAlign: TextAlign.center,
-              style: GoogleFonts.lexendDeca(
-                fontSize: 19.0 * scale,
+              style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                fontSize: 19.0 * scale * fontScale,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF24252C),
                 height: 1.2,
@@ -277,7 +331,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     );
   }
 
-  Widget _buildActiveChallengeCard(BuildContext context, LeaderboardChallengeInfo challenge, double scale) {
+  Widget _buildActiveChallengeCard(BuildContext context, LeaderboardChallengeInfo challenge, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final now = DateTime.now();
     final hasEnded = challenge.endDate != null && challenge.endDate!.isBefore(now);
     final isUpcoming = challenge.startDate != null && challenge.startDate!.isAfter(now);
@@ -288,19 +342,23 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     String timeText;
 
     if (hasEnded) {
-      badgeText = 'Challenge Ended';
+      badgeText = isRTL ? 'التحدي انتهى' : 'Challenge Ended';
       badgeColor = const Color(0xFFFF5252).withValues(alpha: 0.67);
-      timeText = 'Ended ${challenge.endDate != null ? "${challenge.endDate!.day} ${_monthName(challenge.endDate!.month)} ${challenge.endDate!.year}" : ""}';
+      timeText = challenge.endDate != null
+          ? (isRTL
+              ? 'انتهى ${challenge.endDate!.day} ${_monthName(challenge.endDate!.month, isRTL)} ${challenge.endDate!.year}'
+              : 'Ended ${challenge.endDate!.day} ${_monthName(challenge.endDate!.month, isRTL)} ${challenge.endDate!.year}')
+          : '';
     } else if (isUpcoming) {
       final daysToStart = challenge.startDate!.difference(now).inDays;
-      badgeText = 'Upcoming Challenge';
+      badgeText = isRTL ? 'تحدٍّ قادم' : 'Upcoming Challenge';
       badgeColor = const Color(0xFFFFAA00).withValues(alpha: 0.67);
-      timeText = 'Starts in $daysToStart days';
+      timeText = isRTL ? 'يبدأ في $daysToStart أيام' : 'Starts in $daysToStart days';
     } else {
-      badgeText = 'Active Challenge';
+      badgeText = isRTL ? 'تحدٍّ نشط' : 'Active Challenge';
       badgeColor = const Color(0xFF4FFD5B).withValues(alpha: 0.67);
       final daysLeft = challenge.endDate != null ? challenge.endDate!.difference(now).inDays.clamp(0, 999) : 0;
-      timeText = '$daysLeft Days Remaining';
+      timeText = isRTL ? '$daysLeft أيام متبقية' : '$daysLeft Days Remaining';
     }
 
     return Container(
@@ -308,9 +366,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       constraints: BoxConstraints(minHeight: 146.0 * scale),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [const Color(0xFF910EBF), const Color(0xFFFD3B6E)],
+          begin: isRTL ? Alignment.centerRight : Alignment.centerLeft,
+          end: isRTL ? Alignment.centerLeft : Alignment.centerRight,
+          colors: const [Color(0xFF910EBF), Color(0xFFFD3B6E)],
         ),
         borderRadius: BorderRadius.circular(24.0 * scale),
         boxShadow: [
@@ -339,8 +397,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                     ),
                     child: Text(
                       badgeText,
-                      style: GoogleFonts.poppins(
-                        fontSize: 10.0 * scale,
+                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        fontSize: 10.0 * scale * fontScale,
                         fontWeight: FontWeight.w500,
                         color: Colors.white,
                         height: 1.5,
@@ -351,8 +409,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   // Title
                   Text(
                     challenge.title,
-                    style: GoogleFonts.poppins(
-                      fontSize: 18.0 * scale,
+                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                      fontSize: 18.0 * scale * fontScale,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                       height: 1.2,
@@ -371,8 +429,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                       Flexible(
                         child: Text(
                           timeText,
-                          style: GoogleFonts.poppins(
-                            fontSize: 14.0 * scale,
+                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                            fontSize: 14.0 * scale * fontScale,
                             fontWeight: FontWeight.w400,
                             color: Colors.white,
                             height: 1.5,
@@ -393,9 +451,10 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     );
   }
 
-  String _monthName(int month) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return months[month - 1];
+  String _monthName(int month, bool isRTL) {
+    const enMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const arMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+    return isRTL ? arMonths[month - 1] : enMonths[month - 1];
   }
 
   Widget _buildCircularProgress(BuildContext context, double current, double total, double scale) {
@@ -425,7 +484,17 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         height: 82.0 * scale,
         child: Stack(
           children: [
-            // Progress indicator with background stroke
+            // Pink track (full circle)
+            SizedBox(
+              width: 82.0 * scale,
+              height: 82.0 * scale,
+              child: CircularProgressIndicator(
+                value: 1.0,
+                strokeWidth: 10.0 * scale,
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFEF60A3)),
+              ),
+            ),
+            // Progress arc on top
             Transform.rotate(
               angle: -1.5708,
               child: SizedBox(
@@ -435,7 +504,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   value: progress,
                   strokeWidth: 10.0 * scale,
                   strokeCap: StrokeCap.round,
-                  backgroundColor: const Color(0xFFEF60A3),
+                  backgroundColor: Colors.transparent,
                   valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE8DEFF)),
                 ),
               ),
@@ -572,7 +641,13 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     );
   }
 
-  Widget _buildTableHeader(double scale) {
+  Widget _buildTableHeader(double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
+    final textStyle = (isRTL ? GoogleFonts.cairo : GoogleFonts.lexend)(
+      fontSize: 10.0 * scale * fontScale,
+      fontWeight: FontWeight.w600,
+      color: const Color(0xFF8B88B5),
+      letterSpacing: isRTL ? 0.0 : 0.5,
+    );
     return SliverToBoxAdapter(
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 18.0 * scale, vertical: 12.0 * scale),
@@ -586,39 +661,18 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
           children: [
             SizedBox(
               width: 48.0 * scale,
-              child: Text(
-                'RANK',
-                style: GoogleFonts.lexend(
-                  fontSize: 10.0 * scale,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF8B88B5),
-                  letterSpacing: 0.5,
-                ),
-              ),
+              child: Text(l10n.rankHeaderLabel, style: textStyle),
             ),
             SizedBox(width: 8.0 * scale),
             Expanded(
-              child: Text(
-                'USER',
-                style: GoogleFonts.lexend(
-                  fontSize: 10.0 * scale,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF8B88B5),
-                  letterSpacing: 0.5,
-                ),
-              ),
+              child: Text(l10n.userHeaderLabel, style: textStyle),
             ),
             SizedBox(
               width: 90.0 * scale,
               child: Text(
-                'DISTANCE',
-                textAlign: TextAlign.right,
-                style: GoogleFonts.lexend(
-                  fontSize: 10.0 * scale,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF8B88B5),
-                  letterSpacing: 0.5,
-                ),
+                l10n.distanceHeaderLabel,
+                textAlign: isRTL ? TextAlign.left : TextAlign.right,
+                style: textStyle,
               ),
             ),
           ],
@@ -628,13 +682,15 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   }
 
   Widget _buildParticipantTableRow(BuildContext context, LeaderboardEntry participant, double scale) {
+    final l10n = AppLocalizations.of(context)!;
+    final isRTL = Localizations.localeOf(context).languageCode == 'ar';
     String kmText;
     if (participant.completedKm >= 1000) {
-      kmText = '${(participant.completedKm / 1000).toStringAsFixed(1)}K KM';
+      kmText = '${(participant.completedKm / 1000).toStringAsFixed(1)}K ${l10n.kmLabel}';
     } else if (participant.completedKm >= 100) {
-      kmText = '${participant.completedKm.toStringAsFixed(1)} KM';
+      kmText = '${participant.completedKm.toStringAsFixed(1)} ${l10n.kmLabel}';
     } else {
-      kmText = '${participant.completedKm.toStringAsFixed(2)} KM';
+      kmText = '${participant.completedKm.toStringAsFixed(2)} ${l10n.kmLabel}';
     }
 
     return Container(
@@ -643,7 +699,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         context: context,
         rank: '${participant.rank}.',
         name: participant.user.name,
-        rankLabel: participant.rank <= 3 ? 'Rank #${participant.rank}' : '',
+        rankLabel: participant.rank <= 3 ? (isRTL ? 'المركز #${participant.rank}' : 'Rank #${participant.rank}') : '',
         km: kmText,
         isYou: participant.isCurrentUser,
         profilePicture: participant.user.profilePicture,

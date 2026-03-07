@@ -31,9 +31,9 @@ import '../../challenges/data/challenge_repository.dart';
 import '../data/health_repository.dart';
 import 'package:health/health.dart';
 import 'share_screen.dart';
-import 'package:intl/intl.dart';
 import '../../profile/data/user_repository.dart';
-import '../../notifications/data/real_time_notification_service.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
+import '../../../../../widgets/custom_arrow_icon.dart';
 
 enum RunningState { idle, countdown, running, paused, finished }
 
@@ -75,6 +75,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
   bool _isLocationInitialized = false; // Track if we've set the initial location for the run
   bool _healthCheckAttempted = false; // Prevent auto-init loop
   bool _healthModalShownThisSession = false; // Prevent modal fatigue
+  bool _isGpsReady = false; // Add flag for GPS readiness
   
   // Countdown
   // Countdown
@@ -145,6 +146,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     // Clear any lingering live notifications from previous sessions
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(realTimeNotificationServiceProvider).cancelLiveStats();
+      ref.read(realTimeNotificationServiceProvider).setMuted(true);
       _initHealth();
     });
     _initTts();
@@ -165,23 +167,35 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     }
     
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) {
-      debugPrint("RunningScreen: App Background — pausing socket and canceling live notification");
+      debugPrint("RunningScreen: App Background — maintaining tracking and notification");
       // Pause socket to prevent DNS errors while internet is restricted
       ref.read(realTimeNotificationServiceProvider).pause();
-      // App is being closed or hidden, cancel live notification
-      ref.read(realTimeNotificationServiceProvider).cancelLiveStats();
+      
+      // Update one last time for background stickiness if running
+      if (_runningState == RunningState.running || _runningState == RunningState.paused) {
+        _updateLiveNotification();
+      }
     }
   }
   
   Future<void> _initMusic() async {
     try {
+      // Set up listener ONCE — always, regardless of song list
+      _audioPlayer.playerStateStream.listen((state) {
+        if (mounted) {
+          setState(() => _isMusicPlaying = state.playing);
+          if (state.processingState == ProcessingState.completed) {
+            _nextSong();
+          }
+        }
+      });
+
       bool permissionGranted = false;
       if (Platform.isAndroid) {
-        // Precise Android permission handling
         if (await Permission.audio.request().isGranted) {
-           permissionGranted = true;
+          permissionGranted = true;
         } else if (await Permission.storage.request().isGranted) {
-           permissionGranted = true;
+          permissionGranted = true;
         }
       } else {
         permissionGranted = await Permission.storage.request().isGranted;
@@ -195,27 +209,12 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
           uriType: UriType.EXTERNAL,
           ignoreCase: true,
         );
-        
-        if (songs.isNotEmpty) {
+
+        if (songs.isNotEmpty && mounted) {
           setState(() {
             _songs = songs;
             _currentSongIndex = 0;
           });
-          
-          // Listen to player state for real-time UI sync & Auto-Next
-          _audioPlayer.playerStateStream.listen((state) {
-            if (mounted) {
-              setState(() {
-                _isMusicPlaying = state.playing;
-              });
-              
-              // Auto-next when song ends
-              if (state.processingState == ProcessingState.completed) {
-                _nextSong();
-              }
-            }
-          });
-
           await _loadSong();
         }
       }
@@ -234,20 +233,23 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
       if (result != null && result.files.single.path != null) {
         final filePath = result.files.single.path!;
         final fileName = result.files.single.name;
-        
-        setState(() {
-          _currentSongName = fileName;
-          _isMusicPlaying = true;
-        });
 
+        // Set source and play first — stream listener will update _isMusicPlaying
         await _audioPlayer.setAudioSource(AudioSource.file(filePath));
         await _audioPlayer.play();
+
+        if (mounted) {
+          setState(() {
+            _currentSongName = fileName;
+            _songs = []; // Single file mode — no list navigation
+          });
+        }
       }
     } catch (e) {
       debugPrint("Pick Song Error: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error picking song: $e"))
+          SnackBar(content: Text("Error picking song: $e")),
         );
       }
     }
@@ -255,21 +257,20 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
   
   Future<void> _loadSong() async {
     if (_songs.isEmpty) return;
+    final song = _songs[_currentSongIndex];
     try {
-      final String? songUri = _songs[_currentSongIndex].uri;
-      final String? songPath = _songs[_currentSongIndex].data;
-      
+      final String? songUri = song.uri;
+      final String? songPath = song.data;
+
       if (songUri != null && songUri.isNotEmpty) {
         await _audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(songUri)));
       } else if (songPath != null && songPath.isNotEmpty) {
         await _audioPlayer.setAudioSource(AudioSource.file(songPath));
-      } else {
-        // Try next song if this one is invalid
-        _nextSong();
       }
+      // Update displayed title
+      if (mounted) setState(() => _currentSongName = song.title);
     } catch (e) {
       debugPrint("Load Song Error: $e");
-      // Prevent stuck state
     }
   }
 
@@ -476,6 +477,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     // the system (or background handlers) will handle cleanup.
     try {
        ref.read(realTimeNotificationServiceProvider).cancelLiveStats();
+       ref.read(realTimeNotificationServiceProvider).setMuted(false);
     } catch (_) {
        // Provider/Ref already gone, ignore as it's being disposed anyway
     }
@@ -546,6 +548,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
           final double avgSpeed = _recentSpeeds.isEmpty 
               ? 0 
               : _recentSpeeds.reduce((a, b) => a + b) / _recentSpeeds.length;
+          
           final double currentSpeed = rawSpeed;
 
           _realGPSLocation = LatLng(position.latitude, position.longitude);
@@ -563,6 +566,15 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
 
           final newLatLng = LatLng(finalLat, finalLng);
 
+          // Update GPS Ready state if accuracy is good (e.g., < 35 meters)
+          if (!_isGpsReady && position.accuracy < 35.0) {
+            if (mounted) {
+              setState(() {
+                _isGpsReady = true;
+              });
+            }
+          }
+
           // --- MOTION CONFIDENCE ---
           // Use hardware verified speed (avgSpeed) for all decisions.
           // Jitter/Drift usually has spd=0 even if the lat/lng jumps.
@@ -578,6 +590,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                   _routePoints.add(newLatLng);
                   _startLocation = newLatLng;
                   _isLocationInitialized = true;
+                  _isGpsReady = true; // Also mark as ready if we somehow start
                 } else {
                   final double visualDist = _distanceCalc.as(LengthUnit.Meter, _routePoints.last, newLatLng);
                   // Only add to map path if we are actually moving and distance is significant
@@ -612,7 +625,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
               
               if (dist > noiseThreshold) {
                   // Speed Cap: Human running speed limit
-                  if (avgSpeed < 8.5) {
+                  if (avgSpeed < 8.5) { 
                     if (!_isFirstAfterResume) {
                       setState(() {
                         _distance += dist / 1000.0;
@@ -821,14 +834,11 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     final hours = totalSeconds ~/ 3600;
     final minutes = (totalSeconds % 3600) ~/ 60;
     final seconds = totalSeconds % 60;
-    if (hours > 0) {
-      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    }
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    return '${hours}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   String _formatPace(double pace) {
-    if (pace == 0 || pace.isInfinite || pace.isNaN) return '0.0';
+    if (pace == 0 || pace.isInfinite || pace.isNaN) return '0:00';
     final minutes = pace.toInt();
     final seconds = ((pace - minutes) * 60).toInt();
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
@@ -903,12 +913,12 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
       // 2. Dual Saving: Save to API + Local DB (Pending Sync logic inside repository)
       await ref.read(activityRepositoryProvider).logActivity(activity);
 
-      // Show banner notification
       ref.read(realTimeNotificationServiceProvider).showInAppBanner(
         'Activity Saved!',
         'Your run has been successfully recorded.',
-        showAlert: true,
-        showSnackBar: false,
+        showAlert: false,
+        showSnackBar: true,
+        force: true,
       );
 
       // 3. Clear the crash resilience state
@@ -1008,7 +1018,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
           _speak(_countdownSeconds.toString(), force: true);
         } else {
           timer.cancel();
-          _speak("Go", force: true);
+          _speak(AppLocalizations.of(context)!.go, force: true);
           _startRun();
         }
       });
@@ -1077,6 +1087,10 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
             : screenHeight < 850
                 ? mediumScale
                 : largeScale;
+
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.15 : 1.0;
 
 
     return Scaffold(
@@ -1213,7 +1227,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                   },
                 ),
                 children: [
-                  TileLayer(
+                   TileLayer(
                     urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
                     subdomains: const ['a', 'b', 'c', 'd'],
                     userAgentPackageName: 'com.tryd.app',
@@ -1406,7 +1420,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                   left: 0,
                   right: 0,
                   child: Center(
-                    child: _buildStartButton(scale, isTablet),
+                    child: _buildStartButton(scale, isTablet, l10n, fontScale),
                   ),
                 );
               },
@@ -1452,7 +1466,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildBackButton(scale, isTablet),
+                    _buildBackButton(scale, isTablet, isAr),
                     // GPS indicator hidden
                     const SizedBox.shrink(),
                     Row(
@@ -1467,7 +1481,29 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                           child: _buildTopIconButton(Icons.history, scale, isTablet),
                         ),
                         SizedBox(width: isTablet ? 12.0 : 11.0),
-                        _buildTopIconButton(Icons.share, scale, isTablet),
+                        GestureDetector(
+                          onTap: () {
+                            final now = DateTime.now();
+                            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                            final dateStr = '${now.day} ${months[now.month - 1]} ${now.year}';
+                            final user = ref.read(userProfileProvider).value;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ShareScreen(
+                                  totalTime: _formatDuration(_seconds),
+                                  avgPace: _formatPace(_avgPace),
+                                  distance: _distance.toStringAsFixed(2),
+                                  date: dateStr,
+                                  routePoints: _routePoints,
+                                  userName: user?.name ?? '',
+                                  profilePictureUrl: user?.profilePicture,
+                                ),
+                              ),
+                            );
+                          },
+                          child: _buildTopIconButton(Icons.share, scale, isTablet),
+                        ),
                       ],
                     ),
                   ],
@@ -1479,10 +1515,14 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
         ],
       ),
     ),
-  );
+   );
 }
 
   Future<String?> _showExitConfirmation() async {
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.15 : 1.0;
+    
     return showDialog<String>(
       context: context,
       builder: (context) => Dialog(
@@ -1499,9 +1539,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
               child: Column(
                 children: [
                   Text(
-                    'End Run?',
+                    l10n.endRunTitle,
                     style: GoogleFonts.lexend(
-                      fontSize: 20.0,
+                      fontSize: 20.0 * fontScale,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF24252C),
                     ),
@@ -1509,9 +1549,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                   ),
                   const SizedBox(height: 12.0),
                   Text(
-                    'Save your progress and exit, or continue your run?',
+                    l10n.endRunMessage,
                     style: GoogleFonts.lexend(
-                      fontSize: 14.0,
+                      fontSize: 14.0 * fontScale,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
                     ),
@@ -1529,9 +1569,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
                 alignment: Alignment.center,
                 child: Text(
-                  'Save & Exit',
+                  l10n.saveAndExit,
                   style: GoogleFonts.lexend(
-                    fontSize: 16.0,
+                    fontSize: 16.0 * fontScale,
                     color: const Color(0xFF900EBF),
                     fontWeight: FontWeight.w600,
                   ),
@@ -1547,9 +1587,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
                 alignment: Alignment.center,
                 child: Text(
-                  'Keep Running',
+                  l10n.keepRunning,
                   style: GoogleFonts.lexend(
-                    fontSize: 16.0,
+                    fontSize: 16.0 * fontScale,
                     color: const Color(0xFF8B88B5),
                     fontWeight: FontWeight.w500,
                   ),
@@ -1562,7 +1602,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildStartButton(double scale, bool isTablet) {
+  Widget _buildStartButton(double scale, bool isTablet, AppLocalizations l10n, double fontScale) {
     // Base sizes per device category
     final screenHeight = MediaQuery.of(context).size.height;
     double buttonSize = isTablet ? 80.0 : screenHeight < 680
@@ -1579,18 +1619,28 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
           size: scaledButtonSize,
           isTablet: isTablet,
           onTap: () async {
+            if (!_isGpsReady) return;
             // Trigger Countdown instead of immediate start
             _startCountdown();
           },
-          child: Text(
-            'START',
-            style: GoogleFonts.poppins(
-              fontSize: 18.0 * scale,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-              color: Colors.white,
-            ),
-          ),
+          child: !_isGpsReady 
+            ? SizedBox(
+                width: 24 * scale,
+                height: 24 * scale,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(
+                l10n.startRun,
+                style: GoogleFonts.poppins(
+                  fontSize: 18.0 * scale * fontScale,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                  color: Colors.white,
+                ),
+              ),
         );
 
       case RunningState.countdown:
@@ -1604,7 +1654,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
               _runningState = RunningState.paused;
             });
             _stopTimer();
-            _speak('Paused');
+            _speak(AppLocalizations.of(context)!.paused);
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _fitMapToRoute();
             });
@@ -1642,7 +1692,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
               // Stop button
               Flexible(
                 child: GradientButton(
-                  text: 'Stop',
+                  text: AppLocalizations.of(context)!.stopButton,
                   width: stopWidth,
                   height: stopHeight,
                   showIcon: false,
@@ -1745,7 +1795,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     final iconSize = (isTablet ? 32.0 : 26.0) * scale;
     return GestureDetector(
       onTap: () {
-        _speak("Let's go");
+        _speak(AppLocalizations.of(context)!.letsGo);
         _startRun(); // Use _startRun to ensure timer/stream logic is centralized
       },
       child: Container(
@@ -1778,26 +1828,30 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
   }
 
   Widget _buildStatsSection(double scale, bool isTablet) {
-    final spacing = isTablet ? 10.0 * scale : 8.0 * scale;
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.15 : 1.0;
+    final double spacing = (isTablet ? 10.0 : 8.0) * scale;
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: isTablet ? 15.0 * scale : 12.0 * scale),
       child: Column(
         children: [
-          _buildStatItem('DISTANCE', _distance.toStringAsFixed(2), 'km', scale, isTablet),
+          _buildStatItem(l10n.distanceLabel, _distance.toStringAsFixed(2), l10n.unitKm, scale, isTablet, fontScale),
           SizedBox(height: spacing),
           _buildDivider(),
           SizedBox(height: spacing),
-          _buildStatItem('DURATION', _formatDuration(_seconds), null, scale, isTablet),
+          _buildStatItem(l10n.durationLabel, _formatDuration(_seconds), null, scale, isTablet, fontScale),
           SizedBox(height: spacing),
           _buildDivider(),
           SizedBox(height: spacing),
-          _buildStatItem('EST. CALS', _calories.toStringAsFixed(0), null, scale, isTablet),
+          _buildStatItem(l10n.caloriesLabel, _calories.toStringAsFixed(0), null, scale, isTablet, fontScale),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String label, String value, String? unit, double scale, bool isTablet) {
+  Widget _buildStatItem(String label, String value, String? unit, double scale, bool isTablet, double fontScale) {
     final labelSize = (isTablet ? 12.0 : 12.0) * scale;
     final valueSize = (isTablet ? 24.0 : 26.0) * scale;
     final unitSize = (isTablet ? 16.0 : 15.0) * scale;
@@ -1811,7 +1865,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
           Text(
             label,
             style: GoogleFonts.lexend(
-              fontSize: labelSize,
+              fontSize: labelSize * fontScale,
               fontWeight: FontWeight.w400,
               height: 1.2,
               color: const Color(0xFF8B88B5),
@@ -1831,15 +1885,17 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                   color: const Color(0xFF1B2D51),
                 ),
               ),
-              if (unit != null)
+              if (unit != null) ...[
+                SizedBox(width: 4 * scale),
                 Text(
                   unit,
                   style: GoogleFonts.lexendDeca(
-                    fontSize: unitSize,
+                    fontSize: unitSize * fontScale,
                     fontWeight: FontWeight.w400,
                     color: const Color(0xFF8B88B5),
                   ),
                 ),
+              ],
             ],
           ),
         ],
@@ -1864,11 +1920,14 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
   }
 
   Widget _buildPaceHeartRateCard(double scale, bool isTablet) {
-    final minHeight = isTablet ? 82.0 * scale : 72.0 * scale;
-    final margin = isTablet ? 15.0 * scale : 12.0 * scale;
-    final padding = isTablet ? 15.0 * scale : 12.0 * scale;
-    final dividerHeight = isTablet ? 50.0 * scale : 40.0 * scale;
-    
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.15 : 1.0;
+    final double minHeight = (isTablet ? 80.0 : 72.0) * scale;
+    final double margin = (isTablet ? 15.0 : 12.0) * scale;
+    final double padding = (isTablet ? 18.0 : 14.0) * scale;
+    final double dividerHeight = (isTablet ? 52.0 : 44.0) * scale;
+
     return Container(
       width: double.infinity,
       constraints: BoxConstraints(minHeight: minHeight),
@@ -1889,15 +1948,18 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildPaceHeartItem(_formatPace(_currentPace), 'min/km', 'CURRENT PACE', scale, isTablet),
+          _buildPaceHeartItem(_formatPace(_currentPace), l10n.unitMinKm, l10n.currentPaceLabel, scale, isTablet, fontScale),
           Container(width: 1, height: dividerHeight, color: const Color(0xFFE8ECF4)),
           SizedBox(width: isTablet ? 20.0 : 12.0),
-          _buildPaceHeartItem(_avgBpm > 0 ? _avgBpm.toStringAsFixed(0) : '--', 'bpm', 'HEART RATE', scale, isTablet),
+          _buildPaceHeartItem(_avgBpm > 0 ? _avgBpm.toStringAsFixed(0) : '--', l10n.unitBpm, l10n.heartRateLabel, scale, isTablet, fontScale),
         ],
       ),
     );
   }
   void _showHealthConnectDialog(HealthConnectSdkStatus status) {
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.15 : 1.0;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1914,24 +1976,24 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
               padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
               child: Column(
                 children: [
-                  Text(
+                   Text(
                     status == HealthConnectSdkStatus.sdkUnavailableProviderUpdateRequired 
-                        ? 'Update Required' 
-                        : 'Health Connect Required',
+                        ? l10n.healthUpdateTitle 
+                        : l10n.healthConnectTitle,
                     style: GoogleFonts.lexend(
-                      fontSize: 20.0,
+                      fontSize: 20.0 * fontScale,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12.0),
-                  Text(
+                   Text(
                     status == HealthConnectSdkStatus.sdkUnavailableProviderUpdateRequired 
-                        ? 'Your Google Health Connect app needs an update to sync workout data properly.' 
-                        : 'To track your steps and heart rate accurately, you need to install the Google Health Connect app.',
+                        ? l10n.healthUpdateMessage 
+                        : l10n.healthConnectMessage,
                     style: GoogleFonts.lexend(
-                      fontSize: 14.0,
+                      fontSize: 14.0 * fontScale,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
                     ),
@@ -1953,9 +2015,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                       padding: const EdgeInsets.symmetric(vertical: 18.0),
                       alignment: Alignment.center,
                       child: Text(
-                        'Later',
+                        l10n.later,
                         style: GoogleFonts.lexend(
-                          fontSize: 16.0,
+                          fontSize: 16.0 * fontScale,
                           color: const Color(0xFF8B88B5),
                           fontWeight: FontWeight.w500,
                         ),
@@ -1980,10 +2042,10 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 18.0),
                       alignment: Alignment.center,
-                      child: Text(
-                        'Install / Update',
+                       child: Text(
+                        l10n.installUpdate,
                         style: GoogleFonts.lexend(
-                          fontSize: 16.0,
+                          fontSize: 16.0 * fontScale,
                           color: const Color(0xFF900EBF),
                           fontWeight: FontWeight.w600,
                         ),
@@ -2002,6 +2064,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
 
 
   void _showAppleHealthDialog() {
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.15 : 1.0;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -2018,20 +2083,20 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
               padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
               child: Column(
                 children: [
-                  Text(
-                    'Apple Health Access',
+                   Text(
+                    l10n.appleHealthTitle,
                     style: GoogleFonts.lexend(
-                      fontSize: 20.0,
+                      fontSize: 20.0 * fontScale,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12.0),
-                  Text(
-                    'Tryd needs access to Apple Health to track your steps, distance, and heart rate during runs.\n\nPlease go to:',
+                   Text(
+                    l10n.appleHealthMessage,
                     style: GoogleFonts.lexend(
-                      fontSize: 14.0,
+                      fontSize: 14.0 * fontScale,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
                     ),
@@ -2044,23 +2109,23 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                       color: const Color(0xFFF5F3FF),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      'Settings → Health → Data Access → Tryd',
+                     child: Text(
+                      l10n.appleHealthPath,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.lexend(
                         color: const Color(0xFF1B2D51),
-                        fontSize: 13,
+                        fontSize: 13 * fontScale,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'Turn on all categories to get the best experience.',
+                   Text(
+                    l10n.appleHealthTurnOnMessage,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.lexend(
                       color: const Color(0xFF24252C).withOpacity(0.6),
-                      fontSize: 12,
+                      fontSize: 12 * fontScale,
                     ),
                   ),
                 ],
@@ -2079,9 +2144,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                       padding: const EdgeInsets.symmetric(vertical: 18.0),
                       alignment: Alignment.center,
                       child: Text(
-                        'Later',
+                        l10n.later,
                         style: GoogleFonts.lexend(
-                          fontSize: 16.0,
+                          fontSize: 16.0 * fontScale,
                           color: const Color(0xFF8B88B5),
                           fontWeight: FontWeight.w500,
                         ),
@@ -2107,9 +2172,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                       padding: const EdgeInsets.symmetric(vertical: 18.0),
                       alignment: Alignment.center,
                       child: Text(
-                        'Open Settings',
+                        l10n.openSettings,
                         style: GoogleFonts.lexend(
-                          fontSize: 16.0,
+                          fontSize: 16.0 * fontScale,
                           color: const Color(0xFF900EBF),
                           fontWeight: FontWeight.w600,
                         ),
@@ -2126,7 +2191,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
   }
 
 
-  Widget _buildPaceHeartItem(String value, String unit, String label, double scale, bool isTablet) {
+  Widget _buildPaceHeartItem(String value, String unit, String label, double scale, bool isTablet, double fontScale) {
     final valueSize = (isTablet ? 27.5 : 26.0) * scale;
     final unitSize = (isTablet ? 14.0 : 13.0) * scale;
     final labelSize = (isTablet ? 11.35 : 11.0) * scale;
@@ -2166,7 +2231,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
           label,
           textAlign: TextAlign.center,
           style: GoogleFonts.poppins(
-            fontSize: labelSize,
+            fontSize: labelSize * fontScale,
             fontWeight: FontWeight.w400,
             height: 1.1,
             color: const Color(0xFF8B88B5),
@@ -2177,7 +2242,6 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
   }
 
   Future<void> _togglePlay() async {
-    if (_songs.isEmpty) return;
     try {
       if (_audioPlayer.playing) {
         await _audioPlayer.pause();
@@ -2190,21 +2254,19 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
   }
 
   Future<void> _nextSong() async {
-     if (_songs.isEmpty) return;
-     int next = _currentSongIndex + 1;
-     if (next >= _songs.length) next = 0;
-     setState(() { _currentSongIndex = next; });
-     await _loadSong();
-     if (_isMusicPlaying) await _audioPlayer.play();
+    if (_songs.isEmpty) return;
+    final next = (_currentSongIndex + 1) % _songs.length;
+    setState(() => _currentSongIndex = next);
+    await _loadSong();
+    await _audioPlayer.play();
   }
 
   Future<void> _prevSong() async {
-     if (_songs.isEmpty) return;
-     int prev = _currentSongIndex - 1;
-     if (prev < 0) prev = _songs.length - 1;
-     setState(() { _currentSongIndex = prev; });
-     await _loadSong();
-     if (_isMusicPlaying) await _audioPlayer.play();
+    if (_songs.isEmpty) return;
+    final prev = (_currentSongIndex - 1 + _songs.length) % _songs.length;
+    setState(() => _currentSongIndex = prev);
+    await _loadSong();
+    await _audioPlayer.play();
   }
 
   Widget _buildMediaControlsCard(double scale, bool isTablet) {
@@ -2307,6 +2369,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
 
   Widget _buildSummaryView(double scale, bool isTablet) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale = isAr ? 1.15 : 1.0;
 
     // ── Summary Responsive Scale ──────────────────────────
     // Change these 3 values to control ALL summary sizes:
@@ -2346,15 +2411,15 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
             mainAxisSize: MainAxisSize.min,
             children: [
               // Stats section
-              _buildSummaryStatItem('DISTANCE', _distance.toStringAsFixed(2), 'km', sScale, isTablet),
+              _buildSummaryStatItem(l10n.distanceLabel, _distance.toStringAsFixed(2), l10n.unitKm, sScale, isTablet, fontScale),
               SizedBox(height: verticalGap),
               _buildDivider(),
               SizedBox(height: verticalGap),
-              _buildSummaryStatItem('DURATION', _formatDuration(_seconds), null, sScale, isTablet),
+              _buildSummaryStatItem(l10n.durationLabel, _formatDuration(_seconds), null, sScale, isTablet, fontScale),
               SizedBox(height: verticalGap),
               _buildDivider(),
               SizedBox(height: verticalGap),
-              _buildSummaryStatItem('EST. CALS', _calories.toStringAsFixed(0), null, sScale, isTablet),
+              _buildSummaryStatItem(l10n.caloriesLabel, _calories.toStringAsFixed(0), null, sScale, isTablet, fontScale),
               SizedBox(height: sectionGap),
               // Pace / Heart Rate Card
               Container(
@@ -2370,9 +2435,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildSummaryPaceHeartItem(_formatPace(_avgPace), 'min/km', 'AVERAGE PACE', sScale, isTablet),
-                    Container(width: 1, height: (isTablet ? 60.0 : 40.0) * sScale, color: Colors.grey.withValues(alpha: 0.2)),
-                    _buildSummaryPaceHeartItem(_avgBpm > 0 ? _avgBpm.toStringAsFixed(0) : '--', 'bpm', 'HEART RATE', sScale, isTablet),
+                    _buildSummaryPaceHeartItem(_formatPace(_avgPace), l10n.unitMinKm, l10n.avgPaceLabel, sScale, isTablet, fontScale),
+                    Container(width: 1, height: (isTablet ? 60.0 : 40.0) * sScale, color: Colors.grey.withOpacity(0.2)),
+                    _buildSummaryPaceHeartItem(_avgBpm > 0 ? _avgBpm.toStringAsFixed(0) : '--', l10n.unitBpm, l10n.heartRateLabel, sScale, isTablet, fontScale),
                   ],
                 ),
               ),
@@ -2381,22 +2446,32 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: (isTablet ? 40.0 : 20.0) * sScale),
                 child: GradientButton(
-                  text: 'Share',
+                  text: l10n.shareButton,
                   width: double.infinity,
                   height: isTablet ? 60.0 : 52.0,
                   showIcon: true,
                   onPressed: () {
-                    // Share Button logic
+                    // Clear notifications before jumping to share
+                    ref.read(realTimeNotificationServiceProvider).clearAllBanners();
+                    
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ShareScreen(
-                          totalTime: _formatDuration(_seconds),
-                          avgPace: _formatPace(_avgPace),
-                          distance: _distance.toStringAsFixed(2),
-                          date: DateFormat('dd MMM yyyy').format(DateTime.now()),
-                          routePoints: _routePoints,
-                        ),
+                        builder: (context) {
+                          final now = DateTime.now();
+                          final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                          final dateStr = '${now.day} ${months[now.month - 1]} ${now.year}';
+                          final user = ref.read(userProfileProvider).value;
+                          return ShareScreen(
+                            totalTime: _formatDuration(_seconds),
+                            avgPace: _formatPace(_avgPace),
+                            distance: _distance.toStringAsFixed(2),
+                            date: dateStr,
+                            routePoints: _routePoints,
+                            userName: user?.name ?? '',
+                            profilePictureUrl: user?.profilePicture,
+                          );
+                        },
                       ),
                     );
                   },
@@ -2415,10 +2490,10 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildSummaryStatItem(String label, String value, String? unit, double scale, bool isTablet) {
-    final labelSize = isTablet ? 14.0 : 13.0 * scale;
-    final valueSize = isTablet ? 45.0 : 40.0 * scale;
-    final unitSize = isTablet ? 18.0 : 16.0 * scale;
+  Widget _buildSummaryStatItem(String label, String value, String? unit, double scale, bool isTablet, [double fontScale = 1.0]) {
+    final labelSize = (isTablet ? 14.0 : 13.0 * scale) * fontScale;
+    final valueSize = (isTablet ? 45.0 : 40.0 * scale) * fontScale;
+    final unitSize = (isTablet ? 18.0 : 16.0 * scale) * fontScale;
 
     return Column(
       children: [
@@ -2462,10 +2537,10 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildSummaryPaceHeartItem(String value, String unit, String label, double scale, bool isTablet) {
-    final valueSize = isTablet ? 35.0 : 30.5 * scale;
-    final unitSize = isTablet ? 16.0 : 14.0 * scale;
-    final labelSize = isTablet ? 12.0 : 10.0 * scale;
+  Widget _buildSummaryPaceHeartItem(String value, String unit, String label, double scale, bool isTablet, [double fontScale = 1.0]) {
+    final valueSize = (isTablet ? 35.0 : 30.5 * scale) * fontScale;
+    final unitSize = (isTablet ? 16.0 : 14.0 * scale) * fontScale;
+    final labelSize = (isTablet ? 12.0 : 10.0 * scale) * fontScale;
 
     return Flexible(
       child: Column(
@@ -2516,8 +2591,8 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildBackButton(double scale, bool isTablet) {
-    final size = (isTablet ? 42.0 : 32.0) * scale;
+  Widget _buildBackButton(double scale, bool isTablet, bool isAr) {
+    final size = (isTablet ? 42.0 : 42.0) * scale;
     return GestureDetector(
       onTap: () async {
         if (_runningState == RunningState.running || _runningState == RunningState.paused) {
@@ -2564,9 +2639,8 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
           );
         }
       },
-      child: SizedBox(
-        width: size,
-        height: size,
+      child: Transform.scale(
+        scaleX: isAr ? -1.0 : 1.0,
         child: SvgPicture.asset(
           'assets/images/back_arrow_icon.svg',
           width: size,

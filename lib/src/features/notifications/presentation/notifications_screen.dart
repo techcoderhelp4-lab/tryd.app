@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:shimmer/shimmer.dart';
 import '../data/notification_repository.dart';
 import '../domain/app_notification.dart';
 import '../../../../widgets/custom_arrow_icon.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -15,8 +16,9 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
-  // Optimistic local state — tracks IDs marked as read this session
   final Set<String> _localReadIds = {};
+  // Session-level deletions to handle swipe dismissal without crashes
+  final Set<String> _deletedIds = {};
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +43,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 ? mediumScale
                 : largeScale;
 
+    final fontScale = Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0;
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -59,11 +64,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           SafeArea(
             child: Column(
               children: [
-                _buildAppBar(context, scale),
+                _buildAppBar(context, scale, l10n, fontScale),
                 Expanded(
                   child: notificationsAsync.when(
                     skipLoadingOnRefresh: true,
-                    data: (notifications) {
+                    data: (allNotifications) {
+                      final notifications = allNotifications.where((n) => !_deletedIds.contains(n.id)).toList();
+
                       if (notifications.isEmpty) {
                         return Center(
                           child: Column(
@@ -71,7 +78,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             children: [
                               Icon(Icons.notifications_none, size: 60.0 * scale, color: Colors.grey.withOpacity(0.5)),
                               SizedBox(height: 10.0 * scale),
-                              Text("No notifications yet", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14.0 * scale)),
+                              Text(l10n.noNotifications, style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14.0 * scale * fontScale)),
                             ],
                           ),
                         );
@@ -83,15 +90,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           ref.invalidate(notificationsListProvider);
                           ref.invalidate(unreadNotificationCountProvider);
                           _localReadIds.clear();
+                          _deletedIds.clear();
                           await Future.delayed(const Duration(milliseconds: 500));
                         },
                         child: ListView.separated(
                           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                           padding: EdgeInsets.symmetric(horizontal: 16.0 * scale, vertical: 10.0 * scale),
                           itemCount: notifications.length,
-                          separatorBuilder: (context, index) => SizedBox(height: 12.0 * scale),
+                          separatorBuilder: (context, index) => SizedBox(height: 10.0 * scale),
                           itemBuilder: (context, index) {
-                            return _buildNotificationItem(context, notifications[index], scale);
+                            return _buildNotificationItem(context, notifications[index], scale, l10n, fontScale);
                           },
                         ),
                       );
@@ -113,7 +121,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 
-  Widget _buildAppBar(BuildContext context, double scale) {
+  Widget _buildAppBar(BuildContext context, double scale, AppLocalizations l10n, double fontScale) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 20.0 * scale),
       child: Row(
@@ -126,7 +134,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               height: 40.0 * scale,
               alignment: Alignment.center,
               child: Transform.scale(
-                scaleX: -1,
+                scaleX: Localizations.localeOf(context).languageCode == 'ar' ? 1.0 : -1.0,
                 child: CustomArrowIcon(
                   size: 24.0 * scale,
                   color: const Color(0xFF130F26),
@@ -135,9 +143,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             ),
           ),
           Text(
-            'Notifications',
+            l10n.notificationsTitle,
             style: GoogleFonts.lexendDeca(
-              fontSize: 19.0 * scale,
+              fontSize: 19.0 * scale * fontScale,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF24252C),
             ),
@@ -157,18 +165,20 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               }
               // Fire API in background
               ref.read(notificationRepositoryProvider).markAllAsRead().then((_) {
-                ref.invalidate(unreadNotificationCountProvider);
-                ref.invalidate(notificationsListProvider);
+                if (mounted) {
+                  ref.invalidate(unreadNotificationCountProvider);
+                  ref.invalidate(notificationsListProvider);
+                }
               });
             },
-            tooltip: 'Mark all as read',
+            tooltip: l10n.markAllAsRead,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNotificationItem(BuildContext context, AppNotification notification, double scale) {
+  Widget _buildNotificationItem(BuildContext context, AppNotification notification, double scale, AppLocalizations l10n, double fontScale) {
     // Optimistic: if locally marked as read, treat as read
     final bool isRead = notification.isRead || _localReadIds.contains(notification.id);
 
@@ -185,9 +195,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         child: Icon(Icons.delete, color: Colors.white, size: 28.0 * scale),
       ),
       onDismissed: (_) {
-        // Fire API in background — item already removed visually by Dismissible
+        // Optimistic: add to local session deletions so ListView rebuilds without it
+        setState(() {
+          _deletedIds.add(notification.id);
+        });
+        
+        // Fire API in background
         ref.read(notificationRepositoryProvider).deleteNotification(notification.id);
         ref.invalidate(unreadNotificationCountProvider);
+        // Refresh the list to reflect deletion permanency on server
+        ref.invalidate(notificationsListProvider);
       },
       child: GestureDetector(
         onTap: () {
@@ -222,7 +239,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildNotificationIcon(notification.type, scale),
-              SizedBox(width: 14.0 * scale),
+              SizedBox(width: 12.0 * scale),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,32 +251,36 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           child: Text(
                             notification.title,
                             style: GoogleFonts.lexendDeca(
-                              fontSize: 15.0 * scale,
+                              fontSize: 15.0 * scale * fontScale,
                               fontWeight: isRead ? FontWeight.w500 : FontWeight.w700,
                               color: const Color(0xFF24252C),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            textDirection: TextDirection.ltr,
+                            textAlign: fontScale > 1.0 ? TextAlign.right : TextAlign.left,
                           ),
                         ),
                         Text(
-                          _formatTime(notification.createdAt),
+                          _formatTime(notification.createdAt, l10n),
                           style: GoogleFonts.poppins(
-                            fontSize: 11.0 * scale,
+                            fontSize: 11.0 * scale * fontScale,
                             color: const Color(0xFF8B88B5),
                           ),
                         ),
                       ],
                     ),
                     SizedBox(height: 6.0 * scale),
-                    Text(
-                      notification.message,
-                      style: GoogleFonts.poppins(
-                        fontSize: 13.0 * scale,
-                        color: const Color(0xFF24252C).withOpacity(0.7),
-                        height: 1.4,
+                      Text(
+                        notification.message,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.0 * scale * fontScale,
+                          color: const Color(0xFF24252C).withOpacity(0.7),
+                          height: 1.4,
+                        ),
+                        textDirection: TextDirection.ltr,
+                        textAlign: fontScale > 1.0 ? TextAlign.right : TextAlign.left,
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -452,18 +473,18 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 
-  String _formatTime(DateTime date) {
+  String _formatTime(DateTime date, AppLocalizations l10n) {
     final now = DateTime.now();
     final difference = now.difference(date);
 
     if (difference.inMinutes < 1) {
-      return 'Just now';
+      return l10n.justNow;
     } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
+      return l10n.minutesAgo(difference.inMinutes.toString());
     } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
+      return l10n.hoursAgo(difference.inHours.toString());
     } else if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
+      return l10n.daysAgo(difference.inDays.toString());
     } else {
       return DateFormat('d MMM').format(date);
     }

@@ -10,12 +10,48 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'src/features/onboarding/presentation/splash_screen.dart';
 import 'src/features/notifications/data/real_time_notification_service.dart';
 import 'core/network/sync_service.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError();
+});
+
+class LocaleNotifier extends StateNotifier<Locale> {
+  final SharedPreferences _prefs;
+  static const String _key = 'selected_language_code';
+
+  LocaleNotifier(this._prefs) : super(_loadInitialLocale(_prefs));
+
+  static Locale _loadInitialLocale(SharedPreferences prefs) {
+    final code = prefs.getString(_key);
+    if (code != null) {
+      return Locale(code);
+    }
+    return const Locale('en');
+  }
+
+  void setLocale(Locale locale) {
+    if (state == locale) return;
+    state = locale;
+    _prefs.setString(_key, locale.languageCode);
+  }
+}
+
+final localeProvider = StateNotifierProvider<LocaleNotifier, Locale>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return LocaleNotifier(prefs);
+});
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  final prefs = await SharedPreferences.getInstance();
+
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -28,8 +64,11 @@ void main() async {
   runApp(
     DevicePreview(
       enabled: !kReleaseMode,
-      builder: (context) => const ProviderScope(
-        child: MyApp(),
+      builder: (context) => ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+        ],
+        child: const MyApp(),
       ),
     ),
   );
@@ -85,12 +124,22 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
             title: 'Tryd',
             scaffoldMessengerKey: scaffoldMessengerKey,
             debugShowCheckedModeBanner: false,
-            locale: DevicePreview.locale(context),
+            locale: ref.watch(localeProvider),
             builder: DevicePreview.appBuilder,
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF910EBF)),
               useMaterial3: true,
             ),
+            localizationsDelegates: [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('en'),
+              Locale('ar'),
+            ],
             home: const SplashScreen(),
           );
         },
