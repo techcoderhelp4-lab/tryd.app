@@ -18,8 +18,9 @@ import '../../auth/data/auth_repository.dart';
 import '../../onboarding/presentation/start_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
-import '../../../../main.dart' show localeProvider;
+import '../../../../main.dart' show localeProvider, sharedPreferencesProvider;
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -30,6 +31,33 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _requestLocationPermission();
+  }
+
+  Future<void> _requestLocationPermission() async {
+    // If already granted, nothing to do
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.whileInUse ||
+        permission == LocationPermission.always) return;
+
+    // If permanently denied, nothing we can do programmatically
+    if (permission == LocationPermission.deniedForever) return;
+
+    // Only ask once — track via SharedPreferences
+    final prefs = ref.read(sharedPreferencesProvider);
+    const key = 'location_permission_asked';
+    if (prefs.getBool(key) == true) return;
+
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    await prefs.setBool(key, true);
+    await Geolocator.requestPermission();
+  }
 
   @override
   Widget build(BuildContext context) {
