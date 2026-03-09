@@ -4,7 +4,6 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'src/features/onboarding/presentation/splash_screen.dart';
@@ -59,17 +58,18 @@ void main() async {
 
   // Firebase only supported on Android, iOS, Web, macOS
   if (!Platform.isLinux && !Platform.isWindows) {
-    await Firebase.initializeApp();
+    try {
+      await Firebase.initializeApp();
+    } catch (e) {
+      debugPrint('Firebase init error: $e');
+    }
   }
   runApp(
-    DevicePreview(
-      enabled: !kReleaseMode,
-      builder: (context) => ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-        ],
-        child: const MyApp(),
-      ),
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+      child: const MyApp(),
     ),
   );
 }
@@ -105,8 +105,8 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
       debugPrint('App: Resumed — refreshing connections');
       ref.read(realTimeNotificationServiceProvider).reconnect();
       ref.read(syncServiceProvider).init();
-    } else if (state == AppLifecycleState.paused || 
-               state == AppLifecycleState.hidden || 
+    } else if (state == AppLifecycleState.paused ||
+               state == AppLifecycleState.hidden ||
                state == AppLifecycleState.inactive) {
       debugPrint('App: Background — pausing connections');
       ref.read(realTimeNotificationServiceProvider).pause();
@@ -116,7 +116,7 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
-        designSize: const Size(375, 812), // Standard design size
+        designSize: const Size(375, 812),
         minTextAdapt: true,
         splitScreenMode: true,
         builder: (context, child) {
@@ -125,7 +125,6 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
             scaffoldMessengerKey: scaffoldMessengerKey,
             debugShowCheckedModeBanner: false,
             locale: ref.watch(localeProvider),
-            builder: DevicePreview.appBuilder,
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF910EBF)),
               useMaterial3: true,
