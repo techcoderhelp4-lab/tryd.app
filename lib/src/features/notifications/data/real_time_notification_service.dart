@@ -124,19 +124,7 @@ class RealTimeNotificationService {
             showBadge: true,
           );
 
-          // Live Stats Channel (Default importance so it appears in shade)
-          const AndroidNotificationChannel liveChannel = AndroidNotificationChannel(
-            'running_tracking_v4', // Incrementing version to force channel recreation with silent settings
-            'Tryd Live Stats',
-            description: 'Live updates of your running activity',
-            importance: Importance.low,
-            showBadge: true,
-            playSound: false,
-            enableVibration: true,
-          );
-
           await androidPlugin.createNotificationChannel(channel);
-          await androidPlugin.createNotificationChannel(liveChannel);
           
           await Permission.notification.request();
         }
@@ -325,39 +313,6 @@ class RealTimeNotificationService {
     });
   }
 
-  Future<void> _showLocalNotificationFromFCM(RemoteMessage message) async {
-    if (message.notification == null) return;
-    try {
-      await _localNotifications.show(
-        message.hashCode,
-        message.notification!.title,
-        message.notification!.body,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'tryd_priority_alert_v2',
-            'Tryd Alerts',
-            channelDescription: 'Critical updates and activity alerts',
-            importance: Importance.max,
-            priority: Priority.max,
-            ticker: 'ticker',
-            color: Color(0xFF930FBE),
-            enableVibration: true,
-            playSound: true,
-            showWhen: true,
-          ),
-          iOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-      );
-      debugPrint('AlertNotification: FCM shown → ${message.notification!.title}');
-    } catch (e) {
-      debugPrint('AlertNotification: FCM ERROR → $e');
-    }
-  }
-
   Future<void> _showLocalNotification(AppNotification notification) async {
     try {
       await _localNotifications.show(
@@ -376,6 +331,9 @@ class RealTimeNotificationService {
             enableVibration: true,
             playSound: true,
             showWhen: true,
+            // Show full notification content on the lock screen even when
+            // the device is locked, matching Google Maps alert behaviour.
+            visibility: NotificationVisibility.public,
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,
@@ -389,52 +347,6 @@ class RealTimeNotificationService {
     } catch (e) {
       debugPrint('AlertNotification: Socket ERROR → $e');
     }
-  }
-
-  Future<void> showLiveStats({
-    required String title,
-    required String body,
-    required String summary,
-  }) async {
-    try {
-      final androidDetails = AndroidNotificationDetails(
-        'running_tracking_v4',
-        'Tryd Live Stats',
-        channelDescription: 'Live updates of your running activity',
-        importance: Importance.low,
-        priority: Priority.low,
-        ongoing: true,
-        onlyAlertOnce: true,
-        showWhen: false,
-        color: const Color(0xFF900EBF),
-        category: AndroidNotificationCategory.workout,
-        styleInformation: BigTextStyleInformation(
-          '',
-          contentTitle: title,
-          summaryText: summary,
-        ),
-      );
-
-      const iosDetails = DarwinNotificationDetails(
-        presentAlert: false,
-        presentBadge: false,
-        presentSound: false,
-      );
-
-      await _localNotifications.show(
-        888,
-        title,
-        body,
-        NotificationDetails(android: androidDetails, iOS: iosDetails),
-      );
-      debugPrint('LiveNotification: shown → $title | $body');
-    } catch (e) {
-      debugPrint('LiveNotification: ERROR → $e');
-    }
-  }
-
-  Future<void> cancelLiveStats() async {
-    await _localNotifications.cancel(888);
   }
 
   void reconnect() {

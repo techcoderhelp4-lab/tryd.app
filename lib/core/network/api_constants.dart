@@ -5,6 +5,7 @@ class ApiConstants {
   static const String login = '/users/login';
   static const String register = '/users/register';
   static const String logout = '/users/logout';
+  static const String refreshToken = '/auth/refresh';
   static const String checkUserExists = '/auth/check-user';
   static const String sendOtp = '/auth/send-otp';
   static const String verifyOtp = '/auth/verify-otp';
@@ -44,4 +45,22 @@ class ApiConstants {
   // Account
   static const String changePassword = '/users/change-password';
   static const String deleteAccount = '/users/delete-account';
+
+  // Referral
+  static const String verifyReferralCode = '/users/verify-referral-code';
+  static const String myReferralInfo = '/users/me/referral';
+
+  // Share rewards
+  static const String shareReward = '/share/reward';
+  static const String shareRewardStatus = '/share/reward/status';
+
+  // App Settings (admin)
+  static const String appSettings = '/admin/settings';
+  static const String homeBanner = '/public/banner';
+  static const String updateHomeBanner = '/admin/settings/banner';
+
+  // Pre-built Workouts
+  static const String preBuiltWorkouts = '/public/pre-built-workouts';
+  static const String adminPreBuiltWorkouts = '/admin/pre-built-workouts';
+  static String adminPreBuiltWorkout(String id) => '/admin/pre-built-workouts/$id';
 }

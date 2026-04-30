@@ -139,6 +139,13 @@ class LocalDatabase {
     await db.insert('activities', activity, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  // Used during remote sync — preserves locally-created records (e.g. type='cycling')
+  // instead of overwriting them with whatever the server returns.
+  Future<void> insertActivityFromRemote(Map<String, dynamic> activity) async {
+    final db = await database;
+    await db.insert('activities', activity, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
   Future<List<Map<String, dynamic>>> getActivities() async {
     final db = await database;
     return await db.query('activities', orderBy: 'date DESC');

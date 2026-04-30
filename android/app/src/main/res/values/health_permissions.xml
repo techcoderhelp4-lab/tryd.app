@@ -1,26 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <array name="health_permissions">
-    <!-- Android 13 and below -->
+    <!-- Android 13 and below / standalone Health Connect app -->
     <item>androidx.health.permission.Steps.READ</item>
     <item>androidx.health.permission.Steps.WRITE</item>
     <item>androidx.health.permission.Distance.READ</item>
     <item>androidx.health.permission.Distance.WRITE</item>
-    <item>androidx.health.permission.TotalCaloriesBurned.READ</item>
-    <item>androidx.health.permission.TotalCaloriesBurned.WRITE</item>
+    <item>androidx.health.permission.ActiveCaloriesBurned.READ</item>
+    <item>androidx.health.permission.ActiveCaloriesBurned.WRITE</item>
     <item>androidx.health.permission.HeartRate.READ</item>
     <item>androidx.health.permission.HeartRate.WRITE</item>
-    <item>androidx.health.permission.Workout.WRITE</item>
-    
-    <!-- Android 14+ -->
+    <item>androidx.health.permission.FloorsClimbed.READ</item>
+    <item>androidx.health.permission.ExerciseSession.WRITE</item>
+
+    <!-- Android 14+ built-in Health Connect -->
     <item>android.permission.health.READ_STEPS</item>
     <item>android.permission.health.WRITE_STEPS</item>
     <item>android.permission.health.READ_DISTANCE</item>
     <item>android.permission.health.WRITE_DISTANCE</item>
+    <item>android.permission.health.READ_ACTIVE_CALORIES_BURNED</item>
+    <item>android.permission.health.WRITE_ACTIVE_CALORIES_BURNED</item>
     <item>android.permission.health.READ_TOTAL_CALORIES_BURNED</item>
     <item>android.permission.health.WRITE_TOTAL_CALORIES_BURNED</item>
     <item>android.permission.health.READ_HEART_RATE</item>
     <item>android.permission.health.WRITE_HEART_RATE</item>
-    <item>android.permission.health.WRITE_WORKOUT</item>
+    <item>android.permission.health.READ_FLOORS_CLIMBED</item>
+    <item>android.permission.health.WRITE_EXERCISE</item>
   </array>
 </resources>

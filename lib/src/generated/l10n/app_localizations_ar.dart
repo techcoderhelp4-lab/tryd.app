@@ -340,6 +340,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get healthUpdateTitle => 'تحديث مطلوب';
 
   @override
+  String get healthPermissionTitle => 'الأذونات مطلوبة';
+
+  @override
+  String get healthPermissionMessage =>
+      'يحتاج Tryd إلى أذونات Health Connect لتتبع خطواتك والسعرات الحرارية ونبضات قلبك. يرجى تفعيل جميع الأذونات في إعدادات Health Connect.';
+
+  @override
   String get healthConnectMessage =>
       'لتتبع حطواتك ونبضات قلبك بدقة، يجب تثبيت تطبيق Google Health Connect.';
 
@@ -349,6 +356,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get installUpdate => 'تثبيت / تحديث';
+
+  @override
+  String get enablePermissions => 'تفعيل الأذونات';
 
   @override
   String get appleHealthTitle => 'الوصول للصحة في ابل';
@@ -590,6 +600,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get avgPaceShort => 'متوسط السرعة';
 
   @override
+  String get avgSpeedShort => 'متوسط السرعة';
+
+  @override
+  String get runningLabel => 'الجري';
+
+  @override
+  String get walkingLabel => 'المشي';
+
+  @override
+  String get cyclingLabel => 'ركوب الدراجة';
+
+  @override
   String get recentActivities => 'الأنشطة الأخيرة';
 
   @override
@@ -774,4 +796,158 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get resumeButton => 'استئناف';
+
+  @override
+  String get locationPermissionTitle => 'السماح بالوصول إلى الموقع';
+
+  @override
+  String get locationPermissionMessage =>
+      'يحتاج تطبيق تراي إلى موقعك لتتبع مسارك ومسافتك وإيقاعك خلال الركض.';
+
+  @override
+  String get locationDeniedTitle => 'الوصول إلى الموقع مطلوب';
+
+  @override
+  String get locationDeniedMessage =>
+      'قم بتفعيل الموقع في الإعدادات لتتبع ركضك بدقة.';
+
+  @override
+  String get allowLocation => 'السماح بالموقع';
+
+  @override
+  String get locationServiceDisabledTitle => 'خدمة الموقع معطّلة';
+
+  @override
+  String get locationServiceDisabledMessage =>
+      'خدمة الموقع في جهازك معطّلة. يرجى تفعيلها لبدء الجري.';
+
+  @override
+  String get enableLocation => 'تفعيل الموقع';
+
+  @override
+  String get audioPermissionTitle => 'السماح بالوصول إلى الموسيقى';
+
+  @override
+  String get audioPermissionMessage =>
+      'يحتاج تطبيق تراي إلى الوصول إلى مكتبة موسيقاك لتشغيل الأغاني أثناء التمرين.';
+
+  @override
+  String get allowAudio => 'السماح بالوصول إلى الموسيقى';
+
+  @override
+  String get newRunButton => 'جري جديد';
+
+  @override
+  String get totalWorkoutTime => 'إجمالي وقت التمرين';
+
+  @override
+  String get preBuiltWorkoutsTitle => 'تمارين معدة مسبقًا';
+
+  @override
+  String get referralCodeLabel => 'رمز الإحالة';
+
+  @override
+  String get referralCodeOptional => 'اختياري';
+
+  @override
+  String get referralCodePlaceholder => 'أدخل الرمز';
+
+  @override
+  String get referralVerifyButton => 'تحقق';
+
+  @override
+  String get referralCodeInvalid => 'رمز إحالة غير صالح';
+
+  @override
+  String referralCodeVerified(String name) {
+    return 'محال من $name';
+  }
+
+  @override
+  String shareEarnTitle(int points) {
+    return 'ادعُ واكسب $points نقاط';
+  }
+
+  @override
+  String shareEarnSubtitle(int points) {
+    return 'شارك رمزك وستكسبان معاً $points نقاط';
+  }
+
+  @override
+  String shareForPointsBanner(int points) {
+    return 'شارك واكسب $points نقاط!';
+  }
+
+  @override
+  String get shareForPointsSubtitle =>
+      'شارك نشاطك على وسائل التواصل واحصل على مكافأة';
+
+  @override
+  String sharePointsEarned(int points) {
+    return 'حصلت على $points نقاط مقابل مشاركتك!';
+  }
+
+  @override
+  String get shareAlreadyRewarded => 'تمت المكافأة مسبقاً';
+
+  @override
+  String get sharePlatformInstagram => 'إنستغرام';
+
+  @override
+  String get sharePlatformWhatsApp => 'واتساب';
+
+  @override
+  String get sharePlatformSnapchat => 'سناب شات';
+
+  @override
+  String get sharePlatformFacebook => 'فيسبوك';
+
+  @override
+  String shareGenZCta(int points) {
+    return 'شارك واكسب $points نقطة 🔥';
+  }
+
+  @override
+  String get shareGenZSubtitle => 'انشر ركضك، راكم نقاطك';
+
+  @override
+  String get shareGenZAlreadyClaimed => 'حصلت على نقاطك لهذا المنشور ✅';
+
+  @override
+  String get secUnit => 'sec';
+
+  @override
+  String get minUnit => 'min';
+
+  @override
+  String get minsUnit => 'mins';
+
+  @override
+  String get minutesShort => 'MIN';
+
+  @override
+  String get secondsShort => 'SEC';
+
+  @override
+  String get exerciseTimer => 'مؤقت التمرين';
+
+  @override
+  String get workSlash => 'عمل';
+
+  @override
+  String get restWord => 'راحة';
+
+  @override
+  String get totalTimeColon => 'الوقت الكلي:';
+
+  @override
+  String get exercisesPlusRest => 'تمارين + راحة';
+
+  @override
+  String get letsGoFire => 'هيا!';
+
+  @override
+  String totalWithTime(String time) {
+    return 'المجموع: $time (تمارين + راحة)';
+  }
 }

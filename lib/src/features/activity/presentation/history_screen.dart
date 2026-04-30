@@ -6,14 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../data/activity_repository.dart';
 import '../domain/workout.dart';
-import '../../home/presentation/home_screen.dart';
-import 'running_screen.dart';
-import '../../rewards/presentation/rewards_screen.dart';
-import 'workout_screen.dart';
-import '../../club/presentation/club_screen.dart';
+import '../../../shell/main_shell.dart' show mainNavTapProvider;
 import '../../../../widgets/skeleton_loading.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
+import '../../../../widgets/swipe_to_pop_wrapper.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -50,7 +47,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
     final workoutHistoryAsync = ref.watch(workoutHistoryProvider);
 
-    return Scaffold(
+    return SwipeToPopWrapper(child: Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
@@ -71,24 +68,27 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 SizedBox(height: 30.0 * scale),
                 Expanded(
                   child: workoutHistoryAsync.when(
-                    data: (history) => history.isEmpty
-                      ? Center(
-                          child: Text(
-                            l10n.noWorkoutsYet,
-                            style: _textStyle(isRTL,
-                              size: 14.0 * scale * fontScale,
-                              color: Colors.grey,
+                    data: (history) {
+                      final sorted = [...history]..sort((a, b) => b.date.compareTo(a.date));
+                      return sorted.isEmpty
+                        ? Center(
+                            child: Text(
+                              l10n.noWorkoutsYet,
+                              style: _textStyle(isRTL,
+                                size: 14.0 * scale * fontScale,
+                                color: Colors.grey,
+                              ),
                             ),
-                          ),
-                        )
-                      : ListView.separated(
-                          padding: EdgeInsets.symmetric(horizontal: 20.0 * scale),
-                          itemCount: history.length,
-                          separatorBuilder: (_, __) => SizedBox(height: 15.0 * scale),
-                          itemBuilder: (context, index) {
-                            return _buildHistoryCard(history[index], isTablet, scale, l10n, isRTL, fontScale);
-                          },
-                        ),
+                          )
+                        : ListView.separated(
+                            padding: EdgeInsets.symmetric(horizontal: 20.0 * scale),
+                            itemCount: sorted.length,
+                            separatorBuilder: (_, __) => SizedBox(height: 15.0 * scale),
+                            itemBuilder: (context, index) {
+                              return _buildHistoryCard(sorted[index], isTablet, scale, l10n, isRTL, fontScale);
+                            },
+                          );
+                    },
                     loading: () => HistorySkeletonLoading(scale: scale, isTablet: isTablet),
                     error: (e, _) => Center(child: Text("Error: $e")),
                   ),
@@ -104,34 +104,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             child: CustomBottomNavigation(
               currentIndex: _selectedIndex,
               onTap: (index) {
-                if (index == 0) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  );
-                  return;
-                }
-
-                Widget? page;
-                switch (index) {
-                  case 0: page = const HomeScreen(); break;
-                  case 1: page = const RunningScreen(); break;
-                  case 2: page = const RewardsScreen(); break;
-                  case 4: page = const ClubScreen(); break;
-                }
-
-                if (page != null) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => page!),
-                  );
-                }
+                if (index == 3) return;
+                Navigator.of(context).popUntil((route) => route.isFirst);
+                ref.read(mainNavTapProvider)?.call(index);
               },
             ),
           ),
         ],
       ),
-    );
+    ));
   }
 
   TextStyle _textStyle(bool isRTL, {required double size, FontWeight weight = FontWeight.w400, Color color = Colors.black, double? height}) {
@@ -143,7 +124,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Widget _buildHeader(BuildContext context, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final horizontalPadding = 30.0 * scale;
     final iconContainerSize = 45.0 * scale;
-    final arrowSize = 24.0 * scale;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
@@ -152,19 +132,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: SizedBox(
-              width: iconContainerSize,
-              height: iconContainerSize,
-              child: Center(
-                child: Transform.scale(
-                  scaleX: isRTL ? -1.0 : 1.0,
-                  child: SvgPicture.asset(
-                    'assets/images/back_arrow_icon.svg',
-                    width: arrowSize,
-                    height: arrowSize,
-                  ),
-                ),
-              ),
+            behavior: HitTestBehavior.opaque,
+            child: SvgPicture.asset(
+              'assets/images/back_arrow_icon.svg',
+              width: 32.0 * scale,
+              height: 32.0 * scale,
+              matchTextDirection: true,
             ),
           ),
           Text(

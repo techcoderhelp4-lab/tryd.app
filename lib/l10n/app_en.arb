@@ -157,9 +157,12 @@
   "keepRunning": "Keep Running",
   "healthConnectTitle": "Health Connect Required",
   "healthUpdateTitle": "Update Required",
+  "healthPermissionTitle": "Permissions Required",
+  "healthPermissionMessage": "Tryd needs Health Connect permissions to track your steps, calories, and heart rate. Please enable all permissions in Health Connect settings.",
   "healthConnectMessage": "To track your steps and heart rate accurately, you need to install the Google Health Connect app.",
   "healthUpdateMessage": "Your Google Health Connect app needs an update to sync workout data properly.",
   "installUpdate": "Install / Update",
+  "enablePermissions": "Enable Permissions",
   "appleHealthTitle": "Apple Health Access",
   "appleHealthMessage": "Tryd needs access to Apple Health to track your steps, distance, and heart rate during runs.\n\nPlease go to:",
   "appleHealthPath": "Settings → Health → Data Access → Tryd",
@@ -249,6 +252,10 @@
   "countLabel": "Count",
   "timeLabel": "Time",
   "avgPaceShort": "Avg pace",
+  "avgSpeedShort": "Avg speed",
+  "runningLabel": "Running",
+  "walkingLabel": "Walking",
+  "cyclingLabel": "Cycling",
   "recentActivities": "Recent Activities",
   "noRecentActivities": "No recent activities",
   "filterWeekLabel": "W",
@@ -326,6 +333,85 @@
   "resumeActivityTitle": "Resume Activity",
   "resumeActivityMessage": "You have an unfinished run. Would you like to resume it?",
   "discardButton": "Discard",
-  "resumeButton": "Resume"
+  "resumeButton": "Resume",
+  "locationPermissionTitle": "Allow Location Access",
+  "locationPermissionMessage": "Tryd needs your location to track your route, distance, and pace during runs.",
+  "locationDeniedTitle": "Location Access Needed",
+  "locationDeniedMessage": "Enable location in Settings to track your runs accurately.",
+  "allowLocation": "Allow Location",
+  "locationServiceDisabledTitle": "Location Service Off",
+  "locationServiceDisabledMessage": "Your device's location service is turned off. Please enable it to start your run.",
+  "enableLocation": "Enable Location",
+  "audioPermissionTitle": "Allow Music Access",
+  "audioPermissionMessage": "Tryd needs access to your music library to play songs during your workout.",
+  "allowAudio": "Allow Music Access",
+  "newRunButton": "New Run",
+  "totalWorkoutTime": "Total Workout Time",
+  "preBuiltWorkoutsTitle": "PRE-BUILT WORKOUTS",
+  "referralCodeLabel": "Referral Code",
+  "referralCodeOptional": "Optional",
+  "referralCodePlaceholder": "Enter code",
+  "referralVerifyButton": "Verify",
+  "referralCodeInvalid": "Invalid referral code",
+  "referralCodeVerified": "Referred by {name}",
+  "@referralCodeVerified": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "shareEarnTitle": "Invite & Earn {points} Points",
+  "@shareEarnTitle": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "shareEarnSubtitle": "Share your code and both of you earn {points} pts",
+  "@shareEarnSubtitle": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "shareForPointsBanner": "Share & earn {points} pts!",
+  "@shareForPointsBanner": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "shareForPointsSubtitle": "Share your activity on social media and get rewarded",
+  "sharePointsEarned": "You earned {points} pts for sharing!",
+  "@sharePointsEarned": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "shareAlreadyRewarded": "Already rewarded",
+  "sharePlatformInstagram": "Instagram",
+  "sharePlatformWhatsApp": "WhatsApp",
+  "sharePlatformSnapchat": "Snapchat",
+  "sharePlatformFacebook": "Facebook",
+  "shareGenZCta": "share & get {points} pts 🔥",
+  "@shareGenZCta": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "shareGenZSubtitle": "post your run, stack those points",
+  "shareGenZAlreadyClaimed": "you already got your pts for this ✅",
+  "secUnit": "sec",
+  "minUnit": "min",
+  "minsUnit": "mins",
+  "minutesShort": "MIN",
+  "secondsShort": "SEC",
+  "exerciseTimer": "Exercise Timer",
+  "workSlash": "work",
+  "restWord": "rest",
+  "totalTimeColon": "Total Time:",
+  "exercisesPlusRest": "Exercises + Rest",
+  "letsGoFire": "Let's Go!",
+  "totalWithTime": "Total: {time} (Exercises + Rest)",
+  "@totalWithTime": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  }
 }
-

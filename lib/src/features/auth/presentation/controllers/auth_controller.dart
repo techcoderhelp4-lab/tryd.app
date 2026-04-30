@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/auth_repository.dart';
+import '../../data/dto/auth_response.dart';
 import '../../domain/user.dart';
 import '../../../../../core/database/local_database.dart';
 import '../../../../../core/network/api_client.dart';
@@ -17,9 +19,29 @@ part 'auth_controller.g.dart';
 
 @Riverpod(keepAlive: true)
 class AuthController extends _$AuthController {
+  static const _userCacheKey = 'cached_user_json';
+
   @override
-  FutureOr<User?> build() {
-    return null;
+  FutureOr<User?> build() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    if (token == null || token.isEmpty) return null;
+    final json = prefs.getString(_userCacheKey);
+    if (json == null) return null;
+    try {
+      return User.fromJson(jsonDecode(json) as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _saveUser(User? user) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (user == null) {
+      await prefs.remove(_userCacheKey);
+    } else {
+      await prefs.setString(_userCacheKey, jsonEncode(user.toJson()));
+    }
   }
 
   Future<void> login({required String email, required String password}) async {
@@ -27,18 +49,21 @@ class AuthController extends _$AuthController {
     state = await AsyncValue.guard(() async {
       final authRepo = ref.read(authRepositoryProvider);
       final response = await authRepo.login(email: email, password: password);
+      await _saveUser(response.user);
       await _onAccountChange();
       return response.user;
     });
   }
 
-  Future<void> register({
+  Future<AuthResponse?> register({
     required String name,
     required String email,
     required String password,
     required String phoneNumber,
+    String? referralCode,
   }) async {
     state = const AsyncValue.loading();
+    AuthResponse? result;
     state = await AsyncValue.guard(() async {
       final authRepo = ref.read(authRepositoryProvider);
       final response = await authRepo.register(
@@ -46,10 +71,14 @@ class AuthController extends _$AuthController {
         email: email,
         password: password,
         phoneNumber: phoneNumber,
+        referralCode: referralCode,
       );
+      result = response;
+      await _saveUser(response.user);
       await _onAccountChange();
       return response.user;
     });
+    return result;
   }
 
   Future<void> verifyOtpLogin(String email, String otp) async {
@@ -57,6 +86,7 @@ class AuthController extends _$AuthController {
     state = await AsyncValue.guard(() async {
       final authRepo = ref.read(authRepositoryProvider);
       final response = await authRepo.verifyOtpLogin(email, otp);
+      await _saveUser(response.user);
       await _onAccountChange();
       return response.user;
     });
@@ -67,6 +97,7 @@ class AuthController extends _$AuthController {
     state = await AsyncValue.guard(() async {
       final authRepo = ref.read(authRepositoryProvider);
       final response = await authRepo.verifyOtp(email, otp);
+      await _saveUser(response.user);
       await _onAccountChange();
       return response.user;
     });
@@ -77,6 +108,7 @@ class AuthController extends _$AuthController {
     state = await AsyncValue.guard(() async {
       final authRepo = ref.read(authRepositoryProvider);
       await authRepo.logout(ref);
+      await _saveUser(null);
       await _onAccountChange();
       return null;
     });

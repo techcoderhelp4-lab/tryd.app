@@ -1,4 +1,6 @@
 {
+  "totalWorkoutTime": "إجمالي وقت التمرين",
+  "preBuiltWorkoutsTitle": "تمارين معدة مسبقًا",
   "@@locale": "ar",
   "appTitle": "ترايد",
   "loginTitle": "أدخل عنوان بريدك الإلكتروني للبدء.",
@@ -105,9 +107,12 @@
   "keepRunning": "إكمال الجري",
   "healthConnectTitle": "يتطلب Health Connect",
   "healthUpdateTitle": "تحديث مطلوب",
+  "healthPermissionTitle": "الأذونات مطلوبة",
+  "healthPermissionMessage": "يحتاج Tryd إلى أذونات Health Connect لتتبع خطواتك والسعرات الحرارية ونبضات قلبك. يرجى تفعيل جميع الأذونات في إعدادات Health Connect.",
   "healthConnectMessage": "لتتبع حطواتك ونبضات قلبك بدقة، يجب تثبيت تطبيق Google Health Connect.",
   "healthUpdateMessage": "يتطلب تطبيق Google Health Connect تحديثاً لمزامنة بيانات التمرين بشكل صحيح.",
   "installUpdate": "تثبيت / تحديث",
+  "enablePermissions": "تفعيل الأذونات",
   "appleHealthTitle": "الوصول للصحة في ابل",
   "appleHealthMessage": "يحتاج Tryd الوصول إلى Apple Health لتتبع خطواتك والمسافة ونبضات قلبك أثناء الجري.\n\nيرجى التوجه لـ:",
   "appleHealthPath": "الإعدادات ← الصحة ← الوصول للبيانات ← Tryd",
@@ -219,6 +224,10 @@
   "countLabel": "العدد",
   "timeLabel": "الوقت",
   "avgPaceShort": "متوسط السرعة",
+  "avgSpeedShort": "متوسط السرعة",
+  "runningLabel": "الجري",
+  "walkingLabel": "المشي",
+  "cyclingLabel": "ركوب الدراجة",
   "recentActivities": "الأنشطة الأخيرة",
   "noRecentActivities": "لا توجد أنشطة حديثة",
   "filterWeekLabel": "أ",
@@ -242,5 +251,83 @@
   "resumeActivityTitle": "استئناف النشاط",
   "resumeActivityMessage": "لديك جري غير مكتمل. هل ترغب في استئنافه؟",
   "discardButton": "تجاهل",
-  "resumeButton": "استئناف"
+  "resumeButton": "استئناف",
+  "locationPermissionTitle": "السماح بالوصول إلى الموقع",
+  "locationPermissionMessage": "يحتاج تطبيق تراي إلى موقعك لتتبع مسارك ومسافتك وإيقاعك خلال الركض.",
+  "locationDeniedTitle": "الوصول إلى الموقع مطلوب",
+  "locationDeniedMessage": "قم بتفعيل الموقع في الإعدادات لتتبع ركضك بدقة.",
+  "allowLocation": "السماح بالموقع",
+  "locationServiceDisabledTitle": "خدمة الموقع معطّلة",
+  "locationServiceDisabledMessage": "خدمة الموقع في جهازك معطّلة. يرجى تفعيلها لبدء الجري.",
+  "enableLocation": "تفعيل الموقع",
+  "audioPermissionTitle": "السماح بالوصول إلى الموسيقى",
+  "audioPermissionMessage": "يحتاج تطبيق تراي إلى الوصول إلى مكتبة موسيقاك لتشغيل الأغاني أثناء التمرين.",
+  "allowAudio": "السماح بالوصول إلى الموسيقى",
+  "newRunButton": "جري جديد",
+  "referralCodeLabel": "رمز الإحالة",
+  "referralCodeOptional": "اختياري",
+  "referralCodePlaceholder": "أدخل الرمز",
+  "referralVerifyButton": "تحقق",
+  "referralCodeInvalid": "رمز إحالة غير صالح",
+  "referralCodeVerified": "محال من {name}",
+  "@referralCodeVerified": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "shareEarnTitle": "ادعُ واكسب {points} نقاط",
+  "@shareEarnTitle": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "shareEarnSubtitle": "شارك رمزك وستكسبان معاً {points} نقاط",
+  "@shareEarnSubtitle": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "shareForPointsBanner": "شارك واكسب {points} نقاط!",
+  "@shareForPointsBanner": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "shareForPointsSubtitle": "شارك نشاطك على وسائل التواصل واحصل على مكافأة",
+  "sharePointsEarned": "حصلت على {points} نقاط مقابل مشاركتك!",
+  "@sharePointsEarned": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "shareAlreadyRewarded": "تمت المكافأة مسبقاً",
+  "sharePlatformInstagram": "إنستغرام",
+  "sharePlatformWhatsApp": "واتساب",
+  "sharePlatformSnapchat": "سناب شات",
+  "sharePlatformFacebook": "فيسبوك",
+  "shareGenZCta": "شارك واكسب {points} نقطة 🔥",
+  "@shareGenZCta": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "shareGenZSubtitle": "انشر ركضك، راكم نقاطك",
+  "shareGenZAlreadyClaimed": "حصلت على نقاطك لهذا المنشور ✅",
+  "secUnit": "sec",
+  "minUnit": "min",
+  "minsUnit": "mins",
+  "minutesShort": "MIN",
+  "secondsShort": "SEC",
+  "exerciseTimer": "مؤقت التمرين",
+  "workSlash": "عمل",
+  "restWord": "راحة",
+  "totalTimeColon": "الوقت الكلي:",
+  "exercisesPlusRest": "تمارين + راحة",
+  "letsGoFire": "هيا!",
+  "totalWithTime": "المجموع: {time} (تمارين + راحة)",
+  "@totalWithTime": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  }
 }

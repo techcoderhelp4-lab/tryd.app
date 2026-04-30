@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'src/features/onboarding/presentation/splash_screen.dart';
 import 'src/features/notifications/data/real_time_notification_service.dart';
+import 'src/features/activity/data/gps_cache_service.dart';
 import 'core/network/sync_service.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
@@ -44,6 +45,7 @@ final localeProvider = StateNotifierProvider<LocaleNotifier, Locale>((ref) {
 });
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -90,6 +92,8 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(realTimeNotificationServiceProvider).init();
       ref.read(syncServiceProvider).init();
+      // Pre-warm GPS so Running Screen skips the "Acquiring GPS…" wait
+      ref.read(gpsCacheServiceProvider).startWarmUp();
     });
   }
 
@@ -122,12 +126,19 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
         builder: (context, child) {
           return MaterialApp(
             title: 'Tryd',
+            navigatorKey: navigatorKey,
             scaffoldMessengerKey: scaffoldMessengerKey,
             debugShowCheckedModeBanner: false,
             locale: ref.watch(localeProvider),
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF910EBF)),
               useMaterial3: true,
+              pageTransitionsTheme: const PageTransitionsTheme(
+                builders: {
+                  TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+                  TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+                },
+              ),
             ),
             localizationsDelegates: [
               AppLocalizations.delegate,

@@ -66,7 +66,7 @@ class ActivityRepository {
       final List<dynamic> data = (rawData is List) ? rawData : (rawData['data'] ?? []);
       for (var json in data) {
         final a = Activity.fromJson(json);
-        await _localDb.insertActivity(_cleanForSql(a.toJson(), a.id));
+        await _localDb.insertActivityFromRemote(_cleanForSql(a.toJson(), a.id));
       }
       debugPrint("Activity sync success: ${data.length} items synced");
     }
@@ -78,7 +78,7 @@ class ActivityRepository {
       final List<dynamic> data = (rawData is List) ? rawData : (rawData['data'] ?? []);
       for (var json in data) {
         final w = Workout.fromJson(json);
-        await _localDb.insertActivity(_cleanForSql(w.toJson(), w.id));
+        await _localDb.insertActivityFromRemote(_cleanForSql(w.toJson(), w.id));
       }
       debugPrint("Workout sync success: ${data.length} items synced");
     }
@@ -329,6 +329,10 @@ class ActivityRepository {
         debugPrint("Successfully synced pending activity: ${item['id']} to $endpoint");
       } catch (e) {
         debugPrint("Failed to sync activity: ${item['id']} - $e");
+        if (e is DioException && e.response?.statusCode == 401) {
+          debugPrint("Sync halted: Unauthorized (401). Token might be expired.");
+          break; // Stop the loop if unauthorized to avoid spamming API
+        }
       }
     }
   }
@@ -400,10 +404,20 @@ class WorkoutHistoryNotifier extends AsyncNotifier<List<Workout>> {
   Future<void> addWorkout(Workout workout) async {
     final repository = ref.read(activityRepositoryProvider);
     await repository.saveWorkout(workout);
-    // Batch invalidate — all refresh in parallel, no N+1 sequential calls
+
+    // Also persist to SharedPreferences so workoutHistory fallback stays in sync
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getString(kWorkoutHistoryKey);
+    final List<dynamic> list = existing != null ? jsonDecode(existing) : [];
+    list.insert(0, workout.toJson());
+    await prefs.setString(kWorkoutHistoryKey, jsonEncode(list));
+
+    // Batch invalidate — all refresh in parallel
     ref.invalidate(userProfileProvider);
     ref.invalidate(activitySummaryProvider);
     ref.invalidate(activityListProvider);
+    ref.invalidate(activityStatsProvider('week'));
+    ref.invalidate(activityStatsProvider('month'));
     ref.invalidate(notificationsListProvider);
     ref.invalidate(unreadNotificationCountProvider);
     ref.invalidateSelf();

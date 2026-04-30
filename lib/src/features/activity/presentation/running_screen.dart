@@ -1,42 +1,26 @@
-import 'package:dio/dio.dart';
-import 'dart:io';
-import 'dart:convert';
-import 'package:battery_plus/battery_plus.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:on_audio_query/on_audio_query.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:geolocator/geolocator.dart';
+// running_screen.dart
 import 'dart:math' as math;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../data/activity_repository.dart';
-import '../domain/activity.dart';
-import '../../../../../widgets/custom_bottom_navigation.dart';
-import '../../../../../widgets/gradient_button.dart';
-import '../../home/presentation/home_screen.dart';
-import '../../rewards/presentation/rewards_screen.dart';
-import '../../notifications/data/real_time_notification_service.dart';
-import 'workout_screen.dart';
-import '../../club/presentation/club_screen.dart';
-import 'activity_screen.dart';
-import '../../challenges/data/challenge_repository.dart';
-import '../data/health_repository.dart';
-import 'package:health/health.dart';
-import 'share_screen.dart';
-import '../../profile/data/user_repository.dart';
-import 'package:tryd/src/generated/l10n/app_localizations.dart';
-import '../../../../../widgets/custom_arrow_icon.dart';
+import 'dart:async';
 
-enum RunningState { idle, countdown, running, paused, finished }
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:latlong2/latlong.dart';
+
+import '../../../../../widgets/gradient_button.dart';
+import '../../../../../widgets/custom_gradient_button.dart';
+import '../../../shell/main_shell.dart' show isCountdownActiveProvider, isWorkoutActiveProvider, mainTabProvider, workoutNavGuardProvider;
+import '../../notifications/data/real_time_notification_service.dart';
+import '../../profile/data/user_repository.dart';
+import '../data/gps_cache_service.dart';
+import 'running_screen_logic1.dart';
+import 'running_screen_logic2.dart';
+import 'share_screen.dart';
+import 'activity_screen.dart';
+import 'package:tryd/src/generated/l10n/app_localizations.dart';
 
 class RunningScreen extends ConsumerStatefulWidget {
   const RunningScreen({super.key});
@@ -45,1168 +29,132 @@ class RunningScreen extends ConsumerStatefulWidget {
   ConsumerState<RunningScreen> createState() => _RunningScreenState();
 }
 
-class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindingObserver {
-  int _selectedIndex = 1;
-  RunningState _runningState = RunningState.idle;
-  final MapController _mapController = MapController();
-  final DraggableScrollableController _sheetController = DraggableScrollableController();
-  LatLng _currentLocation = const LatLng(29.2882, 47.9015);
-  LatLng? _startLocation;
-  final List<LatLng> _routePoints = [];
-  
-  // Real stats
-  Timer? _timer;
-  int _seconds = 0;
-  double _distance = 0.0;
-  double _calories = 0.0;
-  int _steps = 0;
-  double _avgPace = 0.0;
-  double _currentPace = 0.0;
-  double _avgBpm = 0.0;
-  double _earnedPoints = 0.0;
-  bool _isAutoFollow = true;
-  final Distance _distanceCalc = const Distance();
-  bool _isHealthConnected = false;
-  DateTime? _runStartTime;
-  StreamSubscription<Position>? _positionStreamSubscription;
-  double? _latOffset;
-  double? _lngOffset;
-  LatLng? _realGPSLocation;
-  bool _isFirstAfterResume = false;
-  bool _isLocationInitialized = false; // Track if we've set the initial location for the run
-  bool _healthCheckAttempted = false; // Prevent auto-init loop
-  bool _healthModalShownThisSession = false; // Prevent modal fatigue
-  bool _isGpsReady = false; // Add flag for GPS readiness
-  DateTime _lastDistanceUpdate = DateTime.now();
-  double _lastRecordedDistance = 0.0;
-  double _currentAccuracy = 0.0;
-  
-  // Countdown
-  // Countdown
-  Timer? _countdownTimer;
-  int _countdownSeconds = 3;
+enum ActivityType { running, walking, cycling }
 
-  // Live Motion / Speed Filtering
-  final List<double> _recentSpeeds = []; 
-  static const int _speedBufferSize = 5;
-  static const double _maxRunningSpeed = 6.5; // m/s (~23 km/h) - Max human running speed (world record ~10.4 m/s, but we use 6.5 for safety)
-  
-  // ── Sheet Heights per device category ──────────────
-  // Idle (content sheet when not running)
-  static const double _sheetIdleSmall  = 0.72;
-  static const double _sheetIdleMedium = 0.68;
-  static const double _sheetIdleLarge  = 0.70;
-  static const double _sheetIdleTablet = 0.60;
-  // Running (sheet during run)
-  static const double _sheetRunSmall  = 0.60;
-  static const double _sheetRunMedium = 0.53;
-  static const double _sheetRunLarge  = 0.60;
-  static const double _sheetRunTablet  = 0.50;
-  // Min (minimum drag height)
-  static const double _sheetMinSmall  = 0.60;
-  static const double _sheetMinMedium = 0.53;
-  static const double _sheetMinLarge  = 0.60;
-  static const double _sheetMinTablet  = 0.50;
+class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
 
-  double get _sheetHeightIdle {
-    final h = MediaQuery.of(context).size.height;
-    final w = MediaQuery.of(context).size.width;
-    if (w > 600) return _sheetIdleTablet;
-    return h < 680 ? _sheetIdleSmall : h < 850 ? _sheetIdleMedium : _sheetIdleLarge;
+  late RunningCoreLogic _coreLogic;
+  late RunningSupportLogic _supportLogic;
+
+  ActivityType _selectedActivity = ActivityType.running;
+
+  void _onStateChanged() {
+    if (!mounted) return;
+    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final state = _coreLogic.runningState;
+      ref.read(isCountdownActiveProvider.notifier).state =
+          state == RunningState.countdown;
+      // Lock tab-switches and swipes while run is in progress.
+      ref.read(isWorkoutActiveProvider.notifier).state =
+          state == RunningState.running || state == RunningState.paused;
+    });
   }
-  double get _sheetHeightRunning {
-    final h = MediaQuery.of(context).size.height;
-    final w = MediaQuery.of(context).size.width;
-    if (w > 600) return _sheetRunTablet;
-    return h < 680 ? _sheetRunSmall : h < 850 ? _sheetRunMedium : _sheetRunLarge;
-  }
-  double get _sheetHeightMin {
-    final h = MediaQuery.of(context).size.height;
-    final w = MediaQuery.of(context).size.width;
-    if (w > 600) return _sheetMinTablet;
-    return h < 680 ? _sheetMinSmall : h < 850 ? _sheetMinMedium : _sheetMinLarge;
-  }
-
-  // Audio
-  final FlutterTts _flutterTts = FlutterTts();
-  int _lastKmAnnounced = 0;
-
-  bool _isMusicPlaying = false;
-  bool _isMusicMuted = false;
-  
-  // Local Audio
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  final OnAudioQuery _audioQuery = OnAudioQuery();
-  List<SongModel> _songs = [];
-  int _currentSongIndex = 0;
-  bool _hasAudioPermission = false;
-  String? _currentSongName;
 
   @override
   void initState() {
     super.initState();
-    debugPrint("RunningScreen: Initialized (Version: v2.MovementLock)");
-    WidgetsBinding.instance.addObserver(this);
-    // Clear any lingering live notifications from previous sessions
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(realTimeNotificationServiceProvider).cancelLiveStats();
-      ref.read(realTimeNotificationServiceProvider).setMuted(true);
-      _initHealth();
-    });
-    _initTts();
-    _initMusic();
-    _fetchInitialLocation();
-    _loadPendingRun();
-  }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      debugPrint("RunningScreen: App Resumed — checking health and refreshing socket");
-      // Re-check health when coming back to the app (e.g. after installing Health Connect)
-      if (!_isHealthConnected && !_healthModalShownThisSession) {
-        _initHealth(force: true);
-      }
-      // Reconnect socket if it died in background
-      ref.read(realTimeNotificationServiceProvider).reconnect();
-    }
-    
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) {
-      debugPrint("RunningScreen: App Background — maintaining tracking and notification");
-      // Pause socket to prevent DNS errors while internet is restricted
-      ref.read(realTimeNotificationServiceProvider).pause();
-      
-      // Update one last time for background stickiness if running
-      if (_runningState == RunningState.running || _runningState == RunningState.paused) {
-        _updateLiveNotification();
-      }
-    }
-  }
-  
-  Future<void> _initMusic() async {
-    try {
-      // Set up listener ONCE — always, regardless of song list
-      _audioPlayer.playerStateStream.listen((state) {
-        if (mounted) {
-          setState(() => _isMusicPlaying = state.playing);
-          if (state.processingState == ProcessingState.completed) {
-            _nextSong();
-          }
-        }
-      });
-
-      bool permissionGranted = false;
-      if (Platform.isAndroid) {
-        if (await Permission.audio.request().isGranted) {
-          permissionGranted = true;
-        } else if (await Permission.storage.request().isGranted) {
-          permissionGranted = true;
-        }
-      } else {
-        permissionGranted = await Permission.storage.request().isGranted;
-      }
-
-      if (permissionGranted) {
-        _hasAudioPermission = true;
-        final songs = await _audioQuery.querySongs(
-          sortType: null,
-          orderType: OrderType.ASC_OR_SMALLER,
-          uriType: UriType.EXTERNAL,
-          ignoreCase: true,
-        );
-
-        if (songs.isNotEmpty && mounted) {
-          setState(() {
-            _songs = songs;
-            _currentSongIndex = 0;
-          });
-          await _loadSong();
-        }
-      }
-    } catch (e) {
-      debugPrint("Audio Init Error: $e");
-    }
-  }
-
-  Future<void> _pickSong() async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.audio,
-        allowMultiple: false,
-      );
-
-      if (result != null && result.files.single.path != null) {
-        final filePath = result.files.single.path!;
-        final fileName = result.files.single.name;
-
-        // Set source and play first — stream listener will update _isMusicPlaying
-        await _audioPlayer.setAudioSource(AudioSource.file(filePath));
-        await _audioPlayer.play();
-
-        if (mounted) {
-          setState(() {
-            _currentSongName = fileName;
-            _songs = []; // Single file mode — no list navigation
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Pick Song Error: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error picking song: $e")),
-        );
-      }
-    }
-  }
-  
-  Future<void> _loadSong() async {
-    if (_songs.isEmpty) return;
-    final song = _songs[_currentSongIndex];
-    try {
-      final String? songUri = song.uri;
-      final String? songPath = song.data;
-
-      if (songUri != null && songUri.isNotEmpty) {
-        await _audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(songUri)));
-      } else if (songPath != null && songPath.isNotEmpty) {
-        await _audioPlayer.setAudioSource(AudioSource.file(songPath));
-      }
-      // Update displayed title
-      if (mounted) setState(() => _currentSongName = song.title);
-    } catch (e) {
-      debugPrint("Load Song Error: $e");
-    }
-  }
-
-  Future<void> _initTts() async {
-    await _flutterTts.setLanguage("en-US");
-    await _flutterTts.setSpeechRate(0.5);
-    await _flutterTts.setVolume(1.0);
-  }
-
-
-  Future<void> _savePendingRun() async {
-    if (_runningState != RunningState.running && _runningState != RunningState.paused) return;
-    
-    final prefs = await SharedPreferences.getInstance();
-    final data = {
-      'distance': _distance,
-      'seconds': _seconds,
-      'calories': _calories,
-      'steps': _steps,
-      'avgPace': _avgPace,
-      'avgBpm': _avgBpm,
-      'startTime': _runStartTime?.toIso8601String(),
-      'runningState': _runningState.index,
-      'routePoints': _routePoints.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList(),
-    };
-    await prefs.setString('current_run_state', jsonEncode(data));
-    debugPrint("RunningScreen: Saved pending run snapshot");
-  }
-
-  Future<void> _loadPendingRun() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('current_run_state');
-    if (json == null) return;
-
-    try {
-      final data = jsonDecode(json);
-      final int stateIndex = data['runningState'];
-      final state = RunningState.values[stateIndex];
-      
-      if (!mounted) return;
-
-      // Ask user to resume
-      final resume = await _showResumeDialog();
-      if (resume == true) {
-        setState(() {
-          _distance = data['distance'] ?? 0.0;
-          _seconds = data['seconds'] ?? 0;
-          _calories = data['calories'] ?? 0.0;
-          _steps = data['steps'] ?? 0;
-          _avgPace = data['avgPace'] ?? 0.0;
-          _avgBpm = data['avgBpm'] ?? 0.0;
-          _runStartTime = data['startTime'] != null ? DateTime.parse(data['startTime']) : null;
-          
-          final List<dynamic> points = data['routePoints'] ?? [];
-          _routePoints.clear();
-          for (var p in points) {
-            _routePoints.add(LatLng(p['lat'], p['lng']));
-          }
-
-          if (state == RunningState.paused) {
-            _runningState = RunningState.paused;
-          } else {
-            _runningState = RunningState.running;
-            _startRun(); // This will restart timer and location
-          }
-        });
-        
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _fitMapToRoute();
-        });
-      } else {
-        await _clearPendingRun();
-      }
-    } catch (e) {
-      debugPrint("Error loading pending run: $e");
-      await _clearPendingRun();
-    }
-  }
-
-  Future<bool?> _showResumeDialog() {
-    final dynamic l10n = AppLocalizations.of(context);
-    return showDialog<bool>(
+    _supportLogic = RunningSupportLogic(
+      ref: ref,
       context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.resumeActivityTitle ?? "Pending Activity"),
-        content: Text(l10n.resumeActivityMessage ?? "You have an unfinished run. Would you like to resume it?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.discardButton ?? "Discard"),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF900EBF),
-              foregroundColor: Colors.white,
-            ),
-            child: Text(l10n.resumeButton ?? "Resume"),
-          ),
-        ],
-      ),
+      isMounted: () => mounted,
+      onStateChanged: () {
+        if (mounted) setState(() {});
+      },
     );
-  }
 
-  Future<void> _clearPendingRun() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('current_run_state');
-  }
-
-  EdgeInsets _getMapPadding() {
-    if (!mounted) return EdgeInsets.zero;
-
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-    
-    double bottomOffset;
-
-    if (_runningState == RunningState.finished) {
-      // For summary view, reserve the bottom 65% of the screen
-      bottomOffset = screenHeight * 0.65;
-    } else if (_runningState == RunningState.running || _runningState == RunningState.paused) {
-      // Reserve space equal to the stats sheet height
-      final double sheetRatio = _sheetController.isAttached
-          ? _sheetController.size
-          : _sheetHeightRunning;
-      // Add a buffer to ensure no overlap with the sheet's top portion
-      bottomOffset = (screenHeight * sheetRatio) + 40.h;
-    } else if (_runningState == RunningState.countdown) {
-      // During countdown, center more broadly
-      bottomOffset = screenHeight * 0.20;
-    } else {
-      // Idle - reserve space for the large idle sheet
-      final double sheetRatio = _sheetController.isAttached
-          ? _sheetController.size
-          : _sheetHeightIdle;
-      bottomOffset = screenHeight * sheetRatio;
-    }
-
-    // Top padding: fixed buffer to avoid header icons/buttons
-    final double topPad = screenHeight * 0.14;
-    
-    // Horizontal padding for margins
-    final double sidePad = isTablet ? 60.0 : 45.0;
-
-    return EdgeInsets.only(
-      top: topPad,
-      left: sidePad,
-      right: sidePad,
-      bottom: bottomOffset,
+    _coreLogic = RunningCoreLogic(
+      ref: ref,
+      context: context,
+      onStateChanged: _onStateChanged,
+      speak: _supportLogic.speak,
     );
-  }
 
-  void _centerMap(LatLng loc) {
-    if (!mounted) return;
-    try {
-      _mapController.fitCamera(
-        CameraFit.coordinates(
-          coordinates: [loc],
-          padding: _getMapPadding(),
-          maxZoom: 18.8,
-          forceIntegerZoomLevel: false,
-        ),
-      );
-    } catch (_) {}
-  }
+    // LINK core to support for health init
+    _supportLogic.setCoreLogic(_coreLogic);
 
-  Future<void> _fetchInitialLocation() async {
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
+    _supportLogic.init(
+      onResumed: _onAppResumed,
+      onPaused: _onAppPaused,
+    );
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (!mounted) return;
-      
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+    _coreLogic.loadPendingRun(
+      _supportLogic.showResumeDialog,
+      onActivityTypeRestored: (type) {
         if (!mounted) return;
-        if (permission == LocationPermission.denied) return;
-      }
-
-      if (permission == LocationPermission.deniedForever) return;
-
-      // 1. Get last known location for instant map load
-      final lastPos = await Geolocator.getLastKnownPosition();
-      if (!mounted) return;
-      if (lastPos != null && mounted) {
         setState(() {
-            _currentLocation = LatLng(lastPos.latitude, lastPos.longitude);
+          _selectedActivity = switch (type) {
+            'walk' => ActivityType.walking,
+            'cycling' => ActivityType.cycling,
+            _ => ActivityType.running,
+          };
         });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _centerMap(_currentLocation);
-        });
-      }
+      },
+    );
 
-      // 2. Immediately start tracking for real-time updates
-      _startLocationTracking();
-
-      // (Redundant getCurrentPosition removed to prevent defunct state errors and reduce engine overhead)
-    } catch (e) {
-      debugPrint("Error fetching initial location: $e");
-    }
+    // Register the end-run guard so the shell can show the modal when
+    // the user tries to swipe or tap away while running.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(workoutNavGuardProvider.notifier).state = () async {
+        final result = await _supportLogic.showExitConfirmation();
+        if (result == null) return false;
+        await _coreLogic.finishRun();
+        return true;
+      };
+      // First-visit permission checks — subsequent visits handled via ref.listen in build
+      _supportLogic.checkAllPermissions();
+    });
   }
 
-  Future<void> _initHealth({bool force = false}) async {
-    if (_healthCheckAttempted && !force) {
-      return;
+  void _onAppResumed() {
+    if (_coreLogic.runningState == RunningState.running) {
+      _coreLogic.startLocationTracking();
     }
-    
-    // Check mounted before starting
-    if (!mounted) return;
-    
-    _healthCheckAttempted = true;
+    if (mounted) _supportLogic.checkAllPermissions();
+  }
 
-    debugPrint("Health: Starting health check (force: $force)...");
-    try {
-      // Wait for a short moment to ensure UI is ready
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (!mounted) return;
-
-      final healthRepo = ref.read(healthRepositoryProvider);
-      
-      if (Platform.isAndroid) {
-        debugPrint("Health: Checking Android SDK Status...");
-        final status = await healthRepo.getSdkStatus();
-        debugPrint("Health: SDK Status Result = $status");
-        
-        if (status != HealthConnectSdkStatus.sdkAvailable) {
-          debugPrint("Health: SDK not available ($status), showing modal.");
-          if (mounted) {
-            _showHealthConnectDialog(status);
-          }
-          return;
-        }
-
-        debugPrint("Health: SDK status is Available. Requesting permissions...");
-        
-        // RE-ENABLED FAIL-SAFE:
-        // Timing check to detect if the permission launcher failed to show (e.g. missing app)
-        final stopwatch = Stopwatch()..start();
-        final authorized = await healthRepo.requestPermissions();
-        stopwatch.stop();
-        
-        final duration = stopwatch.elapsedMilliseconds;
-        debugPrint("Health: Authorization result = $authorized (took ${duration}ms)");
-
-        // If it failed extremely fast (< 300ms) on Android, the dialog likely never showed up.
-        // This is exactly what happens when the "Permission launcher" is missing.
-        // This counts as an "Installation/Update" issue, not a "User Permission Denied" issue.
-        if (!authorized && Platform.isAndroid && duration < 300) {
-          debugPrint("Health: Authorization failed instantly. Suspecting broken/missing launcher.");
-          if (mounted && !_healthModalShownThisSession) {
-            _healthModalShownThisSession = true;
-            _showHealthConnectDialog(HealthConnectSdkStatus.sdkUnavailable);
-          }
-          return;
-        }
-
-        if (mounted) {
-          setState(() {
-            _isHealthConnected = authorized;
-          });
-        }
-      } else if (Platform.isIOS) {
-        // iOS: Apple Health is always available, just request permissions
-        debugPrint("Health: Requesting iOS permissions...");
-        bool authorized = await healthRepo.requestPermissions();
-        if (mounted) {
-          if (!authorized) {
-            debugPrint("Health: iOS permissions denied, showing dialog.");
-            _showAppleHealthDialog();
-          }
-          setState(() {
-            _isHealthConnected = authorized;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Health init error: $e");
-      // Allow re-attempt if it crashed
-      _healthCheckAttempted = false;
-    }
+  void _onAppPaused() {
+    // Handle background transitions if needed
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _timer?.cancel();
-    _countdownTimer?.cancel();
-    _positionStreamSubscription?.cancel();
-    
-    // Safely attempt to cancel notifications - if ref is already disposed, 
-    // the system (or background handlers) will handle cleanup.
-    try {
-       ref.read(realTimeNotificationServiceProvider).cancelLiveStats();
-       ref.read(realTimeNotificationServiceProvider).setMuted(false);
-    } catch (_) {
-       // Provider/Ref already gone, ignore as it's being disposed anyway
-    }
-    
-    _mapController.dispose();
-    _sheetController.dispose();
-    _audioPlayer.dispose();
+    // Unregister the nav guard and clear workout-active flags.
+    ref.read(workoutNavGuardProvider.notifier).state = null;
+    ref.read(isWorkoutActiveProvider.notifier).state = false;
+    ref.read(isCountdownActiveProvider.notifier).state = false;
+    _coreLogic.dispose();
+    _supportLogic.dispose();
     super.dispose();
-  }
-
-
-  Future<void> _startLocationTracking() async {
-    if (!mounted) return;
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!mounted) return;
-      if (!serviceEnabled) return;
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (!mounted) return;
-      
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (!mounted) return;
-        if (permission == LocationPermission.denied) return;
-      }
-
-      if (permission == LocationPermission.deniedForever) return;
-
-      // --- Battery-Aware Tracking Settings ---
-      final Battery _battery = Battery();
-      final int batteryLevel = await _battery.batteryLevel;
-      if (!mounted) return;
-      final bool isLowBattery = batteryLevel < 15;
-
-      final LocationSettings locationSettings = Platform.isAndroid
-        ? AndroidSettings(
-            accuracy: LocationAccuracy.bestForNavigation,
-            distanceFilter: isLowBattery ? 10 : 0, // Save battery when low
-            intervalDuration: isLowBattery 
-                ? const Duration(seconds: 3) 
-                : const Duration(seconds: 1),
-            useMSLAltitude: false,
-            foregroundNotificationConfig: const ForegroundNotificationConfig(
-              notificationText: "Tracking your activity in progress",
-              notificationTitle: "Tryd Running Tracker",
-              enableWakeLock: true,
-              setOngoing: true,
-            ),
-          )
-        : AppleSettings(
-            accuracy: LocationAccuracy.bestForNavigation,
-            distanceFilter: isLowBattery ? 10 : 0,
-            pauseLocationUpdatesAutomatically: false,
-            showBackgroundLocationIndicator: true,
-          );
-
-
-    // Cancel existing to avoid doubles
-    await _positionStreamSubscription?.cancel();
-
-    _positionStreamSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-      (Position position) {
-          // --- SPEED FILTERING (Indoor/Noise) ---
-          double rawSpeed = position.speed;
-          if (rawSpeed < 0) rawSpeed = 0;
-
-          // Update buffer for noise rejection (Moving Average)
-          if (rawSpeed < _maxRunningSpeed * 1.5) { // Protect against large GPS jumps
-             _recentSpeeds.add(rawSpeed);
-             if (_recentSpeeds.length > _speedBufferSize) {
-               _recentSpeeds.removeAt(0);
-             }
-          }
-          
-          final double avgSpeed = _recentSpeeds.isEmpty 
-              ? 0 
-              : _recentSpeeds.reduce((a, b) => a + b) / _recentSpeeds.length;
-          
-          final double currentSpeed = rawSpeed;
-
-          _realGPSLocation = LatLng(position.latitude, position.longitude);
-          
-          double finalLat = position.latitude;
-          double finalLng = position.longitude;
-
-          // Apply Offset (Pro Feature Only - Disabled for standard user flow based on request)
-          /*
-          if (_latOffset != null && _lngOffset != null) {
-            finalLat += _latOffset!;
-            finalLng += _lngOffset!;
-          }
-          */
-
-          final newLatLng = LatLng(finalLat, finalLng);
-
-          // Update GPS Ready state if accuracy is good (e.g., < 35 meters)
-          if (!_isGpsReady && position.accuracy < 35.0) {
-            if (mounted) {
-              setState(() {
-                _isGpsReady = true;
-              });
-            }
-          }
-
-          // --- MOTION CONFIDENCE ---
-          // Use hardware verified speed (avgSpeed) for all decisions.
-          // Jitter/Drift usually has spd=0 even if the lat/lng jumps.
-          bool isReallyMoving = avgSpeed > 0.8; 
-
-          // --- 1. VISUAL UPDATE (Uber/Careem Experience) ---
-          if (mounted) {
-            setState(() {
-              _currentLocation = newLatLng;
-              
-              if (_runningState == RunningState.running && isReallyMoving) {
-                if (_routePoints.isEmpty) {
-                  _routePoints.add(newLatLng);
-                  _startLocation = newLatLng;
-                  _isLocationInitialized = true;
-                  _isGpsReady = true; // Also mark as ready if we somehow start
-                } else {
-                  final double visualDist = _distanceCalc.as(LengthUnit.Meter, _routePoints.last, newLatLng);
-                  // Only add to map path if we are actually moving and distance is significant
-                  if (visualDist > 5.0) { 
-                    _routePoints.add(newLatLng);
-                    _fitMapToRoute(); 
-                  }
-                }
-              }
-            });
-          }
-
-          // --- 2. DATA ACCURACY FILTER ---
-          if (position.accuracy > 100.0) return; // Stricter accuracy for stats
-
-          if (mounted) {
-            setState(() {
-              // Update Current Pace: Only if hardware confirms real movement
-              if (_runningState == RunningState.running && isReallyMoving) { 
-                 _currentPace = 16.666 / avgSpeed; 
-              } else {
-                 _currentPace = 0.0;
-              }
-            });
-          }
-
-          if (_runningState == RunningState.running && _routePoints.length > 1) {
-              final double dist = _distanceCalc.as(LengthUnit.Meter, _routePoints[_routePoints.length - 2], newLatLng);
-              
-              // Noise Filter: Jump must be larger than noise floor
-              double noiseThreshold = math.max(7.0, position.accuracy * 1.2); 
-              
-              // Combined Filter: Distance > Noise && Really Moving && Human Speed
-              if (dist > noiseThreshold && avgSpeed > 1.0 && avgSpeed < _maxRunningSpeed) {
-                  // Time Filter (Don't update more than every 2s to stabilize)
-                  if (DateTime.now().difference(_lastDistanceUpdate).inSeconds >= 2) { 
-                      final double deltaKm = dist / 1000.0;
-                      // Only add if displacement is meaningful relative to last point
-                      if (deltaKm > 0.005) {
-                        if (!_isFirstAfterResume) {
-                          setState(() {
-                            _distance += deltaKm;
-                            _lastDistanceUpdate = DateTime.now();
-                            _lastRecordedDistance = _distance;
-                            _updateStats(newLatLng, currentSpeed);
-                          });
-                          // Save periodically (e.g. every 5th point to avoid overhead)
-                          if (_routePoints.length % 5 == 0) {
-                            _savePendingRun();
-                          }
-                        } else {
-                          _isFirstAfterResume = false;
-                        }
-                      }
-                  }
-              }
-          }
-      });
-    } catch (e) {
-      debugPrint("Tracking engine error: $e");
-    }
-  }
-
-  Future<void> _updateLiveNotification() async {
-    if (_runningState != RunningState.running && _runningState != RunningState.paused) {
-      ref.read(realTimeNotificationServiceProvider).cancelLiveStats();
-      return;
-    }
-
-    final String durationStr = _formatDuration(_seconds);
-    final String distanceStr = _distance.toStringAsFixed(2);
-    final String paceStr = _formatPace(_currentPace);
-    final status = _runningState == RunningState.paused ? " (Paused)" : "";
-
-    await ref.read(realTimeNotificationServiceProvider).showLiveStats(
-          title: '$distanceStr km$status',
-          body: 'Pace: $paceStr • Time: $durationStr',
-          summary: 'Running Activity',
-        );
-  }
-
-  Future<void> _speak(String text, {bool force = false}) async {
-    try {
-      if (!force && _runningState == RunningState.countdown) return; // Don't speak stats during countdown unless forced
-      await _flutterTts.speak(text);
-    } catch (e) {
-      debugPrint("TTS Error: $e");
-    }
-  }
-  
-
-
-  void _startTimer() {
-    _runStartTime ??= DateTime.now();
-    _timer?.cancel(); 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_runningState == RunningState.running) {
-        setState(() {
-          _seconds++;
-          _updateCalories();
-        });
-        
-        // Every 5s: Calories & Steps & HR
-        if (_isHealthConnected && _seconds % 5 == 0) {
-           _fetchHealthData();
-        }
-
-        // --- Nike Style Live Notification Update ---
-        _updateLiveNotification();
-
-        // Save state every 10 seconds as backup
-        if (_seconds % 10 == 0) {
-          _savePendingRun();
-        }
-      }
-    });
-
-    if (_positionStreamSubscription == null) {
-      _startLocationTracking();
-    } else if (_positionStreamSubscription!.isPaused) {
-      _positionStreamSubscription!.resume();
-    }
-    
-    if (_isHealthConnected) {
-      // Re-init health poll if needed
-    }
-  }
-
-  Future<void> _fetchHealthData() async {
-    if (_runStartTime == null) return;
-    try {
-      final now = DateTime.now();
-      final healthRepo = ref.read(healthRepositoryProvider);
-      
-      // Fetch Calories
-      final cals = await healthRepo.getEnergyInInterval(_runStartTime!, now);
-      // Fetch Steps
-      final steps = await healthRepo.getStepsInInterval(_runStartTime!, now);
-      // Fetch HR
-      await _fetchHeartRate();
-
-      if (mounted) {
-        setState(() {
-          if (cals > 0) _calories = cals;
-          // Significant change detection for steps
-          if (steps > 0 && (steps - _steps).abs() >= 1) {
-            _steps = steps;
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint("Health poll error: $e");
-    }
-  }
-
-  Future<void> _fetchHeartRate() async {
-    if (_runStartTime == null) return;
-    try {
-      final now = DateTime.now();
-      // Fetch data since 5 minutes ago or start of run, to get recent average
-      final start = _runStartTime!; // Fetch from start of run for "Average"
-      
-      final healthRepo = ref.read(healthRepositoryProvider);
-      final points = await healthRepo.getHeartRateData(start, now);
-      
-      if (points.isNotEmpty) {
-        double totalBpm = 0;
-        int count = 0;
-        for (var p in points) {
-           if (p.value is NumericHealthValue) {
-             totalBpm += (p.value as NumericHealthValue).numericValue.toDouble();
-             count++;
-           }
-        }
-        
-        if (count > 0) {
-          setState(() {
-            _avgBpm = totalBpm / count;
-          });
-        }
-      }
-    } catch (e) {
-      print("HR Fetch error: $e");
-    }
-  }
-
-  void _stopTimer() {
-    _timer?.cancel();
-    _positionStreamSubscription?.pause();
-  }
-
-  void _updateStats(LatLng newLocation, double currentSpeed) {
-    if (_startLocation == null) return;
-    
-    // Check KM splits for Audio
-    int currentKm = _distance.toInt();
-    if (currentKm > _lastKmAnnounced) {
-       _lastKmAnnounced = currentKm;
-       // Speak split — context-aware like Nike Run Club
-       int pMin = _avgPace.toInt();
-       int pSec = ((_avgPace - pMin) * 60).toInt();
-       final kmWord = currentKm == 1 ? "kilometer" : "kilometers";
-       final paceStr = "$pMin ${pSec.toString().padLeft(2, '0')}";
-
-       // Context-aware milestone cues
-       if (currentKm == 1) {
-         _speak("First kilometer, pace $paceStr");
-       } else if (currentKm == 5) {
-         _speak("$currentKm $kmWord, Keep it up, pace $paceStr");
-       } else if (currentKm == 10) {
-         _speak("$currentKm $kmWord, Great pace, $paceStr");
-       } else if (currentKm % 5 == 0) {
-         _speak("$currentKm $kmWord, Strong, pace $paceStr");
-       } else {
-         _speak("$currentKm $kmWord, pace $paceStr");
-       }
-    }
-    
-    // Recalculate pace/calories/points
-    _updatePace();
-    _updateCalories();
-    _updateSteps();
-    _updatePoints();
-    
-    // Live Notification Pulse
-    _updateLiveNotification();
-  }
-
-  void _updatePoints() {
-    // Real-time point generation: 1 km = 10 Points
-    setState(() {
-      _earnedPoints = _distance * 10.0;
-    });
-  }
-
-  void _updatePace() {
-    if (_distance > 0 && _seconds > 0) {
-      // Pace in minutes per km
-      _avgPace = (_seconds / 60.0) / _distance;
-    }
-  }
-
-   void _updateCalories() {
-    // Only estimate if we haven't got real data from Health Connect
-    if (_isHealthConnected && _calories > 0) return;
-
-    // Strictly distance-based for Running (approx 65 kcal per km)
-    // This calculation is standard for running to ensure accurate metabolic estimation.
-    if (_distance > 0) {
-      _calories = _distance * 65.0; 
-    } else {
-      _calories = 0.0;
-    }
-  }
-
-  void _updateSteps() {
-    // If health is connected, real data comes from poll, 
-    // but we use estimate as baseline for instant feedback.
-    if (!_isHealthConnected || _steps == 0) {
-      setState(() {
-        _steps = (_distance * 1312).toInt();
-      });
-    }
-  }
-
-  String _formatDuration(int totalSeconds) {
-    final hours = totalSeconds ~/ 3600;
-    final minutes = (totalSeconds % 3600) ~/ 60;
-    final seconds = totalSeconds % 60;
-    return '${hours}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
-
-  String _formatPace(double pace) {
-    if (pace == 0 || pace.isInfinite || pace.isNaN) return '0:00';
-    final minutes = pace.toInt();
-    final seconds = ((pace - minutes) * 60).toInt();
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
-
-  Future<String> _getCityName(LatLng point) async {
-    try {
-      final dio = Dio();
-      final response = await dio.get(
-        'https://nominatim.openstreetmap.org/reverse',
-        queryParameters: {
-          'format': 'json',
-          'lat': point.latitude,
-          'lon': point.longitude,
-          'zoom': 10,
-          'addressdetails': 1,
-        },
-        options: Options(headers: {'User-Agent': 'TrydApp/1.0'}),
-      );
-
-      if (response.data != null && response.data['address'] != null) {
-        final address = response.data['address'];
-        return address['city'] ?? address['town'] ?? address['suburb'] ?? address['state'] ?? "Unknown Location";
-      }
-    } catch (e) {
-      debugPrint("Reverse geocoding error: $e");
-    }
-    return "Unknown Location";
-  }
-
-  double _calculateHeading(LatLng p1, LatLng p2) {
-    final double lat1 = p1.latitude * math.pi / 180;
-    final double lon1 = p1.longitude * math.pi / 180;
-    final double lat2 = p2.latitude * math.pi / 180;
-    final double lon2 = p2.longitude * math.pi / 180;
-    
-    final double dLon = lon2 - lon1;
-    final double y = math.sin(dLon) * math.cos(lat2);
-    final double x = math.cos(lat1) * math.sin(lat2) -
-        math.sin(lat1) * math.cos(lat2) * math.cos(dLon);
-    return math.atan2(y, x);
-  }
-
-  Future<void> _saveActivity() async {
-    if (!mounted) return;
-    final activity = Activity(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      type: 'run',
-      distance: _distance,
-      duration: _seconds,
-      calories: _calories,
-      averagePace: _avgPace,
-      averageBPM: _avgBpm,
-      date: DateTime.now(),
-    );
-
-    try {
-      // 1. Dual Saving: Save to Health Connect / Apple Health
-      if (_isHealthConnected && _startLocation != null) {
-           final healthRepo = ref.read(healthRepositoryProvider);
-           final endTime = DateTime.now();
-           final startTime = _runStartTime ?? endTime.subtract(Duration(seconds: _seconds)); // Fallback if null
-           
-           await healthRepo.saveRunToHealth(
-             startTime: startTime,
-             endTime: endTime,
-             totalDistanceMeters: _distance * 1000,
-             totalEnergyBurned: _calories,
-           );
-      }
-
-      // 2. Dual Saving: Save to API + Local DB (Pending Sync logic inside repository)
-      await ref.read(activityRepositoryProvider).logActivity(activity);
-
-      ref.read(realTimeNotificationServiceProvider).showInAppBanner(
-        'Activity Saved!',
-        'Your run has been successfully recorded.',
-        showAlert: false,
-        showSnackBar: true,
-        force: true,
-      );
-
-      // 3. Clear the crash resilience state
-      await _clearPendingRun();
-
-      // 4. Update challenge progress in background (fire-and-forget)
-      ref.read(challengeRepositoryProvider).updateAllChallengesProgress(
-        distanceKm: _distance,
-        durationSeconds: _seconds,
-        calories: _calories,
-      ).catchError((e) => debugPrint('Challenge progress update error: $e'));
-
-      // 5. Batch invalidate all relevant providers (once, no duplicates)
-      ref.invalidate(activityListProvider);
-      ref.invalidate(activityStatsProvider('week'));
-      ref.invalidate(activityStatsProvider('month'));
-      ref.invalidate(activitySummaryProvider('week'));
-      ref.invalidate(activitySummaryProvider('month'));
-      ref.invalidate(userProfileProvider);
-      ref.invalidate(challengesListProvider);
-    } catch (e) {
-      debugPrint('Error saving activity: $e');
-    }
-  }
-
-  double _getButtonTopOffset() {
-    switch (_runningState) {
-      case RunningState.idle:
-        return -40.0;
-      case RunningState.running:
-        return -40.0;
-      case RunningState.paused:
-        return -20.0;
-      case RunningState.finished:
-        return 0.0;
-      case RunningState.countdown:
-        return -40.0;
-    }
-  }
-
-  void _fitMapToRoute() {
-    if (_routePoints.isEmpty) return;
-    
-    final padding = _getMapPadding();
-
-    // Collect all points including current location to ensure visibility
-    final points = List<LatLng>.from(_routePoints);
-    if (_currentLocation != points.last) {
-      points.add(_currentLocation);
-    }
-    
-    try {
-      _mapController.fitCamera(
-        CameraFit.coordinates(
-          coordinates: points,
-          padding: padding,
-          maxZoom: 18.8, // Slightly more zoomed in
-          forceIntegerZoomLevel: false,
-        ),
-      );
-    } catch (_) {}
-  }
-
-  double _calculateBearing(LatLng start, LatLng end) {
-    // If points are the same or very close, return default bearing (north)
-    if ((start.latitude - end.latitude).abs() < 0.00001 &&
-        (start.longitude - end.longitude).abs() < 0.00001) {
-      return 0;
-    }
-
-    final lat1 = start.latitude * (math.pi / 180);
-    final lat2 = end.latitude * (math.pi / 180);
-    final dLon = (end.longitude - start.longitude) * (math.pi / 180);
-
-    final y = math.sin(dLon) * math.cos(lat2);
-    final x = math.cos(lat1) * math.sin(lat2) -
-              math.sin(lat1) * math.cos(lat2) * math.cos(dLon);
-
-    return math.atan2(y, x);
-  }
-
-  void _startCountdown() {
-    setState(() {
-      _runningState = RunningState.countdown;
-      _countdownSeconds = 3;
-    });
-    _speak("3", force: true);
-
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() {
-        if (_countdownSeconds > 1) {
-          _countdownSeconds--;
-          _speak(_countdownSeconds.toString(), force: true);
-        } else {
-          timer.cancel();
-          _speak(AppLocalizations.of(context)!.go, force: true);
-          _startRun();
-        }
-      });
-    });
-  }
-
-  void _startRun() {
-    setState(() {
-      // Fresh run -> Full reset
-      if (_runningState == RunningState.idle || _runningState == RunningState.countdown) {
-        _startLocation = _currentLocation;
-        _routePoints.clear();
-        _routePoints.add(_currentLocation);
-
-        _seconds = 0;
-        _distance = 0.0;
-        _calories = 0.0;
-        _avgPace = 0.0;
-        _avgBpm = 0.0;
-        _lastKmAnnounced = 0;
-        _runStartTime = DateTime.now();
-        _isLocationInitialized = false; // Reset flag for fresh run
-        _recentSpeeds.clear();
-      }
-      
-      // In both start and resume, ensure timer and state are correct
-      if (_runningState == RunningState.paused) {
-        _isFirstAfterResume = true; // Flag to prevent distance cheat from last point
-      }
-      
-      _runningState = RunningState.running;
-      // Restart location tracking to ensure foreground service notification is active
-      _positionStreamSubscription?.cancel();
-      _positionStreamSubscription = null;
-      _startTimer();
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _centerMap(_currentLocation);
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
+    // Fire permission checks every time this tab becomes active (swipe, tap, or deep-link).
+    // index 1 = RunningScreen in the PageView.
+    ref.listen<int>(mainTabProvider, (previous, current) {
+      if (current == 1 && previous != 1 && mounted) {
+        ref.read(gpsCacheServiceProvider).startWarmUp();
+        _supportLogic.checkAllPermissions();
+      }
+    });
+
     final size = MediaQuery.of(context).size;
     final screenHeight = size.height;
     final screenWidth = size.width;
-    
-    // Tablet detection
+
     final isTablet = screenWidth > 600;
-    
-    // ── Responsive Scale ──────────────────────────────────
-    // Change these 3 values to control ALL component sizes:
-    //   small  → phones with height < 680px
-    //   medium → phones with height 680–850px
-    //   large  → phones with height > 850px
-    const double smallScale  = 0.74;
+
+    const double smallScale = 0.74;
     const double mediumScale = 0.84;
-    const double largeScale  = 0.94;
+    const double largeScale = 0.94;
     const double tabletScale = 0.90;
 
     final double scale = isTablet
@@ -1221,631 +169,435 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final fontScale = isAr ? 1.15 : 1.0;
 
-
     return Scaffold(
       backgroundColor: Colors.white,
       extendBody: true,
-      bottomNavigationBar: _runningState == RunningState.countdown ? null : CustomBottomNavigation(
-        currentIndex: _selectedIndex,
-        onTap: (index) async {
-          if (index == 1) return;
-          
-          if (_runningState == RunningState.running || _runningState == RunningState.paused) {
-            final result = await _showExitConfirmation();
-            if (result == null) return; // "Keep Running" tapped
-
-            // Show summary view instead of navigating away
-            setState(() {
-              _runningState = RunningState.finished;
-              _stopTimer();
-              _positionStreamSubscription?.cancel();
-              _positionStreamSubscription = null;
-            });
-            ref.read(realTimeNotificationServiceProvider).cancelLiveStats();
-            if (_distance >= 10) {
-              _speak('Run complete, Amazing effort');
-            } else if (_distance >= 5) {
-              _speak('Run complete, Great job');
-            } else {
-              _speak('Run complete, Well done');
-            }
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _fitMapToRoute();
-            });
-            await _saveActivity();
-            _runStartTime = null;
-            return;
-          }
-
-          if (!mounted) return;
-
-          Widget? page;
-          switch (index) {
-            case 0: page = const HomeScreen(); break;
-            case 2: page = const RewardsScreen(); break;
-            case 3: page = const WorkoutScreen(); break;
-            case 4: page = const ClubScreen(); break;
-          }
-
-          if (page != null) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => page!),
-            );
-          }
-        },
-      ),
       body: PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, result) async {
           if (didPop) return;
-          if (_runningState == RunningState.running || _runningState == RunningState.paused) {
-            final result = await _showExitConfirmation();
-            if (result == null) return; // "Keep Running" tapped
-
-            // Show summary view instead of navigating away
-            setState(() {
-              _runningState = RunningState.finished;
-              _stopTimer();
-              _positionStreamSubscription?.cancel();
-              _positionStreamSubscription = null;
-            });
-            ref.read(realTimeNotificationServiceProvider).cancelLiveStats();
-            if (_distance >= 10) {
-              _speak('Run complete, Amazing effort');
-            } else if (_distance >= 5) {
-              _speak('Run complete, Great job');
-            } else {
-              _speak('Run complete, Well done');
-            }
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _fitMapToRoute();
-            });
-            await _saveActivity();
-            _runStartTime = null;
-            return;
-          } else if (_runningState == RunningState.finished) {
-             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
-          } else {
-             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
-          }
+          await _supportLogic.onPopInvoked(
+            isRunning: _coreLogic.runningState == RunningState.running ||
+                _coreLogic.runningState == RunningState.paused,
+            isFinished: _coreLogic.runningState == RunningState.finished,
+            finishRun: _coreLogic.finishRun,
+          );
         },
         child: Stack(
           children: [
-          // Background with gradient
-          Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              image: DecorationImage(
-                image: AssetImage('assets/images/bg-gradient.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          
-          // Map section (Full screen)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: screenHeight,
-            child: IgnorePointer(
-              ignoring: _runningState == RunningState.running || _runningState == RunningState.countdown, 
-              child: FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: const LatLng(29.2882, 47.9015),
-                  initialZoom: 18.8,
-                  minZoom: 5.0,
-                  maxZoom: 20.0,
-                  onMapReady: () {
-                    // Center the map in the visible top half immediately
-                     try {
-                       _mapController.fitCamera(
-                         CameraFit.coordinates(
-                           coordinates: [_currentLocation],
-                           padding: _getMapPadding(),
-                           maxZoom: 18.8,
-                           forceIntegerZoomLevel: false,
-                         ),
-                       );
-                     } catch (_) {}
-                  },
-                  onTap: (tapPosition, point) {
-                      // Removed manual location setting on tap
-                  },
-                ),
-                children: [
-                   TileLayer(
-                    urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                    subdomains: const ['a', 'b', 'c', 'd'],
-                    userAgentPackageName: 'com.tryd.app',
-                  ),
-                  // Route polyline - show progressive line during run and full line when finished
-                  if (_routePoints.isNotEmpty && _routePoints.length > 1)
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: _routePoints,
-                          strokeWidth: 5.0, // Thicker line for better visibility
-                          strokeCap: StrokeCap.round,
-                          strokeJoin: StrokeJoin.round,
-                          color: const Color(0xFFF83A71),
-                        ),
-                      ],
-                    ),
-
-                  
-                  MarkerLayer(
-                    markers: [
-                      // Start location marker
-                      if (_startLocation != null && _runningState != RunningState.idle && _runningState != RunningState.countdown)
-                        Marker(
-                          point: _startLocation!,
-                          width: 20,
-                          height: 20,
-                          child: Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(0xFF333333),
-                                width: 4.35419,
-                              ),
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 4.35,
-                                height: 4.35,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Color(0xFF333333),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      // Current/Finish arrow - show during run, paused and finished
-                      if (_routePoints.isNotEmpty && (_runningState == RunningState.running || _runningState == RunningState.paused || _runningState == RunningState.finished))
-                        Marker(
-                          point: _routePoints.last,
-                          width: isTablet ? 48.0 : 40.0,
-                          height: isTablet ? 48.0 : 40.0,
-                          child: Transform.rotate(
-                            angle: (_routePoints.length > 1 
-                              ? _calculateHeading(_routePoints[_routePoints.length - 2], _routePoints.last)
-                              : 0.0) - (math.pi / 4), // Icon points NE (45deg) by default, adjust to North
-                            child: Icon(
-                              Icons.navigation,
-                              color: const Color(0xFF333333),
-                              size: isTablet ? 36.0 : 32.0,
-                            ),
-                          ),
-                        ),
-                      // Current location pointer - show when idle or countdown
-                      if (_runningState == RunningState.idle || _runningState == RunningState.countdown)
-                        Marker(
-                          point: _currentLocation,
-                          width: isTablet ? 48.0 : 40.0,
-                          height: isTablet ? 48.0 : 40.0,
-                          child: SvgPicture.asset(
-                            'assets/images/location_pointer.svg',
-                            width: isTablet ? 48.0 : 40.0,
-                            height: isTablet ? 48.0 : 40.0,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          // Locate Me Button (Floating)
-          if (_runningState != RunningState.finished && _runningState != RunningState.countdown)
-             ListenableBuilder(
-              listenable: _sheetController,
-              builder: (context, child) {
-                double sheetSize = _sheetHeightIdle;
-                if (_sheetController.isAttached) {
-                  sheetSize = _sheetController.size;
-                }
-                // Position just above the bottom sheet
-                final bottomPadding = (MediaQuery.of(context).size.height * sheetSize) + (isTablet ? 24.0 : 16.0);
-                
-                return Positioned(
-                  right: isTablet ? 24.0 : 16.0,
-                  bottom: bottomPadding,
-                  child: child!,
-                );
-              },
-              child: GestureDetector(
-                onTap: () async {
-                  try {
-                    final pos = await Geolocator.getCurrentPosition();
-                    final newPos = LatLng(pos.latitude, pos.longitude);
-                    setState(() {
-                      _currentLocation = newPos;
-                      _isAutoFollow = true; // Re-enable follow
-                      _centerMap(newPos);
-                    });
-                  } catch (_) {}
-                },
-                child: Container(
-                  width: isTablet ? 56.0 : 42.0,
-                  height: isTablet ? 56.0 : 42.0,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 10, offset: const Offset(0, 2)),
-                    ],
-                  ),
-                  child: Icon(Icons.my_location, color: const Color(0xFF900EBF), size: isTablet ? 28.0 : 20.0),
+            // Background with gradient
+            Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                image: DecorationImage(
+                  image: AssetImage('assets/images/bg-gradient.png'),
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
-          
-          // Draggable Content section (Bottom Sheet)
-          if (_runningState != RunningState.finished && _runningState != RunningState.countdown)
-            DraggableScrollableSheet(
-              controller: _sheetController,
-              initialChildSize: _runningState == RunningState.idle ? _sheetHeightIdle : _sheetHeightRunning,
-              minChildSize: math.min(_sheetHeightMin, _runningState == RunningState.idle ? _sheetHeightIdle : _sheetHeightRunning),
-              maxChildSize: _sheetHeightIdle,
-              builder: (BuildContext context, ScrollController scrollController) {
-                return Container(
-                  clipBehavior: Clip.none,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        offset: const Offset(0, -4),
-                        blurRadius: 20,
-                        spreadRadius: 0,
-                      ),
-                    ],
-                  ),
-                  child: SingleChildScrollView(
-                    controller: scrollController,
-                    physics: const ClampingScrollPhysics(),
-                    padding: EdgeInsets.only(top: (isTablet ? 72.0 : 62.0) * scale),
-                    child: Column(
-                      children: [
-                        _buildStatsSection(scale, isTablet),
-                        SizedBox(height: (isTablet ? 20.0 : 12.0) * scale),
-                        _buildPaceHeartRateCard(scale, isTablet),
-                        SizedBox(height: (isTablet ? 12.0 : 8.0) * scale),
-                        _buildMediaControlsCard(scale, isTablet),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          
-          // Summary View when finished
-          if (_runningState == RunningState.finished) _buildSummaryView(scale, isTablet),
 
-          // Button positioned at top
-          if (_runningState != RunningState.finished && _runningState != RunningState.countdown)
-            ListenableBuilder(
-              listenable: _sheetController,
-              builder: (context, child) {
-                double size = _runningState == RunningState.idle ? _sheetHeightIdle : _sheetHeightRunning;
-                if (_sheetController.isAttached) {
-                  size = _sheetController.size;
-                }
-                final topOffset = _getButtonTopOffset() * scale; // Scale offset!
-                final top = screenHeight * (1.0 - size) + topOffset;
-                return Positioned(
-                  top: top,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: _buildStartButton(scale, isTablet, l10n, fontScale),
-                  ),
-                );
-              },
-            ),
-
-          // COUNTDOWN OVERLAY
-          if (_runningState == RunningState.countdown)
-            Positioned.fill(
-              child: Container(
-                color: const Color(0xFF900EBF).withOpacity(0.95), // Brand color overlay
-                child: Center(
-                  child: TweenAnimationBuilder<double>(
-                    key: ValueKey(_countdownSeconds),
-                    tween: Tween(begin: 0.5, end: 1.0),
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.elasticOut,
-                    builder: (context, value, child) {
-                      return Transform.scale(
-                        scale: value,
-                        child: Text(
-                          '$_countdownSeconds',
-                          style: GoogleFonts.lexend(
-                            fontSize: (isTablet ? 120.0 : 110.0) * scale,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+            // Map section (Full screen)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: screenHeight,
+              child: IgnorePointer(
+                ignoring: _coreLogic.runningState == RunningState.running ||
+                    _coreLogic.runningState == RunningState.countdown,
+                child: FlutterMap(
+                  mapController: _coreLogic.mapController,
+                  options: MapOptions(
+                    initialCenter: const LatLng(29.2882, 47.9015),
+                    initialZoom: 18.8,
+                    minZoom: 5.0,
+                    maxZoom: 20.0,
+                    onMapReady: () {
+                      try {
+                        _coreLogic.mapController.fitCamera(
+                          CameraFit.coordinates(
+                            coordinates: [_coreLogic.currentLocation],
+                            padding: _coreLogic.getMapPadding(),
+                            maxZoom: 18.8,
+                            forceIntegerZoomLevel: false,
                           ),
-                        ),
-                      );
+                        );
+                      } catch (_) {}
+                    },
+                    onPositionChanged: (position, hasGesture) {
+                      if (hasGesture && _coreLogic.isAutoFollow) {
+                        _coreLogic.isAutoFollow = false;
+                        _coreLogic.onStateChanged();
+
+                        _coreLogic.autoFollowResumeTimer?.cancel();
+                        _coreLogic.autoFollowResumeTimer = Timer(const Duration(seconds: 5), () {
+                          if (mounted && _coreLogic.runningState == RunningState.running) {
+                            _coreLogic.isAutoFollow = true;
+                            _coreLogic.onStateChanged();
+                          }
+                        });
+                      }
                     },
                   ),
-                ),
-              ),
-            ),
-
-          // Top navigation bar (Hidden during countdown)
-          if (_runningState != RunningState.countdown)
-            SafeArea(
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isTablet ? 24.0 : 22.0 * scale,
-                  vertical: isTablet ? 12.0 : 8.0 * scale,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildBackButton(scale, isTablet, isAr),
-                    const SizedBox.shrink(),
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const ActivityScreen()),
-                            );
-                          },
-                          child: _buildTopIconButton(Icons.history, scale, isTablet),
-                        ),
-                        SizedBox(width: isTablet ? 12.0 : 11.0),
-                        GestureDetector(
-                          onTap: () {
-                            final now = DateTime.now();
-                            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                            final dateStr = '${now.day} ${months[now.month - 1]} ${now.year}';
-                            final user = ref.read(userProfileProvider).value;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ShareScreen(
-                                  totalTime: _formatDuration(_seconds),
-                                  avgPace: _formatPace(_avgPace),
-                                  distance: _distance.toStringAsFixed(2),
-                                  date: dateStr,
-                                  routePoints: _routePoints,
-                                  userName: user?.name ?? '',
-                                  profilePictureUrl: user?.profilePicture,
+                    TileLayer(
+                      urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                      subdomains: const ['a', 'b', 'c', 'd'],
+                      userAgentPackageName: 'com.tryd.app',
+                    ),
+                    if (_coreLogic.routePoints.isNotEmpty)
+                      PolylineLayer(
+                        polylines: [
+                          Polyline(
+                            points: [
+                              ..._coreLogic.routePoints,
+                              _coreLogic.currentLocation,
+                            ],
+                            strokeWidth: 5.0,
+                            strokeCap: StrokeCap.round,
+                            strokeJoin: StrokeJoin.round,
+                            color: const Color(0xFFF83A71),
+                          ),
+                        ],
+                      ),
+                    MarkerLayer(
+                      markers: [
+                        if (_coreLogic.startLocation != null &&
+                            _coreLogic.runningState != RunningState.idle &&
+                            _coreLogic.runningState != RunningState.countdown)
+                          Marker(
+                            point: _coreLogic.startLocation!,
+                            width: 20,
+                            height: 20,
+                            child: Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF333333),
+                                  width: 4.35419,
                                 ),
                               ),
-                            );
-                          },
-                          child: _buildTopIconButton(Icons.share, scale, isTablet),
-                        ),
+                              child: Center(
+                                child: Container(
+                                  width: 4.35,
+                                  height: 4.35,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFF333333),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (_coreLogic.shouldShowArrow)
+                          Marker(
+                            point: _coreLogic.currentLocation,
+                            width: isTablet ? 48.0 : 40.0,
+                            height: isTablet ? 48.0 : 40.0,
+                            child: Transform.rotate(
+                              angle: _coreLogic.getArrowRotation(_coreLogic.lastPosition),
+                              child: Icon(
+                                Icons.navigation,
+                                color: const Color(0xFF333333),
+                                size: isTablet ? 36.0 : 32.0,
+                              ),
+                            ),
+                          ),
+                        if (_coreLogic.runningState == RunningState.idle ||
+                            _coreLogic.runningState == RunningState.countdown)
+                          Marker(
+                            point: _coreLogic.currentLocation,
+                            width: isTablet ? 48.0 : 40.0,
+                            height: isTablet ? 48.0 : 40.0,
+                            child: SvgPicture.asset(
+                              'assets/images/location_pointer.svg',
+                              width: isTablet ? 48.0 : 40.0,
+                              height: isTablet ? 48.0 : 40.0,
+                            ),
+                          ),
                       ],
                     ),
                   ],
                 ),
               ),
             ),
-          
 
-        ],
-      ),
-    ),
-   );
-}
+            // Locate Me Button
+            if (_coreLogic.runningState != RunningState.finished &&
+                _coreLogic.runningState != RunningState.countdown)
+              ListenableBuilder(
+                listenable: _coreLogic.sheetController,
+                builder: (context, child) {
+                  double sheetSize = _coreLogic.sheetHeightIdle;
+                  if (_coreLogic.sheetController.isAttached) {
+                    sheetSize = _coreLogic.sheetController.size;
+                  }
+                  final bottomPadding =
+                      (MediaQuery.of(context).size.height * sheetSize) + (isTablet ? 24.0 : 16.0);
 
-  Widget _buildGpsIndicator(double scale, bool isTablet) {
-    if (_runningState == RunningState.countdown) return const SizedBox.shrink();
-
-    Color indicatorColor;
-    String label;
-
-    if (!_isLocationInitialized || _currentAccuracy == 0) {
-      indicatorColor = Colors.grey;
-      label = "Searching...";
-    } else if (_currentAccuracy <= 15.0) {
-      indicatorColor = const Color(0xFF4ADE80); // Success Green
-      label = "GPS High";
-    } else if (_currentAccuracy <= 35.0) {
-      indicatorColor = const Color(0xFFFACC15); // Warning Yellow
-      label = "GPS Med";
-    } else {
-      indicatorColor = const Color(0xFFF87171); // Error Red
-      label = "GPS Low";
-    }
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.0 * scale, vertical: 6.0 * scale),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(20.0 * scale),
-        border: Border.all(color: const Color(0xFFF5F3F3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8 * scale,
-            height: 8 * scale,
-            decoration: BoxDecoration(
-              color: indicatorColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          SizedBox(width: 6 * scale),
-          Text(
-            label,
-            style: GoogleFonts.lexend(
-              fontSize: 11.0 * scale,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF24252C),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<String?> _showExitConfirmation() async {
-    final l10n = AppLocalizations.of(context)!;
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final fontScale = isAr ? 1.15 : 1.0;
-    
-    return showDialog<String>(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
-              child: Column(
-                children: [
-                  Text(
-                    l10n.endRunTitle,
-                    style: GoogleFonts.lexend(
-                      fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF24252C),
+                  return Positioned(
+                    right: isTablet ? 24.0 : 16.0,
+                    bottom: bottomPadding,
+                    child: child!,
+                  );
+                },
+                child: GestureDetector(
+                  onTap: _coreLogic.locateMe,
+                  child: Container(
+                    width: isTablet ? 56.0 : 42.0,
+                    height: isTablet ? 56.0 : 42.0,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2)),
+                      ],
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12.0),
-                  Text(
-                    l10n.endRunMessage,
-                    style: GoogleFonts.lexend(
-                      fontSize: 14.0 * fontScale,
-                      color: const Color(0xFF24252C).withOpacity(0.8),
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-            const Divider(color: Color(0xFFE5E7EB), height: 1, thickness: 1),
-            InkWell(
-              onTap: () => Navigator.pop(context, 'save'),
-              borderRadius: BorderRadius.zero,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                alignment: Alignment.center,
-                child: Text(
-                  l10n.saveAndExit,
-                  style: GoogleFonts.lexend(
-                    fontSize: 16.0 * fontScale,
-                    color: const Color(0xFF900EBF),
-                    fontWeight: FontWeight.w600,
+                    child: Icon(Icons.my_location,
+                        color: const Color(0xFF900EBF), size: isTablet ? 28.0 : 20.0),
                   ),
                 ),
               ),
-            ),
-            const Divider(color: Color(0xFFE5E7EB), height: 1, thickness: 1),
-            InkWell(
-              onTap: () => Navigator.pop(context, null),
-              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20.0), bottomRight: Radius.circular(20.0)),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                alignment: Alignment.center,
-                child: Text(
-                  l10n.keepRunning,
-                  style: GoogleFonts.lexend(
-                    fontSize: 16.0 * fontScale,
-                    color: const Color(0xFF8B88B5),
-                    fontWeight: FontWeight.w500,
+
+            // Draggable Content section
+            if (_coreLogic.runningState != RunningState.finished &&
+                _coreLogic.runningState != RunningState.countdown)
+              DraggableScrollableSheet(
+                controller: _coreLogic.sheetController,
+                initialChildSize: _coreLogic.runningState == RunningState.idle
+                    ? _coreLogic.sheetHeightIdle
+                    : _coreLogic.sheetHeightRunning,
+                minChildSize: math.min(
+                    _coreLogic.sheetHeightMin,
+                    _coreLogic.runningState == RunningState.idle
+                        ? _coreLogic.sheetHeightIdle
+                        : _coreLogic.sheetHeightRunning),
+                maxChildSize: _coreLogic.sheetHeightIdle,
+                builder: (BuildContext context, ScrollController scrollController) {
+                  return Container(
+                      clipBehavior: Clip.none,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(30),
+                          topRight: Radius.circular(30),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            offset: const Offset(0, -4),
+                            blurRadius: 20,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        physics: _coreLogic.runningState == RunningState.idle
+                            ? const NeverScrollableScrollPhysics()
+                            : const ClampingScrollPhysics(),
+                        padding: EdgeInsets.only(top: (isTablet ? 28.0 : 22.0) * scale),
+                        child: Column(
+                          children: [
+                            _buildStatsSection(scale, isTablet, l10n, fontScale),
+                            SizedBox(height: (isTablet ? 20.0 : 16.0) * scale),
+                            _buildPaceHeartRateCard(scale, isTablet, l10n, fontScale),
+                            SizedBox(height: (isTablet ? 20.0 : 16.0) * scale),
+                            _buildActivityTypeSelector(scale, isTablet, fontScale),
+                            SizedBox(height: (isTablet ? 20.0 : 16.0) * scale),
+                            _buildStartButton(scale, isTablet, l10n, fontScale),
+                            SizedBox(height: (isTablet ? 14.0 : 10.0) * scale),
+                            _buildMediaControlsCard(scale, isTablet),
+                            SizedBox(height: (isTablet ? 40.0 : 32.0) * scale),
+                          ],
+                        ),
+                      ),
+                    );
+                },
+              ),
+
+            // Summary View
+            if (_coreLogic.runningState == RunningState.finished)
+              _buildSummaryView(scale, isTablet, l10n, fontScale),
+
+            // COUNTDOWN OVERLAY
+            if (_coreLogic.runningState == RunningState.countdown)
+              Positioned.fill(
+                child: Container(
+                  color: const Color(0xFF900EBF).withValues(alpha: 0.95),
+                  child: Center(
+                    child: TweenAnimationBuilder<double>(
+                      key: ValueKey(_coreLogic.countdownSeconds),
+                      tween: Tween(begin: 0.5, end: 1.0),
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.elasticOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Text(
+                            '${_coreLogic.countdownSeconds}',
+                            style: GoogleFonts.lexend(
+                              fontSize: (isTablet ? 120.0 : 110.0) * scale,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
-            ),
+
+            // Top navigation bar
+            if (_coreLogic.runningState != RunningState.countdown)
+              SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 24.0 : 22.0 * scale,
+                    vertical: isTablet ? 12.0 : 8.0 * scale,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildBackButton(scale, isTablet, isAr),
+                      const SizedBox.shrink(),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () async {
+                              final isActive = ref.read(isWorkoutActiveProvider);
+                              if (isActive) {
+                                final guard = ref.read(workoutNavGuardProvider);
+                                if (guard != null) {
+                                  final shouldLeave = await guard();
+                                  if (!shouldLeave || !mounted) return;
+                                }
+                              }
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const ActivityScreen()),
+                              );
+                            },
+                            child: _buildTopIconButton(Icons.history, scale, isTablet),
+                          ),
+                          if (_coreLogic.runningState == RunningState.finished) ...[
+                            SizedBox(width: isTablet ? 12.0 : 11.0),
+                            GestureDetector(
+                              onTap: () {
+                                final now = DateTime.now();
+                                const months = [
+                                  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                                ];
+                                final dateStr = '${now.day} ${months[now.month - 1]} ${now.year}';
+                                final user = ref.read(userProfileProvider).value;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ShareScreen(
+                                      totalTime: _coreLogic.formatDuration(_coreLogic.seconds),
+                                      avgPace: _coreLogic.formatPace(_coreLogic.avgPace),
+                                      distance: _coreLogic.distance.toStringAsFixed(2),
+                                      date: dateStr,
+                                      routePoints: _coreLogic.routePoints,
+                                      userName: user?.name ?? '',
+                                      profilePictureUrl: user?.profilePicture,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: _buildTopIconButton(Icons.share, scale, isTablet),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            
+            if (_coreLogic.runningState != RunningState.finished &&
+                _coreLogic.currentAccuracy > 35.0 &&
+                _coreLogic.runningState != RunningState.idle)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + (isTablet ? 70.0 : 60.0) * scale,
+                left: isTablet ? 24.0 : 16.0,
+                right: isTablet ? 24.0 : 16.0,
+                child: _buildGPSStatusIndicator(scale, isTablet),
+              ),
           ],
         ),
       ),
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // UI Widget Builders
+  // ─────────────────────────────────────────────────────────────────────────────
+
   Widget _buildStartButton(double scale, bool isTablet, AppLocalizations l10n, double fontScale) {
-    // Base sizes per device category
     final screenHeight = MediaQuery.of(context).size.height;
-    double buttonSize = isTablet ? 80.0 : screenHeight < 680
-        ? 88.0   // small
-        : screenHeight < 850
-            ? 85.0   // medium
-            : 80.0;  // large
+    double buttonSize = isTablet
+        ? 80.0
+        : screenHeight < 680
+            ? 88.0
+            : screenHeight < 850
+                ? 85.0
+                : 80.0;
 
     double scaledButtonSize = buttonSize * scale;
 
-    switch (_runningState) {
+    switch (_coreLogic.runningState) {
       case RunningState.idle:
-        return _buildCircularButton(
-          size: scaledButtonSize,
-          isTablet: isTablet,
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: () async {
-            if (!_isGpsReady) return;
-            // Trigger Countdown instead of immediate start
-            _startCountdown();
+            final hasLocation = await _supportLogic.checkLocationForStart();
+            if (!hasLocation) return;
+            _coreLogic.startCountdown();
           },
-          child: !_isGpsReady 
-            ? SizedBox(
-                width: 24 * scale,
-                height: 24 * scale,
-                child: const CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          child: Container(
+            width: scaledButtonSize,
+            height: scaledButtonSize,
+            decoration: BoxDecoration(
+              color: const Color(0xFF900EBF),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFD2D2D2).withValues(alpha: 0.25),
+                  offset: const Offset(0, 4),
+                  blurRadius: 11.9,
+                  spreadRadius: isTablet ? 8 : 6,
                 ),
-              )
-            : Text(
+              ],
+            ),
+            child: Center(
+              child: Text(
                 l10n.startRun,
                 style: GoogleFonts.poppins(
-                  fontSize: 18.0 * scale * fontScale,
+                  fontSize: 17.0 * scale * fontScale,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
                   color: Colors.white,
                 ),
               ),
+            ),
+          ),
         );
 
       case RunningState.countdown:
         return const SizedBox.shrink();
-        
+
       case RunningState.running:
         final runningButtonSize = 75.0 * scale;
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _runningState = RunningState.paused;
-            });
-            _stopTimer();
-            _speak(AppLocalizations.of(context)!.paused);
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _fitMapToRoute();
-            });
-          },
+        return _RunHoldGradient(
+          onAction: _coreLogic.pauseRun,
           child: Container(
             width: runningButtonSize,
             height: runningButtonSize,
@@ -1855,7 +607,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
               border: Border.all(color: Colors.white, width: 4),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFD2D2D2).withOpacity(0.25),
+                  color: const Color(0xFFD2D2D2).withValues(alpha: 0.25),
                   offset: const Offset(0, 3),
                   blurRadius: 10,
                   spreadRadius: 4,
@@ -1865,88 +617,69 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
             child: Center(child: _buildPauseIcon(scale, isTablet)),
           ),
         );
-        
+
       case RunningState.paused:
-        // Use Flexible or constraints to prevent overflow
         final stopWidth = 140.0 * scale;
-        final stopHeight = 48.0 * scale;
+        final stopHeight = 58.0 * scale;
+        final playSize = 75.0 * scale;
+        final playIconSize = (isTablet ? 38.0 : 34.0) * scale;
         return Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(horizontal: 18.0 * scale),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Stop button
-              Flexible(
-                child: GradientButton(
-                  text: AppLocalizations.of(context)!.stopButton,
-                  width: stopWidth,
-                  height: stopHeight,
-                  showIcon: false,
-                  onPressed: () async {
-                    setState(() {
-                      _runningState = RunningState.finished;
-                      _stopTimer();
-                      _positionStreamSubscription?.cancel();
-                      _positionStreamSubscription = null;
-                    });
-                    ref.read(realTimeNotificationServiceProvider).cancelLiveStats();
-                    // Context-aware finish cue
-                    if (_distance >= 10) {
-                      _speak('Run complete, Amazing effort');
-                    } else if (_distance >= 5) {
-                      _speak('Run complete, Great job');
-                    } else {
-                      _speak('Run complete, Well done');
-                    }
-                    // Recenter map after summary renders
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _fitMapToRoute();
-                    });
-                    await _saveActivity();
-                    _runStartTime = null;
-                  },
+              CustomGradientButton(
+                text: l10n.stopButton,
+                onAction: _coreLogic.finishRun,
+                width: stopWidth,
+                height: stopHeight,
+                textStyle: GoogleFonts.lexendDeca(
+                  fontSize: 20.0 * scale,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
                 ),
               ),
               SizedBox(width: 11.0 * scale),
-              // Play button
-               _buildPlayButton(scale, isTablet),
+              _RunHoldGradient(
+                onAction: () {
+                  _supportLogic.speak(l10n.letsGo);
+                  _coreLogic.startRun();
+                },
+                child: Container(
+                  width: playSize,
+                  height: playSize,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F7FF),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFB7B7B7).withValues(alpha: 0.25),
+                        offset: const Offset(0, 3),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Transform.translate(
+                      offset: const Offset(1.5, 0),
+                      child: Icon(
+                        Icons.play_arrow,
+                        color: const Color(0xFF900EBF),
+                        size: playIconSize,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         );
-        
+
       case RunningState.finished:
         return const SizedBox.shrink();
     }
-  }
-
-  Widget _buildCircularButton({
-    required double size,
-    required VoidCallback onTap,
-    required Widget child,
-    required bool isTablet,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: const Color(0xFF900EBF),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 5),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFD2D2D2).withOpacity(0.25),
-              offset: const Offset(0, 4),
-              blurRadius: 11.9,
-              spreadRadius: isTablet ? 8 : 6,
-            ),
-          ],
-        ),
-        child: Center(child: child),
-      ),
-    );
   }
 
   Widget _buildPauseIcon(double scale, bool isTablet) {
@@ -1955,6 +688,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     final gap = (isTablet ? 6.0 : 4.0) * scale;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: barWidth,
@@ -1977,77 +711,128 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildPlayButton(double scale, bool isTablet) {
-    final size = (isTablet ? 56.0 : 48.0) * scale;
-    final iconSize = (isTablet ? 32.0 : 26.0) * scale;
-    return GestureDetector(
-      onTap: () {
-        _speak(AppLocalizations.of(context)!.letsGo);
-        _startRun(); // Use _startRun to ensure timer/stream logic is centralized
-      },
+  Widget _buildActivityTypeSelector(double scale, bool isTablet, double fontScale) {
+    final hMargin = (isTablet ? 15.0 : 12.0) * scale;
+    final innerPad = (isTablet ? 5.0 : 4.0) * scale;
+    final br = (isTablet ? 12.0 : 10.0);
+    final vPad = (isTablet ? 11.0 : 10.0) * scale;
+    final iconSize = (isTablet ? 20.0 : 18.0) * scale;
+    final labelSize = (isTablet ? 11.5 : 11.0) * scale * fontScale;
+    final isDisabled = _coreLogic.runningState != RunningState.idle;
+
+    const activeColor = Color(0xFF900EBF);
+    const inactiveColor = Color(0xFF9B99B8);
+
+    final types = [
+      (ActivityType.running, Icons.directions_run_rounded, 'Running'),
+      (ActivityType.walking, Icons.directions_walk_rounded, 'Walking'),
+      (ActivityType.cycling, Icons.directions_bike_rounded, 'Cycling'),
+    ];
+
+    return Opacity(
+      opacity: isDisabled ? 0.45 : 1.0,
       child: Container(
-        width: size,
-        height: size,
+        margin: EdgeInsets.symmetric(horizontal: hMargin),
+        padding: EdgeInsets.all(innerPad),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F7FF),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 3),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFB7B7B7).withOpacity(0.25),
-              offset: const Offset(0, 3),
-              blurRadius: 12,
-            ),
-          ],
+          color: const Color(0xFFF0EEF5),
+          borderRadius: BorderRadius.circular(br + 2),
         ),
-        child: Center(
-          child: Transform.translate(
-            offset: const Offset(1.5, 0),
-            child: Icon(
-              Icons.play_arrow,
-              color: const Color(0xFF900EBF),
-              size: iconSize,
-            ),
-          ),
+        child: Row(
+          children: List.generate(types.length, (i) {
+            final (type, icon, label) = types[i];
+            final isActive = _selectedActivity == type;
+            return Expanded(
+              child: GestureDetector(
+                onTap: isDisabled ? null : () {
+                  setState(() => _selectedActivity = type);
+                  _coreLogic.activityType = switch (type) {
+                    ActivityType.walking => 'walk',
+                    ActivityType.cycling => 'cycling',
+                    _ => 'run',
+                  };
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: vPad),
+                  decoration: isActive
+                      ? BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(br),
+                          boxShadow: [
+                            BoxShadow(
+                              color: activeColor.withValues(alpha: 0.12),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        )
+                      : BoxDecoration(
+                          borderRadius: BorderRadius.circular(br),
+                        ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: iconSize,
+                          color: isActive ? activeColor : inactiveColor),
+                      SizedBox(height: 4.0 * scale),
+                      Text(label,
+                          style: GoogleFonts.lexend(
+                            fontSize: labelSize,
+                            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                            color: isActive ? activeColor : inactiveColor,
+                            letterSpacing: 0.2,
+                          )),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
         ),
       ),
     );
   }
 
-  Widget _buildStatsSection(double scale, bool isTablet) {
-    final l10n = AppLocalizations.of(context)!;
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final fontScale = isAr ? 1.15 : 1.0;
-    final double spacing = (isTablet ? 10.0 : 8.0) * scale;
+  Widget _buildStatsSection(double scale, bool isTablet, AppLocalizations l10n, double fontScale) {
+    final hMargin = (isTablet ? 15.0 : 12.0) * scale;
+    final dividerHeight = (isTablet ? 40.0 : 36.0) * scale;
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: isTablet ? 15.0 * scale : 12.0 * scale),
-      child: Column(
+      padding: EdgeInsets.symmetric(horizontal: hMargin),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildStatItem(l10n.distanceLabel, _distance.toStringAsFixed(2), l10n.unitKm, scale, isTablet, fontScale),
-          SizedBox(height: spacing),
-          _buildDivider(),
-          SizedBox(height: spacing),
-          _buildStatItem(l10n.durationLabel, _formatDuration(_seconds), null, scale, isTablet, fontScale),
-          SizedBox(height: spacing),
-          _buildDivider(),
-          SizedBox(height: spacing),
-          _buildStatItem(l10n.caloriesLabel, _calories.toStringAsFixed(0), null, scale, isTablet, fontScale),
+          Expanded(
+            child: _buildStatItem(l10n.distanceLabel, _coreLogic.distance.toStringAsFixed(2),
+                l10n.unitKm, scale, isTablet, fontScale),
+          ),
+          Container(width: 1, height: dividerHeight, color: const Color(0xFFE8ECF4)),
+          Expanded(
+            child: _buildStatItem(l10n.durationLabel,
+                _coreLogic.formatDuration(_coreLogic.seconds), null, scale, isTablet, fontScale),
+          ),
+          Container(width: 1, height: dividerHeight, color: const Color(0xFFE8ECF4)),
+          Expanded(
+            child: _buildStatItem(l10n.caloriesLabel,
+                _coreLogic.calories.toStringAsFixed(0), null, scale, isTablet, fontScale),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String label, String value, String? unit, double scale, bool isTablet, double fontScale) {
-    final labelSize = (isTablet ? 12.0 : 12.0) * scale;
-    final valueSize = (isTablet ? 24.0 : 26.0) * scale;
-    final unitSize = (isTablet ? 16.0 : 15.0) * scale;
-    final verticalPadding = (isTablet ? 6.0 : 5.0) * scale;
-    final gap = (isTablet ? 6.0 : 5.0) * scale;
-    
+  Widget _buildStatItem(String label, String value, String? unit, double scale, bool isTablet,
+      double fontScale) {
+    final labelSize = (isTablet ? 11.5 : 11.0) * scale;
+    final valueSize = (isTablet ? 22.0 : 22.0) * scale;
+    final unitSize = (isTablet ? 13.0 : 13.0) * scale;
+    final gap = (isTablet ? 4.0 : 3.0) * scale;
+
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: verticalPadding),
+      padding: EdgeInsets.symmetric(vertical: (isTablet ? 10.0 : 8.0) * scale),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             label,
@@ -2098,7 +883,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: const Color(0xFF6F86B5).withOpacity(0.1),
+            color: const Color(0xFF6F86B5).withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -2106,10 +891,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildPaceHeartRateCard(double scale, bool isTablet) {
-    final l10n = AppLocalizations.of(context)!;
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final fontScale = isAr ? 1.15 : 1.0;
+  Widget _buildPaceHeartRateCard(double scale, bool isTablet, AppLocalizations l10n, double fontScale) {
     final double minHeight = (isTablet ? 80.0 : 72.0) * scale;
     final double margin = (isTablet ? 15.0 : 12.0) * scale;
     final double padding = (isTablet ? 18.0 : 14.0) * scale;
@@ -2128,262 +910,33 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
           BoxShadow(
             offset: const Offset(0, 3),
             blurRadius: 20,
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
           ),
         ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildPaceHeartItem(_formatPace(_currentPace), l10n.unitMinKm, l10n.currentPaceLabel, scale, isTablet, fontScale),
+          _buildPaceHeartItem(
+              _coreLogic.formatPace(_coreLogic.currentPace), l10n.unitMinKm, l10n.currentPaceLabel,
+              scale, isTablet, fontScale),
           Container(width: 1, height: dividerHeight, color: const Color(0xFFE8ECF4)),
           SizedBox(width: isTablet ? 20.0 : 12.0),
-          _buildPaceHeartItem(_avgBpm > 0 ? _avgBpm.toStringAsFixed(0) : '--', l10n.unitBpm, l10n.heartRateLabel, scale, isTablet, fontScale),
+          _buildPaceHeartItem(
+              _coreLogic.avgBpm > 0 ? _coreLogic.avgBpm.toStringAsFixed(0) : '--',
+              l10n.unitBpm, l10n.heartRateLabel, scale, isTablet, fontScale),
         ],
       ),
     );
   }
-  void _showHealthConnectDialog(HealthConnectSdkStatus status) {
-    final l10n = AppLocalizations.of(context)!;
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final fontScale = isAr ? 1.15 : 1.0;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
-              child: Column(
-                children: [
-                   Text(
-                    status == HealthConnectSdkStatus.sdkUnavailableProviderUpdateRequired 
-                        ? l10n.healthUpdateTitle 
-                        : l10n.healthConnectTitle,
-                    style: GoogleFonts.lexend(
-                      fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF24252C),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12.0),
-                   Text(
-                    status == HealthConnectSdkStatus.sdkUnavailableProviderUpdateRequired 
-                        ? l10n.healthUpdateMessage 
-                        : l10n.healthConnectMessage,
-                    style: GoogleFonts.lexend(
-                      fontSize: 14.0 * fontScale,
-                      color: const Color(0xFF24252C).withOpacity(0.8),
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-            const Divider(color: Color(0xFFE5E7EB), height: 1, thickness: 1),
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => Navigator.pop(context),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(20.0),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 18.0),
-                      alignment: Alignment.center,
-                      child: Text(
-                        l10n.later,
-                        style: GoogleFonts.lexend(
-                          fontSize: 16.0 * fontScale,
-                          color: const Color(0xFF8B88B5),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 56,
-                  color: const Color(0xFFE5E7EB),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.pop(context);
-                      ref.read(healthRepositoryProvider).installHealthConnect();
-                    },
-                    borderRadius: const BorderRadius.only(
-                      bottomRight: Radius.circular(20.0),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 18.0),
-                      alignment: Alignment.center,
-                       child: Text(
-                        l10n.installUpdate,
-                        style: GoogleFonts.lexend(
-                          fontSize: 16.0 * fontScale,
-                          color: const Color(0xFF900EBF),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-
-
-  void _showAppleHealthDialog() {
-    final l10n = AppLocalizations.of(context)!;
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final fontScale = isAr ? 1.15 : 1.0;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
-              child: Column(
-                children: [
-                   Text(
-                    l10n.appleHealthTitle,
-                    style: GoogleFonts.lexend(
-                      fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF24252C),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12.0),
-                   Text(
-                    l10n.appleHealthMessage,
-                    style: GoogleFonts.lexend(
-                      fontSize: 14.0 * fontScale,
-                      color: const Color(0xFF24252C).withOpacity(0.8),
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F3FF),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                     child: Text(
-                      l10n.appleHealthPath,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.lexend(
-                        color: const Color(0xFF1B2D51),
-                        fontSize: 13 * fontScale,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                   Text(
-                    l10n.appleHealthTurnOnMessage,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.lexend(
-                      color: const Color(0xFF24252C).withOpacity(0.6),
-                      fontSize: 12 * fontScale,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(color: Color(0xFFE5E7EB), height: 1, thickness: 1),
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => Navigator.pop(context),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(20.0),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 18.0),
-                      alignment: Alignment.center,
-                      child: Text(
-                        l10n.later,
-                        style: GoogleFonts.lexend(
-                          fontSize: 16.0 * fontScale,
-                          color: const Color(0xFF8B88B5),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 56,
-                  color: const Color(0xFFE5E7EB),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.pop(context);
-                      openAppSettings();
-                    },
-                    borderRadius: const BorderRadius.only(
-                      bottomRight: Radius.circular(20.0),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 18.0),
-                      alignment: Alignment.center,
-                      child: Text(
-                        l10n.openSettings,
-                        style: GoogleFonts.lexend(
-                          fontSize: 16.0 * fontScale,
-                          color: const Color(0xFF900EBF),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-  Widget _buildPaceHeartItem(String value, String unit, String label, double scale, bool isTablet, double fontScale) {
+  Widget _buildPaceHeartItem(String value, String unit, String label, double scale,
+      bool isTablet, double fontScale) {
     final valueSize = (isTablet ? 27.5 : 26.0) * scale;
     final unitSize = (isTablet ? 14.0 : 13.0) * scale;
     final labelSize = (isTablet ? 11.35 : 11.0) * scale;
     final gap = (isTablet ? 9.93 : 6.0) * scale;
-    
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -2398,7 +951,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
               style: GoogleFonts.lexend(
                 fontSize: valueSize,
                 fontWeight: FontWeight.w500,
-                height: 1.1, 
+                height: 1.1,
                 color: Colors.black,
               ),
             ),
@@ -2428,34 +981,6 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     );
   }
 
-  Future<void> _togglePlay() async {
-    try {
-      if (_audioPlayer.playing) {
-        await _audioPlayer.pause();
-      } else {
-        await _audioPlayer.play();
-      }
-    } catch (e) {
-      debugPrint("Toggle Play Error: $e");
-    }
-  }
-
-  Future<void> _nextSong() async {
-    if (_songs.isEmpty) return;
-    final next = (_currentSongIndex + 1) % _songs.length;
-    setState(() => _currentSongIndex = next);
-    await _loadSong();
-    await _audioPlayer.play();
-  }
-
-  Future<void> _prevSong() async {
-    if (_songs.isEmpty) return;
-    final prev = (_currentSongIndex - 1 + _songs.length) % _songs.length;
-    setState(() => _currentSongIndex = prev);
-    await _loadSong();
-    await _audioPlayer.play();
-  }
-
   Widget _buildMediaControlsCard(double scale, bool isTablet) {
     final minHeight = isTablet ? 66.0 * scale : 56.0 * scale;
     final margin = isTablet ? 15.0 * scale : 12.0 * scale;
@@ -2465,7 +990,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     final skipIconSize = (isTablet ? 29.0 : 26.0) * scale;
     final volumeIconSize = (isTablet ? 26.0 : 24.0) * scale;
     final titleFontSize = (isTablet ? 12.0 : 12.0) * scale;
-    
+
     return Container(
       width: double.infinity,
       constraints: BoxConstraints(minHeight: minHeight),
@@ -2479,21 +1004,22 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
           BoxShadow(
             offset: const Offset(0, 3),
             blurRadius: 20,
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
           ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_songs.isNotEmpty || _currentSongName != null)
+          if (_supportLogic.songs.isNotEmpty || _supportLogic.currentSongName != null)
             Padding(
               padding: EdgeInsets.only(bottom: isTablet ? 8.0 : 5.0),
               child: Text(
-                _currentSongName ?? _songs[_currentSongIndex].title,
+                _supportLogic.currentSongName ??
+                    (_supportLogic.songs.isNotEmpty ? _supportLogic.songs[_supportLogic.currentSongIndex].title : ''),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(fontSize: titleFontSize, color: const Color(0xFF6F86B5)),
-                maxLines: 1, 
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -2501,30 +1027,25 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               GestureDetector(
-                 onTap: _pickSong,
-                 child: Icon(Icons.list_rounded, size: listIconSize, color: const Color(0xFF96AAD2)),
+                onTap: _supportLogic.pickSong,
+                child: Icon(Icons.list_rounded, size: listIconSize, color: const Color(0xFF96AAD2)),
               ),
               GestureDetector(
-                 onTap: _prevSong,
-                 child: Icon(Icons.skip_previous, size: skipIconSize, color: const Color(0xFF96AAD2)),
+                onTap: _supportLogic.prevSong,
+                child: Icon(Icons.skip_previous, size: skipIconSize, color: const Color(0xFF96AAD2)),
               ),
               _buildPlayPauseButton(scale, isTablet),
               GestureDetector(
-                 onTap: _nextSong,
-                 child: Icon(Icons.skip_next, size: skipIconSize, color: const Color(0xFF96AAD2)),
+                onTap: _supportLogic.nextSong,
+                child: Icon(Icons.skip_next, size: skipIconSize, color: const Color(0xFF96AAD2)),
               ),
               GestureDetector(
-                 onTap: () {
-                   setState(() {
-                     _isMusicMuted = !_isMusicMuted;
-                     _audioPlayer.setVolume(_isMusicMuted ? 0 : 1);
-                   });
-                 },
-                 child: Icon(
-                   _isMusicMuted ? Icons.volume_off : Icons.volume_up, 
-                   size: volumeIconSize, 
-                   color: const Color(0xFF96AAD2),
-                 ),
+                onTap: _supportLogic.toggleMute,
+                child: Icon(
+                  _supportLogic.isMusicMuted ? Icons.volume_off : Icons.volume_up,
+                  size: volumeIconSize,
+                  color: const Color(0xFF96AAD2),
+                ),
               ),
             ],
           ),
@@ -2537,7 +1058,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     final size = (isTablet ? 44.0 : 44.0) * scale;
     final iconSize = (isTablet ? 24.0 : 24.0) * scale;
     return GestureDetector(
-      onTap: _togglePlay,
+      onTap: _supportLogic.togglePlay,
       child: Container(
         width: size,
         height: size,
@@ -2546,7 +1067,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
           shape: BoxShape.circle,
         ),
         child: Icon(
-          _isMusicPlaying ? Icons.pause : Icons.play_arrow,
+          _supportLogic.isMusicPlaying ? Icons.pause : Icons.play_arrow,
           color: Colors.white,
           size: iconSize,
         ),
@@ -2554,21 +1075,12 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildSummaryView(double scale, bool isTablet) {
+  Widget _buildSummaryView(double scale, bool isTablet, AppLocalizations l10n, double fontScale) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final l10n = AppLocalizations.of(context)!;
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final fontScale = isAr ? 1.15 : 1.0;
 
-    // ── Summary Responsive Scale ──────────────────────────
-    // Change these 3 values to control ALL summary sizes:
-    //   small  → phones with height < 680px
-    //   medium → phones with height 680–850px
-    //   large  → phones with height > 850px
-    //   tablet → devices with width > 600px
-    const double summarySmall  = 0.55;
+    const double summarySmall = 0.55;
     const double summaryMedium = 0.75;
-    const double summaryLarge  = 0.85;
+    const double summaryLarge = 0.85;
     const double summaryTablet = 0.55;
 
     final double sScale = isTablet
@@ -2597,18 +1109,19 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
             mainAxisAlignment: MainAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Stats section
-              _buildSummaryStatItem(l10n.distanceLabel, _distance.toStringAsFixed(2), l10n.unitKm, sScale, isTablet, fontScale),
+              _buildSummaryStatItem(l10n.distanceLabel, _coreLogic.distance.toStringAsFixed(2),
+                  l10n.unitKm, sScale, isTablet, fontScale),
               SizedBox(height: verticalGap),
               _buildDivider(),
               SizedBox(height: verticalGap),
-              _buildSummaryStatItem(l10n.durationLabel, _formatDuration(_seconds), null, sScale, isTablet, fontScale),
+              _buildSummaryStatItem(l10n.durationLabel, _coreLogic.formatDuration(_coreLogic.seconds),
+                  null, sScale, isTablet, fontScale),
               SizedBox(height: verticalGap),
               _buildDivider(),
               SizedBox(height: verticalGap),
-              _buildSummaryStatItem(l10n.caloriesLabel, _calories.toStringAsFixed(0), null, sScale, isTablet, fontScale),
+              _buildSummaryStatItem(l10n.caloriesLabel, _coreLogic.calories.toStringAsFixed(0),
+                  null, sScale, isTablet, fontScale),
               SizedBox(height: sectionGap),
-              // Pace / Heart Rate Card
               Container(
                 width: double.infinity,
                 margin: EdgeInsets.symmetric(horizontal: (isTablet ? 20.0 : 10.0) * sScale),
@@ -2622,54 +1135,98 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildSummaryPaceHeartItem(_formatPace(_avgPace), l10n.unitMinKm, l10n.avgPaceLabel, sScale, isTablet, fontScale),
-                    Container(width: 1, height: (isTablet ? 60.0 : 40.0) * sScale, color: Colors.grey.withOpacity(0.2)),
-                    _buildSummaryPaceHeartItem(_avgBpm > 0 ? _avgBpm.toStringAsFixed(0) : '--', l10n.unitBpm, l10n.heartRateLabel, sScale, isTablet, fontScale),
+                    _buildSummaryPaceHeartItem(_coreLogic.formatPace(_coreLogic.avgPace),
+                        l10n.unitMinKm, l10n.avgPaceLabel, sScale, isTablet, fontScale),
+                    Container(
+                        width: 1,
+                        height: (isTablet ? 60.0 : 40.0) * sScale,
+                        color: Colors.grey.withValues(alpha: 0.2)),
+                    _buildSummaryPaceHeartItem(
+                        _coreLogic.avgBpm > 0 ? _coreLogic.avgBpm.toStringAsFixed(0) : '--',
+                        l10n.unitBpm, l10n.heartRateLabel, sScale, isTablet, fontScale),
                   ],
                 ),
               ),
               SizedBox(height: sectionGap),
-              // Share Button
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: (isTablet ? 40.0 : 20.0) * sScale),
-                child: GradientButton(
-                  text: l10n.shareButton,
-                  width: double.infinity,
-                  height: isTablet ? 60.0 : 52.0,
-                  showIcon: true,
-                  onPressed: () {
-                    // Clear notifications before jumping to share
-                    ref.read(realTimeNotificationServiceProvider).clearAllBanners();
-                    
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) {
-                          final now = DateTime.now();
-                          final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                          final dateStr = '${now.day} ${months[now.month - 1]} ${now.year}';
-                          final user = ref.read(userProfileProvider).value;
-                          return ShareScreen(
-                            totalTime: _formatDuration(_seconds),
-                            avgPace: _formatPace(_avgPace),
-                            distance: _distance.toStringAsFixed(2),
-                            date: dateStr,
-                            routePoints: _routePoints,
-                            userName: user?.name ?? '',
-                            profilePictureUrl: user?.profilePicture,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _coreLogic.resetToIdle,
+                        child: Container(
+                          height: isTablet ? 60.0 : 52.0,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: const Color(0xFF900EBF), width: 1.5),
+                            borderRadius: BorderRadius.circular(12.0 * sScale),
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.newRunButton,
+                              style: GoogleFonts.lexendDeca(
+                                fontSize: (isTablet ? 18.0 : 16.0) * fontScale,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF900EBF),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12 * sScale),
+                    Expanded(
+                      child: GradientButton(
+                        text: l10n.shareButton,
+                        width: double.infinity,
+                        height: isTablet ? 60.0 : 52.0,
+                        showIcon: false,
+                        textStyle: GoogleFonts.lexendDeca(
+                          fontSize: (isTablet ? 18.0 : 16.0) * fontScale,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        onPressed: () {
+                          ref.read(realTimeNotificationServiceProvider).clearAllBanners();
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) {
+                                final now = DateTime.now();
+                                const months = [
+                                  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                                ];
+                                final dateStr = '${now.day} ${months[now.month - 1]} ${now.year}';
+                                final user = ref.read(userProfileProvider).value;
+                                return ShareScreen(
+                                  totalTime: _coreLogic.formatDuration(_coreLogic.seconds),
+                                  avgPace: _coreLogic.formatPace(_coreLogic.avgPace),
+                                  distance: _coreLogic.distance.toStringAsFixed(2),
+                                  date: dateStr,
+                                  routePoints: _coreLogic.routePoints,
+                                  userName: user?.name ?? '',
+                                  profilePictureUrl: user?.profilePicture,
+                                );
+                              },
+                            ),
                           );
                         },
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
               ),
-              // Bottom spacing per device category
-              SizedBox(height: isTablet ? 180.0 : screenHeight < 680
-                  ? 125.0   // small
-                  : screenHeight < 850
-                      ? 145.0   // medium
-                      : 155.0), // large
+              SizedBox(
+                  height: isTablet
+                      ? 150.0
+                      : screenHeight < 680
+                          ? 110.0
+                          : screenHeight < 850
+                              ? 130.0
+                              : 140.0),
             ],
           ),
         ),
@@ -2677,7 +1234,8 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildSummaryStatItem(String label, String value, String? unit, double scale, bool isTablet, [double fontScale = 1.0]) {
+  Widget _buildSummaryStatItem(String label, String value, String? unit, double scale,
+      bool isTablet, [double fontScale = 1.0]) {
     final labelSize = (isTablet ? 14.0 : 13.0 * scale) * fontScale;
     final valueSize = (isTablet ? 45.0 : 40.0 * scale) * fontScale;
     final unitSize = (isTablet ? 18.0 : 16.0 * scale) * fontScale;
@@ -2724,7 +1282,8 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildSummaryPaceHeartItem(String value, String unit, String label, double scale, bool isTablet, [double fontScale = 1.0]) {
+  Widget _buildSummaryPaceHeartItem(String value, String unit, String label, double scale,
+      bool isTablet, [double fontScale = 1.0]) {
     final valueSize = (isTablet ? 35.0 : 30.5 * scale) * fontScale;
     final unitSize = (isTablet ? 16.0 : 14.0 * scale) * fontScale;
     final labelSize = (isTablet ? 12.0 : 10.0 * scale) * fontScale;
@@ -2782,57 +1341,69 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     final size = (isTablet ? 42.0 : 42.0) * scale;
     return GestureDetector(
       onTap: () async {
-        if (_runningState == RunningState.running || _runningState == RunningState.paused) {
-          final result = await _showExitConfirmation();
-          if (result == null) return; // "Keep Running" tapped
-
-          // Show summary view instead of navigating away
-          setState(() {
-            _runningState = RunningState.finished;
-            _stopTimer();
-            _positionStreamSubscription?.cancel();
-            _positionStreamSubscription = null;
-          });
-          ref.read(realTimeNotificationServiceProvider).cancelLiveStats();
-          if (_distance >= 10) {
-            _speak('Run complete, Amazing effort');
-          } else if (_distance >= 5) {
-            _speak('Run complete, Great job');
-          } else {
-            _speak('Run complete, Well done');
-          }
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _fitMapToRoute();
-          });
-          await _saveActivity();
-          _runStartTime = null;
-          return;
-        }
-
-        if (_runningState == RunningState.finished) {
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const HomeScreen()),
-            );
-          }
-          return;
-        }
-
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        }
+        await _supportLogic.onPopInvoked(
+          isRunning: _coreLogic.runningState == RunningState.running ||
+              _coreLogic.runningState == RunningState.paused,
+          isFinished: _coreLogic.runningState == RunningState.finished,
+          finishRun: _coreLogic.finishRun,
+        );
       },
-      child: Transform.scale(
-        scaleX: isAr ? -1.0 : 1.0,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: size,
+        height: size,
         child: SvgPicture.asset(
           'assets/images/back_arrow_icon.svg',
           width: size,
           height: size,
+          matchTextDirection: true,
         ),
+      ),
+    );
+  }
+
+  Widget _buildGPSStatusIndicator(double scale, bool isTablet) {
+    if (_coreLogic.runningState == RunningState.finished) return const SizedBox.shrink();
+    
+    final text = _coreLogic.getGPSStatusMessage();
+    final color = _coreLogic.getGPSStatusColor();
+    
+    // Don't show "Good" status to avoid clutter
+    if (text == "🟢 GPS Good") return const SizedBox.shrink();
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16.0 * scale, vertical: 10.0 * scale),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(12.0 * scale),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _coreLogic.isIndoorMode ? Icons.gps_fixed : Icons.gps_not_fixed,
+            color: Colors.white,
+            size: 18.0 * scale,
+          ),
+          SizedBox(width: 10.0 * scale),
+          Flexible(
+            child: Text(
+              text,
+              style: GoogleFonts.lexend(
+                fontSize: 13.0 * scale,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2851,7 +1422,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
             offset: const Offset(0, 2),
             blurRadius: 6,
             spreadRadius: 3,
-            color: const Color(0xFFD2D2D2).withOpacity(0.25),
+            color: const Color(0xFFD2D2D2).withValues(alpha: 0.25),
           ),
         ],
       ),
@@ -2863,3 +1434,251 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with WidgetsBindi
     );
   }
 }
+
+class _RunHoldCircle extends StatefulWidget {
+  final double size;
+  final Color ringColor;
+  final IconData icon;
+  final VoidCallback onAction;
+  final VoidCallback onTap;
+
+  const _RunHoldCircle({
+    required this.size,
+    required this.ringColor,
+    required this.icon,
+    required this.onAction,
+    required this.onTap,
+  });
+
+  @override
+  State<_RunHoldCircle> createState() => _RunHoldCircleState();
+}
+
+class _RunHoldCircleState extends State<_RunHoldCircle>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  bool _isHolding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        HapticFeedback.vibrate();
+        widget.onAction();
+        _controller.reset();
+        if (mounted) setState(() => _isHolding = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTapDown(TapDownDetails _) {
+    HapticFeedback.lightImpact();
+    setState(() => _isHolding = true);
+    _controller.forward();
+  }
+
+  void _handleTapUp(TapUpDetails _) {
+    if (_controller.isAnimating && !_controller.isCompleted) {
+      widget.onTap();
+      _controller.reverse();
+      setState(() => _isHolding = false);
+    }
+  }
+
+  void _handleTapCancel() {
+    if (_controller.isAnimating) {
+      _controller.reverse();
+      setState(() => _isHolding = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      child: AnimatedScale(
+        scale: _isHolding ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutBack,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (_, __) => Stack(
+            alignment: Alignment.center,
+            children: [
+              if (_isHolding)
+                Container(
+                  width: widget.size + 10,
+                  height: widget.size + 10,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF900EBF).withValues(alpha: 0.20 * _controller.value),
+                        blurRadius: 15,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                ),
+              Container(
+                width: widget.size,
+                height: widget.size,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.12),
+                      offset: const Offset(0, 10),
+                      blurRadius: 20,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  widget.icon,
+                  size: widget.size * 0.50,
+                  color: const Color(0xFF900EBF),
+                ),
+              ),
+              SizedBox(
+                width: widget.size + 4,
+                height: widget.size + 4,
+                child: CircularProgressIndicator(
+                  value: _controller.value,
+                  strokeWidth: 4,
+                  strokeCap: StrokeCap.round,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    const Color(0xFF900EBF).withValues(alpha: _isHolding ? 1.0 : 0.0),
+                  ),
+                  backgroundColor: Colors.transparent,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RunHoldGradient extends StatefulWidget {
+  final VoidCallback onAction;
+  final Widget child;
+
+  const _RunHoldGradient({required this.onAction, required this.child});
+
+  @override
+  State<_RunHoldGradient> createState() => _RunHoldGradientState();
+}
+
+class _RunHoldGradientState extends State<_RunHoldGradient>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  bool _holding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _ctrl.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        HapticFeedback.vibrate();
+        widget.onAction();
+        _ctrl.reset();
+        if (mounted) setState(() => _holding = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _down(TapDownDetails _) {
+    HapticFeedback.lightImpact();
+    setState(() => _holding = true);
+    _ctrl.forward();
+  }
+
+  void _up(TapUpDetails _) {
+    if (_ctrl.isAnimating) _ctrl.reverse();
+    if (mounted) setState(() => _holding = false);
+  }
+
+  void _cancel() {
+    if (_ctrl.isAnimating) _ctrl.reverse();
+    if (mounted) setState(() => _holding = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _down,
+      onTapUp: _up,
+      onTapCancel: _cancel,
+      child: AnimatedScale(
+        scale: _holding ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutBack,
+        child: AnimatedBuilder(
+          animation: _ctrl,
+          builder: (_, child) => Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              if (_holding)
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF900EBF)
+                              .withValues(alpha: 0.20 * _ctrl.value),
+                          blurRadius: 15,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              child!,
+              Positioned.fill(
+                child: CircularProgressIndicator(
+                  value: _ctrl.value,
+                  strokeWidth: 4,
+                  strokeCap: StrokeCap.round,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    const Color(0xFF900EBF)
+                        .withValues(alpha: _holding ? 1.0 : 0.0),
+                  ),
+                  backgroundColor: Colors.transparent,
+                ),
+              ),
+            ],
+          ),
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+

@@ -19,6 +19,8 @@ class User {
   final String? phoneNumber;
   final String? gender;
   final int? points;
+  final String? referralCode;
+  final String? role;
 
   User({
     required this.id,
@@ -28,6 +30,8 @@ class User {
     this.phoneNumber,
     this.gender,
     this.points,
+    this.referralCode,
+    this.role,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);

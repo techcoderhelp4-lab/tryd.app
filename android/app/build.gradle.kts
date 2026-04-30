@@ -37,10 +37,34 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Only build x86_64 slice for emulator — fastest hot-reload
+            ndk {
+                abiFilters += setOf("x86_64")
+            }
+        }
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Release: support all real-device ABIs
+            ndk {
+                abiFilters += setOf("arm64-v8a", "armeabi-v7a")
+            }
+        }
+    }
+
+    // Disable unused resource shrinkers in debug to speed up builds
+    packaging {
+        resources {
+            excludes += listOf(
+                "META-INF/*.kotlin_module",
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+            )
         }
     }
 }

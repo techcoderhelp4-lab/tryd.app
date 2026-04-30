@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:gravity="center_vertical">
+
+    <!-- Distance -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/notif_distance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0.00"
+            android:textColor="#FFFFFFFF"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="KM"
+            android:textColor="#FFFFFFFF"
+            android:textSize="10sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.05" />
+    </LinearLayout>
+
+    <!-- Time -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <Chronometer
+            android:id="@+id/notif_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFFFF"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TIME"
+            android:textColor="#FFFFFFFF"
+            android:textSize="10sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.05" />
+    </LinearLayout>
+
+    <!-- Pace -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/notif_pace"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="--:--"
+            android:textColor="#FFFFFFFF"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PACE /KM"
+            android:textColor="#FFFFFFFF"
+            android:textSize="10sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.05" />
+    </LinearLayout>
+
+    <!-- Pause button (shown while running) -->
+    <LinearLayout
+        android:id="@+id/btn_pause"
+        android:layout_width="80dp"
+        android:layout_height="36dp"
+        android:gravity="center"
+        android:background="@drawable/notif_btn_primary">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pause"
+            android:textColor="#FFFFFFFF"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium" />
+    </LinearLayout>
+
+    <!-- Resume button (shown while paused) -->
+    <LinearLayout
+        android:id="@+id/btn_resume"
+        android:layout_width="80dp"
+        android:layout_height="36dp"
+        android:gravity="center"
+        android:background="@drawable/notif_btn_primary"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Resume"
+            android:textColor="#FFFFFFFF"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium" />
+    </LinearLayout>
+
+    <!-- btn_stop kept as zero-size — required by Kotlin buildViews -->
+    <LinearLayout
+        android:id="@+id/btn_stop"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+</LinearLayout>

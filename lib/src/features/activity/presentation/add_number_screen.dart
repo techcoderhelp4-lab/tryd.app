@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -5,13 +6,12 @@ import '../../../../widgets/custom_exercises_icon.dart';
 import '../../../../widgets/custom_rounds_icon.dart';
 import '../../../../widgets/gradient_button.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
-import '../../home/presentation/home_screen.dart';
-import 'running_screen.dart';
-import '../../rewards/presentation/rewards_screen.dart';
-import '../../club/presentation/club_screen.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
+import '../../../../widgets/swipe_to_pop_wrapper.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../shell/main_shell.dart' show mainNavTapProvider;
 
-class AddNumberScreen extends StatefulWidget {
+class AddNumberScreen extends ConsumerStatefulWidget {
   final String title;
   final int initialValue;
   final String iconType;
@@ -28,12 +28,13 @@ class AddNumberScreen extends StatefulWidget {
   });
 
   @override
-  State<AddNumberScreen> createState() => _AddNumberScreenState();
+  ConsumerState<AddNumberScreen> createState() => _AddNumberScreenState();
 }
 
-class _AddNumberScreenState extends State<AddNumberScreen> {
+class _AddNumberScreenState extends ConsumerState<AddNumberScreen> {
   late int value;
   final int _selectedIndex = 3;
+  Timer? _popTimer;
 
   @override
   void initState() {
@@ -45,11 +46,28 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
     setState(() {
       if (value < widget.maxValue) value++;
     });
+    _startPopTimer();
   }
 
   void _decrement() {
     setState(() {
       if (value > widget.minValue) value--;
+    });
+    _startPopTimer();
+  }
+
+  @override
+  void dispose() {
+    _popTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPopTimer() {
+    _popTimer?.cancel();
+    _popTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        Navigator.pop(context, value);
+      }
     });
   }
 
@@ -76,7 +94,7 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
                 ? mediumScale
                 : largeScale;
 
-    return Scaffold(
+    return SwipeToPopWrapper(child: Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
@@ -126,30 +144,17 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
               currentIndex: _selectedIndex,
               onTap: (index) {
                 if (index == 3) {
-                  Navigator.pop(context);
+                  Navigator.of(context).pop();
                   return;
                 }
-
-                Widget? page;
-                switch (index) {
-                  case 0: page = const HomeScreen(); break;
-                  case 1: page = const RunningScreen(); break;
-                  case 2: page = const RewardsScreen(); break;
-                  case 4: page = const ClubScreen(); break;
-                }
-
-                if (page != null) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => page!),
-                  );
-                }
+                Navigator.of(context).popUntil((route) => route.isFirst);
+                ref.read(mainNavTapProvider)?.call(index);
               },
             ),
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildTopBar(bool isTablet, double scale, bool isRTL, double fontScale) {
@@ -164,13 +169,11 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
               width: 40.0 * scale,
               height: 40.0 * scale,
               child: Center(
-                child: Transform.scale(
-                  scaleX: isRTL ? -1.0 : 1.0,
-                  child: SvgPicture.asset(
-                    'assets/images/back_arrow_icon.svg',
-                    width: 24.0 * scale,
-                    height: 24.0 * scale,
-                  ),
+                child: SvgPicture.asset(
+                  'assets/images/back_arrow_icon.svg',
+                  width: 24.0 * scale,
+                  height: 24.0 * scale,
+                  matchTextDirection: true,
                 ),
               ),
             ),
@@ -283,6 +286,7 @@ class _AddNumberScreenState extends State<AddNumberScreen> {
       child: GradientButton(
         text: l10n.continueButton,
         onPressed: () {
+          _popTimer?.cancel();
           Navigator.pop(context, value);
         },
         height: 58.0 * scale,

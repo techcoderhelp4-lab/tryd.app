@@ -38,98 +38,100 @@ class CustomBottomNavigation extends StatelessWidget {
     
     final navHeight = 137.0 * scale;
 
-    return Container(
-      color: Colors.transparent,
-      child: SizedBox(
-        height: navHeight,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Custom painted background using SVG path
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: CustomPaint(
-                size: Size(screenWidth, navHeight),
-                painter: BottomNavPainter(scale: scale),
+    return RepaintBoundary(
+      child: Container(
+        color: Colors.transparent,
+        child: SizedBox(
+          height: navHeight,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Custom painted background using SVG path
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: CustomPaint(
+                  size: Size(screenWidth, navHeight),
+                  painter: BottomNavPainter(scale: scale),
+                ),
               ),
-            ),
-            
-            // Floating Action Button (Center)
-            Positioned(
-              top: 14.6 * scale,
-              left: screenWidth / 2 - (27 * scale),
-              child: GestureDetector(
-                onTap: () => onTap(2),
-                child: Container(
-                  width: 54.0 * scale,
-                  height: 54.0 * scale,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF900EBF),
-                  ),
-                  child: Center(
-                    child: SvgPicture.asset(
-                      'assets/images/crown_icon.svg',
-                      width: 24.0 * scale,
-                      height: 24.0 * scale,
-                      colorFilter: const ColorFilter.mode(
-                        Colors.white,
-                        BlendMode.srcIn,
+              
+              // Floating Action Button (Center)
+              Positioned(
+                top: 14.6 * scale,
+                left: screenWidth / 2 - (27 * scale),
+                child: GestureDetector(
+                  onTap: () async { await onTap(2); },
+                  child: Container(
+                    width: 54.0 * scale,
+                    height: 54.0 * scale,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF900EBF),
+                    ),
+                    child: Center(
+                      child: SvgPicture.asset(
+                        'assets/images/crown_icon.svg',
+                        width: 24.0 * scale,
+                        height: 24.0 * scale,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-            
-            // Navigation Items
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 24.0 * scale,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _buildNavItem(
-                    svgIcon: 'assets/images/home_icon.svg',
-                    label: l10n.navHome,
-                    isActive: currentIndex == 0,
-                    onTap: () => onTap(0),
-                    scale: scale,
-                    isRTL: isRTL,
-                  ),
-                  _buildNavItem(
-                    svgIcon: 'assets/images/run_icon.svg',
-                    label: l10n.navRun,
-                    isActive: currentIndex == 1,
-                    onTap: () => onTap(1),
-                    scale: scale,
-                    isRTL: isRTL,
-                  ),
-                  SizedBox(width: 60.0 * scale), // Space for center FAB
-                  _buildNavItem(
-                    svgIcon: 'assets/images/workout_icon.svg',
-                    label: l10n.navWorkout,
-                    isActive: currentIndex == 3,
-                    onTap: () => onTap(3),
-                    scale: scale,
-                    isRTL: isRTL,
-                  ),
-                  _buildNavItem(
-                    svgIcon: 'assets/images/club_icon.svg',
-                    label: l10n.navClub,
-                    isActive: currentIndex == 4,
-                    onTap: () => onTap(4),
-                    scale: scale,
-                    isRTL: isRTL,
-                  ),
-                ],
+              
+              // Navigation Items
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 24.0 * scale,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _buildNavItem(
+                      svgIcon: 'assets/images/home_icon.svg',
+                      label: l10n.navHome,
+                      isActive: currentIndex == 0,
+                      onTap: () async { await onTap(0); },
+                      scale: scale,
+                      isRTL: isRTL,
+                    ),
+                    _buildNavItem(
+                      svgIcon: 'assets/images/run_icon.svg',
+                      label: l10n.navRun,
+                      isActive: currentIndex == 1,
+                      onTap: () async { await onTap(1); },
+                      scale: scale,
+                      isRTL: isRTL,
+                    ),
+                    SizedBox(width: 60.0 * scale), // Space for center FAB
+                    _buildNavItem(
+                      svgIcon: 'assets/images/workout_icon.svg',
+                      label: l10n.navWorkout,
+                      isActive: currentIndex == 3,
+                      onTap: () async { await onTap(3); },
+                      scale: scale,
+                      isRTL: isRTL,
+                    ),
+                    _buildNavItem(
+                      svgIcon: 'assets/images/club_icon.svg',
+                      label: l10n.navClub,
+                      isActive: currentIndex == 4,
+                      onTap: () async { await onTap(4); },
+                      scale: scale,
+                      isRTL: isRTL,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -280,17 +282,17 @@ class BottomNavPainter extends CustomPainter {
     
     path.close();
 
-    // Draw multiple shadow layers for smooth outer shadow on all sides
+    // Shadow layers — opacity raised so the white shape is visible on white backgrounds
     final shadowPaint1 = Paint()
-      ..color = const Color.fromRGBO(131, 148, 183, 0.05)
+      ..color = const Color.fromRGBO(131, 148, 183, 0.22)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
-    
+
     final shadowPaint2 = Paint()
-      ..color = const Color.fromRGBO(131, 148, 183, 0.08)
+      ..color = const Color.fromRGBO(131, 148, 183, 0.28)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
-    
+
     final shadowPaint3 = Paint()
-      ..color = const Color.fromRGBO(131, 148, 183, 0.1)
+      ..color = const Color.fromRGBO(131, 148, 183, 0.35)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
     // Draw shadow layers
@@ -298,9 +300,9 @@ class BottomNavPainter extends CustomPainter {
     canvas.drawPath(path, shadowPaint2);
     canvas.drawPath(path, shadowPaint3);
 
-    // Add subtle border
+    // Visible border
     final borderPaint = Paint()
-      ..color = const Color.fromRGBO(131, 148, 183, 0.12)
+      ..color = const Color.fromRGBO(131, 148, 183, 0.30)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 

@@ -344,6 +344,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthUpdateTitle => 'Update Required';
 
   @override
+  String get healthPermissionTitle => 'Permissions Required';
+
+  @override
+  String get healthPermissionMessage =>
+      'Tryd needs Health Connect permissions to track your steps, calories, and heart rate. Please enable all permissions in Health Connect settings.';
+
+  @override
   String get healthConnectMessage =>
       'To track your steps and heart rate accurately, you need to install the Google Health Connect app.';
 
@@ -353,6 +360,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get installUpdate => 'Install / Update';
+
+  @override
+  String get enablePermissions => 'Enable Permissions';
 
   @override
   String get appleHealthTitle => 'Apple Health Access';
@@ -594,6 +604,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get avgPaceShort => 'Avg pace';
 
   @override
+  String get avgSpeedShort => 'Avg speed';
+
+  @override
+  String get runningLabel => 'Running';
+
+  @override
+  String get walkingLabel => 'Walking';
+
+  @override
+  String get cyclingLabel => 'Cycling';
+
+  @override
   String get recentActivities => 'Recent Activities';
 
   @override
@@ -779,4 +801,158 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resumeButton => 'Resume';
+
+  @override
+  String get locationPermissionTitle => 'Allow Location Access';
+
+  @override
+  String get locationPermissionMessage =>
+      'Tryd needs your location to track your route, distance, and pace during runs.';
+
+  @override
+  String get locationDeniedTitle => 'Location Access Needed';
+
+  @override
+  String get locationDeniedMessage =>
+      'Enable location in Settings to track your runs accurately.';
+
+  @override
+  String get allowLocation => 'Allow Location';
+
+  @override
+  String get locationServiceDisabledTitle => 'Location Service Off';
+
+  @override
+  String get locationServiceDisabledMessage =>
+      'Your device\'s location service is turned off. Please enable it to start your run.';
+
+  @override
+  String get enableLocation => 'Enable Location';
+
+  @override
+  String get audioPermissionTitle => 'Allow Music Access';
+
+  @override
+  String get audioPermissionMessage =>
+      'Tryd needs access to your music library to play songs during your workout.';
+
+  @override
+  String get allowAudio => 'Allow Music Access';
+
+  @override
+  String get newRunButton => 'New Run';
+
+  @override
+  String get totalWorkoutTime => 'Total Workout Time';
+
+  @override
+  String get preBuiltWorkoutsTitle => 'PRE-BUILT WORKOUTS';
+
+  @override
+  String get referralCodeLabel => 'Referral Code';
+
+  @override
+  String get referralCodeOptional => 'Optional';
+
+  @override
+  String get referralCodePlaceholder => 'Enter code';
+
+  @override
+  String get referralVerifyButton => 'Verify';
+
+  @override
+  String get referralCodeInvalid => 'Invalid referral code';
+
+  @override
+  String referralCodeVerified(String name) {
+    return 'Referred by $name';
+  }
+
+  @override
+  String shareEarnTitle(int points) {
+    return 'Invite & Earn $points Points';
+  }
+
+  @override
+  String shareEarnSubtitle(int points) {
+    return 'Share your code and both of you earn $points pts';
+  }
+
+  @override
+  String shareForPointsBanner(int points) {
+    return 'Share & earn $points pts!';
+  }
+
+  @override
+  String get shareForPointsSubtitle =>
+      'Share your activity on social media and get rewarded';
+
+  @override
+  String sharePointsEarned(int points) {
+    return 'You earned $points pts for sharing!';
+  }
+
+  @override
+  String get shareAlreadyRewarded => 'Already rewarded';
+
+  @override
+  String get sharePlatformInstagram => 'Instagram';
+
+  @override
+  String get sharePlatformWhatsApp => 'WhatsApp';
+
+  @override
+  String get sharePlatformSnapchat => 'Snapchat';
+
+  @override
+  String get sharePlatformFacebook => 'Facebook';
+
+  @override
+  String shareGenZCta(int points) {
+    return 'share & get $points pts 🔥';
+  }
+
+  @override
+  String get shareGenZSubtitle => 'post your run, stack those points';
+
+  @override
+  String get shareGenZAlreadyClaimed => 'you already got your pts for this ✅';
+
+  @override
+  String get secUnit => 'sec';
+
+  @override
+  String get minUnit => 'min';
+
+  @override
+  String get minsUnit => 'mins';
+
+  @override
+  String get minutesShort => 'MIN';
+
+  @override
+  String get secondsShort => 'SEC';
+
+  @override
+  String get exerciseTimer => 'Exercise Timer';
+
+  @override
+  String get workSlash => 'work';
+
+  @override
+  String get restWord => 'rest';
+
+  @override
+  String get totalTimeColon => 'Total Time:';
+
+  @override
+  String get exercisesPlusRest => 'Exercises + Rest';
+
+  @override
+  String get letsGoFire => 'Let\'s Go!';
+
+  @override
+  String totalWithTime(String time) {
+    return 'Total: $time (Exercises + Rest)';
+  }
 }

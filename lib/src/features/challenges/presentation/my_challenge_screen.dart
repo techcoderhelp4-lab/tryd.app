@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../generated/l10n/app_localizations.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
 import 'leaderboard_screen.dart';
-import '../../home/presentation/home_screen.dart';
-import '../../activity/presentation/running_screen.dart';
-import '../../rewards/presentation/rewards_screen.dart';
-import '../../activity/presentation/workout_screen.dart';
-import '../../club/presentation/club_screen.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/challenge.dart';
 import 'package:intl/intl.dart';
+import '../../../../widgets/swipe_to_pop_wrapper.dart';
+import '../../../shell/main_shell.dart' show mainNavTapProvider;
 
 class MyChallengeScreen extends ConsumerStatefulWidget {
   final Challenge challenge;
@@ -50,7 +45,7 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
     final isRTL = Localizations.localeOf(context).languageCode == 'ar';
     final fontScale = isRTL ? 1.2 : 1.0;
 
-    return Scaffold(
+    return SwipeToPopWrapper(child: Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
@@ -122,27 +117,14 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
                   Navigator.pop(context);
                   return;
                 }
-                
-                Widget? page;
-                switch (index) {
-                  case 0: page = const HomeScreen(); break;
-                  case 1: page = const RunningScreen(); break;
-                  case 2: page = const RewardsScreen(); break;
-                  case 3: page = const WorkoutScreen(); break;
-                }
-                
-                if (page != null) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => page!),
-                  );
-                }
+                Navigator.of(context).popUntil((route) => route.isFirst);
+                ref.read(mainNavTapProvider)?.call(index);
               },
             ),
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildAppBar(BuildContext context, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
@@ -152,13 +134,12 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: Transform.scale(
-              scaleX: isRTL ? -1.0 : 1.0,
-              child: SvgPicture.asset(
-                'assets/images/back_arrow_icon.svg',
-                width: 24.0 * scale,
-                height: 24.0 * scale,
-              ),
+            behavior: HitTestBehavior.opaque,
+            child: SvgPicture.asset(
+              'assets/images/back_arrow_icon.svg',
+              width: 42.0 * scale,
+              height: 42.0 * scale,
+              matchTextDirection: true,
             ),
           ),
           Expanded(
@@ -468,18 +449,15 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
               ),
             ),
             SizedBox(width: 12.0 * scale),
-            Transform.scale(
-              scaleX: isRTL ? -1.0 : 1.0,
-              child: Transform.rotate(
-                angle: 3.14159,
-                child: SvgPicture.asset(
-                  'assets/images/back_arrow_icon.svg',
-                  width: 24.0 * scale,
-                  height: 24.0 * scale,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
+            Transform.rotate(
+              angle: 3.14159,
+              child: SvgPicture.asset(
+                'assets/images/back_arrow_icon.svg',
+                width: 24.0 * scale,
+                height: 24.0 * scale,
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
                 ),
               ),
             ),

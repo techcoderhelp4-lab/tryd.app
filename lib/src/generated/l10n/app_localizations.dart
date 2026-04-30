@@ -728,6 +728,18 @@ abstract class AppLocalizations {
   /// **'Update Required'**
   String get healthUpdateTitle;
 
+  /// No description provided for @healthPermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions Required'**
+  String get healthPermissionTitle;
+
+  /// No description provided for @healthPermissionMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Tryd needs Health Connect permissions to track your steps, calories, and heart rate. Please enable all permissions in Health Connect settings.'**
+  String get healthPermissionMessage;
+
   /// No description provided for @healthConnectMessage.
   ///
   /// In en, this message translates to:
@@ -745,6 +757,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Install / Update'**
   String get installUpdate;
+
+  /// No description provided for @enablePermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Permissions'**
+  String get enablePermissions;
 
   /// No description provided for @appleHealthTitle.
   ///
@@ -1208,6 +1226,30 @@ abstract class AppLocalizations {
   /// **'Avg pace'**
   String get avgPaceShort;
 
+  /// No description provided for @avgSpeedShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg speed'**
+  String get avgSpeedShort;
+
+  /// No description provided for @runningLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get runningLabel;
+
+  /// No description provided for @walkingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Walking'**
+  String get walkingLabel;
+
+  /// No description provided for @cyclingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cycling'**
+  String get cyclingLabel;
+
   /// No description provided for @recentActivities.
   ///
   /// In en, this message translates to:
@@ -1555,6 +1597,276 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resume'**
   String get resumeButton;
+
+  /// No description provided for @locationPermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Location Access'**
+  String get locationPermissionTitle;
+
+  /// No description provided for @locationPermissionMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Tryd needs your location to track your route, distance, and pace during runs.'**
+  String get locationPermissionMessage;
+
+  /// No description provided for @locationDeniedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Location Access Needed'**
+  String get locationDeniedTitle;
+
+  /// No description provided for @locationDeniedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable location in Settings to track your runs accurately.'**
+  String get locationDeniedMessage;
+
+  /// No description provided for @allowLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Location'**
+  String get allowLocation;
+
+  /// No description provided for @locationServiceDisabledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Location Service Off'**
+  String get locationServiceDisabledTitle;
+
+  /// No description provided for @locationServiceDisabledMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your device\'s location service is turned off. Please enable it to start your run.'**
+  String get locationServiceDisabledMessage;
+
+  /// No description provided for @enableLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Location'**
+  String get enableLocation;
+
+  /// No description provided for @audioPermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Music Access'**
+  String get audioPermissionTitle;
+
+  /// No description provided for @audioPermissionMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Tryd needs access to your music library to play songs during your workout.'**
+  String get audioPermissionMessage;
+
+  /// No description provided for @allowAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Music Access'**
+  String get allowAudio;
+
+  /// No description provided for @newRunButton.
+  ///
+  /// In en, this message translates to:
+  /// **'New Run'**
+  String get newRunButton;
+
+  /// No description provided for @totalWorkoutTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Workout Time'**
+  String get totalWorkoutTime;
+
+  /// No description provided for @preBuiltWorkoutsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'PRE-BUILT WORKOUTS'**
+  String get preBuiltWorkoutsTitle;
+
+  /// No description provided for @referralCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral Code'**
+  String get referralCodeLabel;
+
+  /// No description provided for @referralCodeOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get referralCodeOptional;
+
+  /// No description provided for @referralCodePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter code'**
+  String get referralCodePlaceholder;
+
+  /// No description provided for @referralVerifyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get referralVerifyButton;
+
+  /// No description provided for @referralCodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid referral code'**
+  String get referralCodeInvalid;
+
+  /// No description provided for @referralCodeVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Referred by {name}'**
+  String referralCodeVerified(String name);
+
+  /// No description provided for @shareEarnTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite & Earn {points} Points'**
+  String shareEarnTitle(int points);
+
+  /// No description provided for @shareEarnSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your code and both of you earn {points} pts'**
+  String shareEarnSubtitle(int points);
+
+  /// No description provided for @shareForPointsBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Share & earn {points} pts!'**
+  String shareForPointsBanner(int points);
+
+  /// No description provided for @shareForPointsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your activity on social media and get rewarded'**
+  String get shareForPointsSubtitle;
+
+  /// No description provided for @sharePointsEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'You earned {points} pts for sharing!'**
+  String sharePointsEarned(int points);
+
+  /// No description provided for @shareAlreadyRewarded.
+  ///
+  /// In en, this message translates to:
+  /// **'Already rewarded'**
+  String get shareAlreadyRewarded;
+
+  /// No description provided for @sharePlatformInstagram.
+  ///
+  /// In en, this message translates to:
+  /// **'Instagram'**
+  String get sharePlatformInstagram;
+
+  /// No description provided for @sharePlatformWhatsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp'**
+  String get sharePlatformWhatsApp;
+
+  /// No description provided for @sharePlatformSnapchat.
+  ///
+  /// In en, this message translates to:
+  /// **'Snapchat'**
+  String get sharePlatformSnapchat;
+
+  /// No description provided for @sharePlatformFacebook.
+  ///
+  /// In en, this message translates to:
+  /// **'Facebook'**
+  String get sharePlatformFacebook;
+
+  /// No description provided for @shareGenZCta.
+  ///
+  /// In en, this message translates to:
+  /// **'share & get {points} pts 🔥'**
+  String shareGenZCta(int points);
+
+  /// No description provided for @shareGenZSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'post your run, stack those points'**
+  String get shareGenZSubtitle;
+
+  /// No description provided for @shareGenZAlreadyClaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'you already got your pts for this ✅'**
+  String get shareGenZAlreadyClaimed;
+
+  /// No description provided for @secUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'sec'**
+  String get secUnit;
+
+  /// No description provided for @minUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get minUnit;
+
+  /// No description provided for @minsUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'mins'**
+  String get minsUnit;
+
+  /// No description provided for @minutesShort.
+  ///
+  /// In en, this message translates to:
+  /// **'MIN'**
+  String get minutesShort;
+
+  /// No description provided for @secondsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'SEC'**
+  String get secondsShort;
+
+  /// No description provided for @exerciseTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Exercise Timer'**
+  String get exerciseTimer;
+
+  /// No description provided for @workSlash.
+  ///
+  /// In en, this message translates to:
+  /// **'work'**
+  String get workSlash;
+
+  /// No description provided for @restWord.
+  ///
+  /// In en, this message translates to:
+  /// **'rest'**
+  String get restWord;
+
+  /// No description provided for @totalTimeColon.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Time:'**
+  String get totalTimeColon;
+
+  /// No description provided for @exercisesPlusRest.
+  ///
+  /// In en, this message translates to:
+  /// **'Exercises + Rest'**
+  String get exercisesPlusRest;
+
+  /// No description provided for @letsGoFire.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s Go!'**
+  String get letsGoFire;
+
+  /// No description provided for @totalWithTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {time} (Exercises + Rest)'**
+  String totalWithTime(String time);
 }
 
 class _AppLocalizationsDelegate

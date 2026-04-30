@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibration/vibration.dart';
+import '../data/gym_workout_notification_service.dart';
 
 // ===== CONSTANTS =====
 class WorkoutConstants {
-  static const int defaultWorkDuration = 60;
+  static const int defaultWorkDuration = 45;
   static const int defaultRestDuration = 30;
   static const int defaultExercises = 1;
   static const int defaultRounds = 3;
@@ -119,18 +120,39 @@ class WorkoutController extends StateNotifier<WorkoutState> {
   DateTime? _workoutStartTime;
   DateTime? _pausedAt;
   int _lastCountdownSpoken = 0;
-  
+
+  // Notification service
+  final _notifService = GymWorkoutNotificationService();
+  StreamSubscription<String>? _notifActionSub;
+
   // TTS
   final FlutterTts _tts = FlutterTts();
-  bool _isSpeaking = false;
+  String _languageCode = 'en';
+  String _lastTtsLang = '';
+
+  void setLocale(String languageCode) {
+    _languageCode = languageCode;
+  }
 
   Future<void> _init() async {
     // Initialize TTS
     try {
-      await _tts.setLanguage('en-US');
-      await _tts.setSpeechRate(0.5);
       await _tts.setVolume(1.0);
+      await _tts.setSpeechRate(0.5);
       await _tts.setPitch(1.0);
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        await _tts.setSharedInstance(true);
+        await _tts.setIosAudioCategory(
+          IosTextToSpeechAudioCategory.playback,
+          [IosTextToSpeechAudioCategoryOptions.defaultToSpeaker],
+          IosTextToSpeechAudioMode.defaultMode,
+        );
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        await _pickBestTtsEngine();
+      }
+      // Set a safe default language so the engine is primed
+      await _tts.setLanguage('en-US');
+      _lastTtsLang = 'en-US';
     } catch (e) {
       debugPrint('TTS Init Error: $e');
     }
@@ -138,10 +160,10 @@ class WorkoutController extends StateNotifier<WorkoutState> {
     // Load saved config
     try {
       final prefs = await SharedPreferences.getInstance();
-      final work = prefs.getInt('workDuration') ?? WorkoutConstants.defaultWorkDuration;
-      final rest = prefs.getInt('restDuration') ?? WorkoutConstants.defaultRestDuration;
-      final exercises = prefs.getInt('totalExercises') ?? WorkoutConstants.defaultExercises;
-      final rounds = prefs.getInt('totalRounds') ?? WorkoutConstants.defaultRounds;
+      final work = (prefs.getInt('workDuration') ?? WorkoutConstants.defaultWorkDuration).clamp(5, 3600);
+      final rest = (prefs.getInt('restDuration') ?? WorkoutConstants.defaultRestDuration).clamp(5, 3600);
+      final exercises = (prefs.getInt('totalExercises') ?? WorkoutConstants.defaultExercises).clamp(1, 20);
+      final rounds = (prefs.getInt('totalRounds') ?? WorkoutConstants.defaultRounds).clamp(1, 50);
       final cues = prefs.getBool('hiitVoiceCuesEnabled') ?? true;
       final haptics = prefs.getBool('hiitHapticsEnabled') ?? true;
 
@@ -162,6 +184,9 @@ class WorkoutController extends StateNotifier<WorkoutState> {
   @override
   void dispose() {
     _timer?.cancel();
+    _notifActionSub?.cancel();
+    _notifService.stop();
+    _notifService.dispose();
     _tts.stop();
     super.dispose();
   }
@@ -184,18 +209,20 @@ class WorkoutController extends StateNotifier<WorkoutState> {
          _speakInitial();
       }
     } else if (state.status == WorkoutStatus.paused) {
-      _speak("Let's go");
+      _speak(_isAr ? 'هيا بنا' : "Let's go");
     }
 
     state = state.copyWith(status: WorkoutStatus.running);
     _startTimer();
+    _startNotification();
   }
 
   void pause() {
     _timer?.cancel();
     _pausedAt = DateTime.now();
     state = state.copyWith(status: WorkoutStatus.paused);
-    _speak('Paused');
+    _speak(_isAr ? 'متوقف' : 'Paused');
+    _updateNotification(isPaused: true);
   }
 
   void toggle() {
@@ -212,7 +239,10 @@ class WorkoutController extends StateNotifier<WorkoutState> {
     _workoutStartTime = null;
     _pausedAt = null;
     _lastCountdownSpoken = 0;
-    
+    _notifActionSub?.cancel();
+    _notifActionSub = null;
+    _notifService.stop();
+
     state = state.copyWith(
       status: WorkoutStatus.idle,
       phase: WorkoutPhase.work,
@@ -230,26 +260,9 @@ class WorkoutController extends StateNotifier<WorkoutState> {
     _advancePhase(silent: true);
   }
 
-  void handleAppResumed() {
-    if (state.status != WorkoutStatus.running || _pausedAt == null) return;
-    
-    final now = DateTime.now();
-    final backgroundDuration = now.difference(_pausedAt!);
-    _pausedAt = null;
-    
-    // Calculate how many phases passed while backgrounded
-    _catchUpPhases(backgroundDuration.inSeconds);
-    
-    // Resume timer
-    _startTimer();
-  }
+  void handleAppResumed() {}
 
-  void handleAppPaused() {
-    if (state.status == WorkoutStatus.running) {
-      _pausedAt = DateTime.now();
-      _timer?.cancel();
-    }
-  }
+  void handleAppPaused() {}
 
   Future<void> updateConfig({
     int? workDuration,
@@ -259,10 +272,10 @@ class WorkoutController extends StateNotifier<WorkoutState> {
   }) async {
     // Apply changes to state first
     state = state.copyWith(
-      workDuration: workDuration ?? state.workDuration,
-      restDuration: restDuration ?? state.restDuration,
-      totalExercises: totalExercises ?? state.totalExercises,
-      totalRounds: totalRounds ?? state.totalRounds,
+      workDuration: workDuration != null ? workDuration.clamp(5, 3600) : state.workDuration,
+      restDuration: restDuration != null ? restDuration.clamp(5, 3600) : state.restDuration,
+      totalExercises: totalExercises != null ? totalExercises.clamp(1, 20) : state.totalExercises,
+      totalRounds: totalRounds != null ? totalRounds.clamp(1, 50) : state.totalRounds,
     );
     
     // Recalculate remaining seconds if:
@@ -343,7 +356,8 @@ class WorkoutController extends StateNotifier<WorkoutState> {
         totalWorkSeconds: state.phase == WorkoutPhase.work ? state.totalWorkSeconds + 1 : state.totalWorkSeconds,
         totalRestSeconds: state.phase == WorkoutPhase.rest ? state.totalRestSeconds + 1 : state.totalRestSeconds,
       );
-      
+      _updateNotification();
+
       // Countdown speech
       if (remaining >= 1 && remaining <= WorkoutConstants.countdownStart) {
         _speakCountdown(remaining);
@@ -356,51 +370,19 @@ class WorkoutController extends StateNotifier<WorkoutState> {
     }
   }
 
-  void _catchUpPhases(int backgroundSeconds) {
-    if (_phaseStartTime == null) return;
-    
-    int timeToProcess = backgroundSeconds;
-    
-    while (timeToProcess > 0 && state.status == WorkoutStatus.running) {
-      final remainingInPhase = state.currentPhaseDuration - 
-          DateTime.now().difference(_phaseStartTime!).inSeconds + timeToProcess;
-      
-      if (remainingInPhase <= 0) {
-        // This phase ended during background
-        final phaseTime = state.currentPhaseDuration;
-        timeToProcess -= phaseTime;
-        _advancePhase(silent: true);
-        
-        if (state.status == WorkoutStatus.finished) break;
-      } else {
-        // Still in this phase
-        break;
-      }
-    }
-    
-    // Recalculate remaining
-    if (_phaseStartTime != null && state.status == WorkoutStatus.running) {
-      final elapsed = DateTime.now().difference(_phaseStartTime!).inSeconds;
-      final remaining = (state.currentPhaseDuration - elapsed).clamp(0, state.currentPhaseDuration);
-      state = state.copyWith(remainingSeconds: remaining);
-    }
-  }
-
   void _advancePhase({required bool silent}) {
     if (state.phase == WorkoutPhase.work) {
-      // Work -> Rest
       _phaseStartTime = DateTime.now();
       state = state.copyWith(
         phase: WorkoutPhase.rest,
         remainingSeconds: state.restDuration,
       );
-      
+      _updateNotification();
       if (!silent) {
         Future.delayed(const Duration(milliseconds: 600), () => _speakRest());
         _vibratePhaseChange();
       }
     } else {
-      // Rest -> Work (next round/exercise)
       if (state.currentRound < state.totalRounds) {
         _phaseStartTime = DateTime.now();
         state = state.copyWith(
@@ -408,7 +390,7 @@ class WorkoutController extends StateNotifier<WorkoutState> {
           currentRound: state.currentRound + 1,
           remainingSeconds: state.workDuration,
         );
-        
+        _updateNotification();
         if (!silent) {
           Future.delayed(const Duration(milliseconds: 600), () => _speakWork());
           _vibratePhaseChange();
@@ -421,71 +403,149 @@ class WorkoutController extends StateNotifier<WorkoutState> {
           currentRound: 1,
           remainingSeconds: state.workDuration,
         );
-        
+        _updateNotification();
         if (!silent) {
-          _speak('Next exercise, Exercise ${state.currentExercise}');
+          _speak(_isAr
+              ? 'التمرين التالي، التمرين ${_arNum(state.currentExercise)}'
+              : 'Next exercise, Exercise ${state.currentExercise}');
           _vibratePhaseChange();
         }
       } else {
-        // Workout complete
         _timer?.cancel();
+        _notifActionSub?.cancel();
+        _notifActionSub = null;
+        _notifService.stop();
         state = state.copyWith(status: WorkoutStatus.finished);
-        
         if (!silent) {
-          _speak('Workout complete, Great job');
+          _speak(_isAr ? 'اكتملت التمرين، عمل رائع' : 'Workout complete, Great job');
           _vibrateComplete();
         }
       }
     }
   }
 
+  // ===== NOTIFICATION HELPERS =====
+
+  GymWorkoutStats _buildStats({bool isPaused = false}) => GymWorkoutStats(
+        phase: state.phase == WorkoutPhase.work ? 'Work' : 'Rest',
+        currentRound: state.currentRound,
+        totalRounds: state.totalRounds,
+        currentExercise: state.currentExercise,
+        totalExercises: state.totalExercises,
+        remainingSeconds: state.remainingSeconds,
+        isPaused: isPaused,
+      );
+
+  void _startNotification() {
+    _notifActionSub?.cancel();
+    _notifActionSub = _notifService.actionStream.listen((action) {
+      switch (action) {
+        case 'pause':
+          if (state.status == WorkoutStatus.running) pause();
+        case 'resume':
+          if (state.status == WorkoutStatus.paused) start();
+        case 'finish':
+          reset();
+      }
+    });
+    _notifService.start(stats: _buildStats());
+  }
+
+  void _updateNotification({bool isPaused = false}) {
+    _notifService.update(stats: _buildStats(isPaused: isPaused));
+  }
+
   // ===== TTS HELPERS =====
+
+  bool get _isAr => _languageCode == 'ar';
+
+  Future<void> _pickBestTtsEngine() async {
+    try {
+      final engines = await _tts.getEngines as List?;
+      if (engines == null || engines.isEmpty) return;
+      // com.svox.pico does not support Arabic — exclude it from preference list
+      const preferred = [
+        'com.google.android.tts',
+        'com.samsung.SMT',
+        'com.samsung.android.app.tts',
+      ];
+      for (final pref in preferred) {
+        final match = engines.cast<String?>().firstWhere(
+          (e) => e != null && (e == pref || e.contains(pref.split('.').last)),
+          orElse: () => null,
+        );
+        if (match != null) {
+          await _tts.setEngine(match);
+          debugPrint('TTS engine (workout): $match');
+          return;
+        }
+      }
+      // Fall back to whatever is available, skipping pico
+      final fallback = engines.cast<String?>().firstWhere(
+        (e) => e != null && !e.toString().contains('pico'),
+        orElse: () => engines.first as String?,
+      );
+      if (fallback != null) await _tts.setEngine(fallback);
+    } catch (e) {
+      debugPrint('TTS engine pick error: $e');
+    }
+  }
 
   Future<void> _speak(String text) async {
     if (!state.voiceCuesEnabled) return;
-    
     try {
+      final lang = _isAr ? 'ar-EG' : 'en-US';
       await _tts.stop();
+      if (_lastTtsLang != lang) {
+        await _tts.setLanguage(lang);
+        await _tts.setSpeechRate(0.5);
+        await _tts.setVolume(1.0);
+        await _tts.setPitch(1.0);
+        _lastTtsLang = lang;
+      }
       await _tts.speak(text);
     } catch (e) {
       debugPrint('TTS error: $e');
     }
   }
 
+  String _arNum(int n) {
+    const words = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة', 'عشرة'];
+    return n >= 1 && n <= 10 ? words[n] : '$n';
+  }
+
   Future<void> _speakInitial() async {
-    await _speak("Round ${state.currentRound}, Let's work");
+    await _speak(_isAr
+        ? "الجولة ${_arNum(state.currentRound)}، هيا نعمل"
+        : "Round ${state.currentRound}, Let's work");
   }
 
   void _speakWork() async {
     final halfRound = (state.totalRounds / 2).ceil();
     if (state.currentRound == state.totalRounds && state.totalRounds > 1) {
-      await _speak('Final round, Give it all');
+      await _speak(_isAr ? 'الجولة الأخيرة، أعطِ كل ما لديك' : 'Final round, Give it all');
     } else if (state.totalRounds > 2 && state.currentRound == halfRound) {
-      await _speak('Round ${state.currentRound}, Halfway there');
+      await _speak(_isAr ? 'الجولة ${_arNum(state.currentRound)}، في المنتصف' : 'Round ${state.currentRound}, Halfway there');
     } else {
-      await _speak('Round ${state.currentRound}, Work');
+      await _speak(_isAr ? 'الجولة ${_arNum(state.currentRound)}، اعمل' : 'Round ${state.currentRound}, Work');
     }
   }
 
   void _speakRest() async {
     if (state.isLastRound) {
-      await _speak('Last rest, Almost done');
+      await _speak(_isAr ? 'آخر استراحة، اقتربت من النهاية' : 'Last rest, Almost done');
     } else {
-      await _speak('Rest');
+      await _speak(_isAr ? 'استراحة' : 'Rest');
     }
   }
 
   void _speakCountdown(int seconds) {
     if (seconds == _lastCountdownSpoken) return;
     _lastCountdownSpoken = seconds;
-
     if (seconds >= 1 && seconds <= 3) {
-      _speak('$seconds');
+      const arWords = ['', 'واحد', 'اثنان', 'ثلاثة'];
+      _speak(_isAr ? arWords[seconds] : '$seconds');
     }
-  }
-
-  void _speakComplete() {
-    _speak('Done, Great job');
   }
 
   // ===== HAPTICS HELPERS =====

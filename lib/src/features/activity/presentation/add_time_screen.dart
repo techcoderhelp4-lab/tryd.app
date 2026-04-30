@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
-import '../../../../widgets/custom_clock_icon.dart';
 import '../../../../widgets/gradient_button.dart';
-import '../../home/presentation/home_screen.dart';
-import 'running_screen.dart';
-import '../../rewards/presentation/rewards_screen.dart';
-import '../../club/presentation/club_screen.dart';
-import '../../../../core/utils/responsive_utils.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
+import '../../../../widgets/swipe_to_pop_wrapper.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../shell/main_shell.dart' show mainNavTapProvider;
 
-class AddTimeScreen extends StatefulWidget {
+// Large multiplier for infinite-loop illusion
+const int _kLoopMultiplier = 500;
+
+class AddTimeScreen extends ConsumerStatefulWidget {
   final String title;
   final int initialSeconds;
 
@@ -22,166 +24,131 @@ class AddTimeScreen extends StatefulWidget {
   });
 
   @override
-  State<AddTimeScreen> createState() => _AddTimeScreenState();
+  ConsumerState<AddTimeScreen> createState() => _AddTimeScreenState();
 }
 
-class _AddTimeScreenState extends State<AddTimeScreen> {
-  final int _selectedIndex = 3; // Workout tab
-  int _currentSeconds = 600; // Default 10 minutes (600 seconds)
+class _AddTimeScreenState extends ConsumerState<AddTimeScreen> {
+  static const _accent   = Color(0xFF900EBF);
+  static const _primary  = Color(0xFF24252C);
+
+  final int _tabIndex = 3;
+
+  late FixedExtentScrollController _mCtrl;
+  late FixedExtentScrollController _sCtrl;
+
+  static const int _mCount = 61; // 0–60 minutes
+  static const int _sStep  = 5;
+  static const int _sCount = 12; // 0,5,10,...,55
+
+  int _minutes = 0;
+  int _seconds = 0;
+
+  bool get _secsDisabled => _minutes == 60;
+  int get _sIndex => _seconds ~/ _sStep;
+  int get _totalSeconds => _minutes * 60 + (_secsDisabled ? 0 : _seconds);
 
   @override
   void initState() {
     super.initState();
-    // Initialize with passed value if available, or default, snap to nearest 15
-    int initial = widget.initialSeconds;
-    if (initial <= 0) initial = 600;
-    _currentSeconds = (initial / 15).round() * 15;
-    if (_currentSeconds < 15) _currentSeconds = 15;
-    if (_currentSeconds > 3600) _currentSeconds = 3600;
+    int init = widget.initialSeconds;
+    if (init <= 0) init = 45;
+    init = init.clamp(5, 3600);
+
+    _minutes = (init ~/ 60).clamp(0, 60);
+    _seconds = _minutes == 60 ? 0 : ((init % 60) ~/ _sStep * _sStep).clamp(0, 55);
+
+    _mCtrl = FixedExtentScrollController(initialItem: (_kLoopMultiplier ~/ 2) * _mCount + _minutes);
+    _sCtrl = FixedExtentScrollController(initialItem: (_kLoopMultiplier ~/ 2) * _sCount + _sIndex);
   }
 
-  void _updateTime(double position, double width) {
-    // Map position to 15s - 60 minutes (3600s)
-    final normalizedPosition = (position / width).clamp(0.0, 1.0);
-    
-    // Calculate total seconds, snapped to 15s intervals
-    int seconds = (normalizedPosition * 3600 / 15).round() * 15;
-    
-    // Clamp between 15s and 60m
-    seconds = seconds.clamp(15, 3600);
-    
-    if (_currentSeconds != seconds) {
-      setState(() {
-        _currentSeconds = seconds;
-      });
-    }
+  @override
+  void dispose() {
+    _mCtrl.dispose();
+    _sCtrl.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ── Responsive Scale ──────────────────────────────────
-    final size = MediaQuery.of(context).size;
-    final screenWidth = size.width;
-    final screenHeight = size.height;
-    final isTablet = screenWidth > 600;
+    final size        = MediaQuery.of(context).size;
+    final isTablet    = size.width > 600;
+    final h           = size.height;
+    final scale       = isTablet ? 1.3 : h < 680 ? 0.85 : h < 850 ? 0.98 : 0.95;
+    final l10n        = AppLocalizations.of(context)!;
+    final isRTL       = Localizations.localeOf(context).languageCode == 'ar';
+    final fontScale   = isRTL ? 1.2 : 1.0;
 
-    const double smallScale  = 0.85;
-    const double mediumScale = 0.98;
-    const double largeScale  = 0.95;
-    const double tabletScale = 1.30;
-
-    final double scale = isTablet
-        ? tabletScale
-        : screenHeight < 680
-            ? smallScale
-            : screenHeight < 850
-                ? mediumScale
-                : largeScale;
-
-    final l10n = AppLocalizations.of(context)!;
-    final isRTL = Localizations.localeOf(context).languageCode == 'ar';
-    final fontScale = isRTL ? 1.2 : 1.0;
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // Background gradient image
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.8,
-              child: Image.asset(
-                'assets/images/bg-gradient.png',
-                fit: BoxFit.cover,
+    return SwipeToPopWrapper(
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.8,
+                child: Image.asset('assets/images/bg-gradient.png', fit: BoxFit.cover),
               ),
             ),
-          ),
-
-          // Main content
-          SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                SizedBox(height: 10.0 * scale),
-                _buildHeader(context, isTablet, scale, isRTL, fontScale),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: EdgeInsets.only(bottom: 120.0 * scale),
-                      child: Column(
-                        children: [
-                          SizedBox(height: (isTablet ? 40.0 : 30.0) * scale),
-                          _buildClockIcon(scale),
-                          SizedBox(height: (isTablet ? 40.0 : 30.0) * scale),
-                          _buildTimeDisplay(scale, l10n, isRTL, fontScale),
-                          SizedBox(height: (isTablet ? 50.0 : 40.0) * scale),
-                          _buildWaveformSlider(scale),
-                          SizedBox(height: (isTablet ? 50.0 : 40.0) * scale),
-                          _buildContinueButton(scale, l10n, isRTL, fontScale),
-                          SizedBox(height: 20.0 * scale),
-                        ],
+            SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  SizedBox(height: 10.0 * scale),
+                  _header(context, isTablet, scale, isRTL, fontScale),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 120.0 * scale),
+                        child: Column(
+                          children: [
+                            SizedBox(height: 28.0 * scale),
+                            _clockBadge(scale),
+                            SizedBox(height: 32.0 * scale),
+                            _picker(scale, fontScale, l10n),
+                            SizedBox(height: 40.0 * scale),
+                            _continueBtn(scale, l10n, isRTL, fontScale),
+                            SizedBox(height: 20.0 * scale),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          
-          // Bottom Navigation
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: CustomBottomNavigation(
-              currentIndex: _selectedIndex,
-              onTap: (index) {
-                if (index == 3) {
-                  Navigator.pop(context);
-                  return;
-                }
-                
-                Widget? page;
-                switch (index) {
-                  case 0: page = const HomeScreen(); break;
-                  case 1: page = const RunningScreen(); break;
-                  case 2: page = const RewardsScreen(); break;
-                  case 4: page = const ClubScreen(); break;
-                }
-                
-                if (page != null) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => page!),
-                  );
-                }
-              },
+            Positioned(
+              left: 0, right: 0, bottom: 0,
+              child: CustomBottomNavigation(
+                currentIndex: _tabIndex,
+                onTap: (i) {
+                  if (i == 3) { Navigator.of(context).pop(); return; }
+                  Navigator.of(context).popUntil((r) => r.isFirst);
+                  ref.read(mainNavTapProvider)?.call(i);
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isTablet, double scale, bool isRTL, double fontScale) {
+  // ── Header ────────────────────────────────────────────────
+  Widget _header(BuildContext ctx, bool isTablet, double scale, bool isRTL, double fontScale) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: (isTablet ? 20.0 : 26.0) * scale),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () => Navigator.pop(ctx),
             child: SizedBox(
-              width: 40.0 * scale,
-              height: 40.0 * scale,
+              width: 40.0 * scale, height: 40.0 * scale,
               child: Center(
-                child: Transform.scale(
-                  scaleX: isRTL ? -1.0 : 1.0,
-                  child: SvgPicture.asset(
-                    'assets/images/back_arrow_icon.svg',
-                    width: 24.0 * scale,
-                    height: 24.0 * scale,
-                  ),
+                child: SvgPicture.asset(
+                  'assets/images/back_arrow_icon.svg',
+                  width: 24.0 * scale, height: 24.0 * scale,
+                  matchTextDirection: true,
                 ),
               ),
             ),
@@ -189,16 +156,8 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
           Text(
             widget.title,
             style: isRTL
-                ? GoogleFonts.cairo(
-                    fontSize: 19.0 * scale * fontScale,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF24252C),
-                  )
-                : GoogleFonts.lexendDeca(
-                    fontSize: 19.0 * scale,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF24252C),
-                  ),
+                ? GoogleFonts.cairo(fontSize: 19.0 * scale * fontScale, fontWeight: FontWeight.w700, color: _primary)
+                : GoogleFonts.lexendDeca(fontSize: 19.0 * scale, fontWeight: FontWeight.w600, color: _primary),
           ),
           SizedBox(width: 40.0 * scale),
         ],
@@ -206,113 +165,149 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
     );
   }
 
-  Widget _buildClockIcon(double scale) {
+  // ── Clock badge ───────────────────────────────────────────
+  Widget _clockBadge(double scale) {
     return Container(
-      width: 148.0 * scale,
-      height: 148.0 * scale,
+      width: 110.0 * scale, height: 110.0 * scale,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(
-          color: const Color(0xFFFFD66B),
-          width: 2.0 * scale,
-        ),
+        border: Border.all(color: const Color(0xFFFFD66B), width: 2.0 * scale),
       ),
       child: Container(
-        margin: EdgeInsets.all(12.0 * scale),
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Color(0xFF900EBF),
-        ),
+        margin: EdgeInsets.all(9.0 * scale),
+        decoration: const BoxDecoration(shape: BoxShape.circle, color: _accent),
         child: Center(
-          child: CustomClockIcon(
-            size: 80.0 * scale,
-            color: Colors.white,
-          ),
+          child: Icon(Icons.access_time_rounded, size: 44.0 * scale, color: Colors.white),
         ),
       ),
     );
   }
 
-  Widget _buildTimeDisplay(double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
-    int minutes = _currentSeconds ~/ 60;
-    int seconds = _currentSeconds % 60;
+  // ── Picker ────────────────────────────────────────────────
+  Widget _picker(double scale, double fontScale, AppLocalizations l10n) {
+    const itemH = 58.0;
+    final itemHeight = itemH * scale;
+    final pickerH    = itemHeight * 5;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Text(
-          '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-          style: GoogleFonts.lexend(
-            fontSize: 40.0 * scale,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF221F48),
-          ),
-        ),
-        SizedBox(width: 8.0 * scale),
-        Text(
-          l10n.minsSuffix,
-          style: isRTL
-              ? GoogleFonts.cairo(
-                  fontSize: 14.0 * scale * fontScale,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF221F48),
-                )
-              : GoogleFonts.roboto(
-                  fontSize: 14.0 * scale,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF221F48),
-                ),
-        ),
-      ],
+    final labelStyle = GoogleFonts.lexend(
+      fontSize: 11.0 * scale,
+      fontWeight: FontWeight.w700,
+      color: _accent,
+      letterSpacing: 1.2,
     );
-  }
 
-  Widget _buildWaveformSlider(double scale) {
+    final sepStyle = GoogleFonts.lexend(
+      fontSize: 30.0 * scale,
+      fontWeight: FontWeight.w200,
+      color: _primary.withValues(alpha: 0.25),
+      height: 1.0,
+    );
+
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 15.0 * scale),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          
-          return Column(
+      padding: EdgeInsets.symmetric(horizontal: 20.0 * scale),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(24.0 * scale),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24.0 * scale),
+          child: Column(
             children: [
-              GestureDetector(
-                onHorizontalDragUpdate: (details) {
-                  _updateTime(details.localPosition.dx, width);
-                },
-                onTapDown: (details) {
-                  _updateTime(details.localPosition.dx, width);
-                },
-                child: SizedBox(
-                  width: width,
-                  height: 52.0 * scale,
-                  child: CustomPaint(
-                    size: Size(width, 52.0 * scale),
-                    painter: _WaveformPainter(progress: _currentSeconds / 3600, scale: scale),
-                  ),
+              SizedBox(
+                height: pickerH,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Selection lines
+                    Positioned(
+                      top: (pickerH - itemHeight) / 2,
+                      left: 12.0 * scale, right: 12.0 * scale,
+                      child: Container(height: 1.5, color: _accent.withValues(alpha: 0.35)),
+                    ),
+                    Positioned(
+                      top: (pickerH + itemHeight) / 2 - 1.5,
+                      left: 12.0 * scale, right: 12.0 * scale,
+                      child: Container(height: 1.5, color: _accent.withValues(alpha: 0.35)),
+                    ),
+
+                    // Columns + separator — always LTR so MIN stays left, SEC stays right
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Minutes
+                        Expanded(
+                          child: _InfinitePickerColumn(
+                            controller: _mCtrl,
+                            itemHeight: itemHeight,
+                            itemCount: _mCount,
+                            loopMultiplier: _kLoopMultiplier,
+                            selectedValue: _minutes,
+                            valueAt: (i) => i.toString().padLeft(2, '0'),
+                            onChanged: (i) {
+                              HapticFeedback.selectionClick();
+                              final mins = i % _mCount;
+                              setState(() {
+                                _minutes = mins;
+                                // snap seconds to 0 when 60 min selected
+                                if (_secsDisabled) _seconds = 0;
+                              });
+                            },
+                            scale: scale,
+                            fontScale: fontScale,
+                          ),
+                        ),
+                        Text(':', style: sepStyle),
+                        // Seconds — disabled at 60 min
+                        Expanded(
+                          child: AnimatedOpacity(
+                            opacity: _secsDisabled ? 0.25 : 1.0,
+                            duration: const Duration(milliseconds: 200),
+                            child: IgnorePointer(
+                              ignoring: _secsDisabled,
+                              child: _InfinitePickerColumn(
+                                controller: _sCtrl,
+                                itemHeight: itemHeight,
+                                itemCount: _sCount,
+                                loopMultiplier: _kLoopMultiplier,
+                                selectedValue: _secsDisabled ? 0 : _sIndex,
+                                valueAt: (i) => (i * _sStep).toString().padLeft(2, '0'),
+                                onChanged: (i) {
+                                  HapticFeedback.selectionClick();
+                                  setState(() => _seconds = (i % _sCount) * _sStep);
+                                },
+                                scale: scale,
+                                fontScale: fontScale,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(height: 12.0 * scale),
-              GestureDetector(
-                onHorizontalDragUpdate: (details) {
-                  _updateTime(details.localPosition.dx, width);
-                },
-                onTapDown: (details) {
-                  _updateTime(details.localPosition.dx, width);
-                },
-                child: SizedBox(
-                  width: width,
-                  height: 17.0 * scale,
-                  child: Stack(
+
+              // Labels bar
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10.0 * scale),
+                  child: Row(
                     children: [
-                      // Arrow indicator position
-                      Positioned(
-                        left: ((_currentSeconds / 3600) * width - 8.5 * scale).clamp(0.0, width - 17.0 * scale),
-                        child: CustomPaint(
-                          size: Size(17.0 * scale, 17.0 * scale),
-                          painter: _TrianglePainter(),
+                      Expanded(child: Center(child: Text(l10n.minutesShort, style: labelStyle))),
+                      SizedBox(width: 16.0 * scale),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            l10n.secondsShort,
+                            style: labelStyle.copyWith(
+                              color: _secsDisabled ? _accent.withValues(alpha: 0.25) : _accent,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -320,136 +315,91 @@ class _AddTimeScreenState extends State<AddTimeScreen> {
                 ),
               ),
             ],
-          );
-        }
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildContinueButton(double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
+  // ── Continue button ───────────────────────────────────────
+  Widget _continueBtn(double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
+    final total = _totalSeconds.clamp(5, 3600);
+    final isValid = _totalSeconds > 0;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 36.0 * scale),
       child: GradientButton(
         text: l10n.continueButton,
-        onPressed: () {
-          Navigator.pop(context, _currentSeconds);
-        },
+        onPressed: () => Navigator.pop(context, total),
         height: 58.0 * scale,
+        enabled: isValid,
         textStyle: isRTL
-            ? GoogleFonts.cairo(
-                fontSize: 19.0 * fontScale,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              )
+            ? GoogleFonts.cairo(fontSize: 19.0 * fontScale, fontWeight: FontWeight.w600, color: Colors.white)
             : null,
       ),
     );
   }
 }
 
-class _WaveformPainter extends CustomPainter {
-  final double progress; // 0.0 to 1.0
+// ── Infinite looping picker column ────────────────────────────
+class _InfinitePickerColumn extends StatelessWidget {
+  static const _primary = Color(0xFF24252C);
+
+  final FixedExtentScrollController controller;
+  final double itemHeight;
+  final int itemCount;
+  final int loopMultiplier;
+  final int selectedValue; // actual 0..itemCount-1 index
+  final String Function(int) valueAt;
+  final ValueChanged<int> onChanged;
   final double scale;
+  final double fontScale;
 
-  _WaveformPainter({required this.progress, required this.scale});
+  const _InfinitePickerColumn({
+    required this.controller,
+    required this.itemHeight,
+    required this.itemCount,
+    required this.loopMultiplier,
+    required this.selectedValue,
+    required this.valueAt,
+    required this.onChanged,
+    required this.scale,
+    required this.fontScale,
+  });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..strokeWidth = 1 * scale
-      ..strokeCap = StrokeCap.round;
+  Widget build(BuildContext context) {
+    final totalItems = itemCount * loopMultiplier;
 
-    final spacing = size.width / 74; // Dynamic spacing based on width
-    final totalBars = 74;
-    double x = 0;
+    return CupertinoPicker.builder(
+      scrollController: controller,
+      itemExtent: itemHeight,
+      selectionOverlay: const SizedBox.shrink(),
+      backgroundColor: Colors.transparent,
+      diameterRatio: 1.6,
+      squeeze: 1.0,
+      magnification: 1.08,
+      useMagnifier: true,
+      onSelectedItemChanged: onChanged,
+      childCount: totalItems,
+      itemBuilder: (context, globalIndex) {
+        final i          = globalIndex % itemCount;
+        final isSelected = i == selectedValue;
+        final distance   = (i - selectedValue).abs();
+        final distWrap   = distance > itemCount / 2 ? itemCount - distance : distance;
+        final opacity    = isSelected ? 1.0 : distWrap == 1 ? 0.5 : 0.22;
 
-    // Map progress to bar position
-    final selectedBarIndex = (progress * (totalBars - 1)).round();
-
-    for (int i = 0; i < totalBars; i++) {
-      // Calculate distance from selected bar
-      final distanceFromSelected = (i - selectedBarIndex).abs();
-
-      // Determine bar height based on distance from selection with smooth gradients
-      double barHeight;
-      if (i == selectedBarIndex) {
-        barHeight = 52.0 * scale; // Main selected bar
-      } else if (distanceFromSelected == 1) {
-        barHeight = 38.0 * scale; // Immediately adjacent
-      } else if (distanceFromSelected == 2) {
-        barHeight = 32.0 * scale; // Close to selected
-      } else if (distanceFromSelected == 3) {
-        barHeight = 28.0 * scale; // Near selected
-      } else if (distanceFromSelected <= 5) {
-        barHeight = 24.0 * scale; // Medium-close
-      } else if (distanceFromSelected <= 8) {
-        barHeight = 20.0 * scale; // Medium distance
-      } else if (i % 5 == 0) {
-        barHeight = 22.0 * scale; // Every 5th bar slightly taller
-      } else if (i % 10 == 0) {
-        barHeight = 26.0 * scale; // Every 10th bar even taller
-      } else {
-        barHeight = 16.0 * scale; // Default short bars
-      }
-
-      // Determine color based on distance from selection with smooth transitions
-      if (i == selectedBarIndex) {
-        paint.color = const Color(0xFFFF004A);
-        paint.strokeWidth = 2.5 * scale;
-      } else if (distanceFromSelected == 1) {
-        paint.color = const Color(0xFFFC1857);
-        paint.strokeWidth = 2 * scale;
-      } else if (distanceFromSelected <= 3) {
-        paint.color = const Color(0xFFF95383);
-        paint.strokeWidth = 1.5 * scale;
-      } else if (distanceFromSelected <= 6) {
-        paint.color = const Color(0xFFFC7EA0);
-        paint.strokeWidth = 1.2 * scale;
-      } else {
-        paint.color = const Color(0xFFFF96B5);
-        paint.strokeWidth = 1 * scale;
-      }
-
-      // Special case: if value is minimum (15s ~= 0 on large scale), don't hide the bar
-      if (progress < 0.01 && i == 0) {
-         paint.color = const Color(0xFFFF004A);
-         paint.strokeWidth = 2.5 * scale;
-         barHeight = 52.0 * scale;
-      }
-
-      final y1 = (size.height - barHeight) / 2;
-      final y2 = y1 + barHeight;
-
-      canvas.drawLine(
-        Offset(x, y1),
-        Offset(x, y2),
-        paint,
-      );
-
-      x += spacing;
-    }
+        return Center(
+          child: Text(
+            valueAt(i),
+            style: GoogleFonts.lexend(
+              fontSize: (isSelected ? 28.0 : 23.0) * scale * fontScale,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+              color: _primary.withValues(alpha: opacity),
+              height: 1.0,
+            ),
+          ),
+        );
+      },
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant _WaveformPainter oldDelegate) => true;
-}
-
-class _TrianglePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFF83A71)
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    path.moveTo(size.width / 2, 0);
-    path.lineTo(0, size.height);
-    path.lineTo(size.width, size.height);
-    path.close();
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

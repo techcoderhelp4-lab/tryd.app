@@ -6,13 +6,14 @@ import '../../../../widgets/custom_arrow_icon.dart';
 import '../../../../widgets/custom_chevron_icon.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_constants.dart';
-import '../../auth/data/auth_repository.dart';
 import '../../auth/presentation/auth_screen.dart';
 import '../../notifications/data/real_time_notification_service.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
 import '../../../../main.dart' show localeProvider;
-
+import '../../../../widgets/swipe_to_pop_wrapper.dart';
+import '../../../../widgets/custom_bottom_navigation.dart';
+import '../../../shell/main_shell.dart' show mainNavTapProvider;
 // ── Notification Preferences Provider ────────────────
 final notificationPrefsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final dio = ref.read(apiClientProvider);
@@ -293,7 +294,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     final horizontalPadding = 18.0 * scale;
 
-    return Scaffold(
+    return SwipeToPopWrapper(child: Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
@@ -323,12 +324,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           width: 40.0 * scale,
                           height: 40.0 * scale,
                           alignment: Alignment.center,
-                          child: Transform.scale(
-                            scaleX: isAr ? 1.0 : -1.0,
-                            child: CustomArrowIcon(
-                              size: 28.0 * scale,
-                              color: const Color(0xFF130F26),
-                            ),
+                          child: CustomArrowIcon(
+                            size: 28.0 * scale,
+                            color: const Color(0xFF130F26),
                           ),
                         ),
                       ),
@@ -408,6 +406,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             scale: scale,
                             fontScale: fontScale,
                             isAr: isAr,
+                            onTap: () {
+                              showAboutDialog(
+                                context: context,
+                                applicationName: 'Tryd',
+                                applicationVersion: '1.0.0',
+                                applicationLegalese: '© 2024 Tryd App',
+                              );
+                            },
                           ),
 
                           SizedBox(height: 32 * scale),
@@ -442,9 +448,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
+          
+          // Bottom Navigation
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: CustomBottomNavigation(
+              currentIndex: 4, // Profile/Settings tab
+              onTap: (index) {
+                if (index == 4) return;
+                Navigator.of(context).popUntil((route) => route.isFirst);
+                ref.read(mainNavTapProvider)?.call(index);
+              },
+            ),
+          ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildLangItem(double scale, double fontScale, bool isAr) {
@@ -583,10 +604,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
             ),
-            trailing ?? Transform.scale(
-              scaleX: isAr ? -1.0 : 1.0,
-              child: CustomChevronIcon(size: 10 * scale, color: _textDark),
-            ),
+            trailing ?? CustomChevronIcon(size: 10 * scale, color: _textDark),
           ],
         ),
       ),

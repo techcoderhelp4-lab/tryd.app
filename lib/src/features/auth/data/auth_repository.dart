@@ -19,6 +19,7 @@ class AuthRepository {
     required String email,
     required String password,
     required String phoneNumber,
+    String? referralCode,
   }) async {
     try {
       final response = await _dio.post(
@@ -28,6 +29,8 @@ class AuthRepository {
           'email': email,
           'password': password,
           'phoneNumber': phoneNumber,
+          if (referralCode != null && referralCode.isNotEmpty)
+            'referralCode': referralCode.trim().toUpperCase(),
         },
       );
 
@@ -35,6 +38,9 @@ class AuthRepository {
       if (authResponse.accessToken != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', authResponse.accessToken!);
+        if (authResponse.refreshToken != null) {
+          await prefs.setString('refresh_token', authResponse.refreshToken!);
+        }
       }
       return authResponse;
     } catch (e) {
@@ -59,6 +65,9 @@ class AuthRepository {
       if (authResponse.accessToken != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', authResponse.accessToken!);
+        if (authResponse.refreshToken != null) {
+          await prefs.setString('refresh_token', authResponse.refreshToken!);
+        }
       }
       return authResponse;
     } catch (e) {
@@ -82,6 +91,7 @@ class AuthRepository {
       // 2. Clear SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('auth_token');
+      await prefs.remove('refresh_token');
       await prefs.remove('workoutHistory');
       await prefs.remove('activityHistory');
       await prefs.remove('selected_language_code');
@@ -130,9 +140,24 @@ class AuthRepository {
       if (authResponse.accessToken != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', authResponse.accessToken!);
+        if (authResponse.refreshToken != null) {
+          await prefs.setString('refresh_token', authResponse.refreshToken!);
+        }
       }
-      
+
       return authResponse;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyReferralCode(String code) async {
+    try {
+      final response = await _dio.post(
+        ApiConstants.verifyReferralCode,
+        data: {'code': code.trim().toUpperCase()},
+      );
+      return response.data as Map<String, dynamic>;
     } catch (e) {
       rethrow;
     }
@@ -151,8 +176,11 @@ class AuthRepository {
       if (authResponse.accessToken != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', authResponse.accessToken!);
+        if (authResponse.refreshToken != null) {
+          await prefs.setString('refresh_token', authResponse.refreshToken!);
+        }
       }
-      
+
       return authResponse;
     } catch (e) {
       rethrow;

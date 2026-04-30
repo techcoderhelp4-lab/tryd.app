@@ -12,9 +12,6 @@ import '../../activity/presentation/workout_screen.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/presentation/auth_screen.dart';
 import '../../onboarding/presentation/start_screen.dart';
-import '../../home/presentation/home_screen.dart';
-import '../../activity/presentation/running_screen.dart';
-import '../../club/presentation/club_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import '../data/user_repository.dart';
@@ -23,6 +20,9 @@ import 'dart:io';
 import 'dart:math' as math;
 import '../../auth/presentation/controllers/auth_controller.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
+import '../../../../main.dart' show localeProvider;
+import '../../../../widgets/swipe_to_pop_wrapper.dart';
+import '../../../shell/main_shell.dart';
 
 // Responsive helper extension to cap values for larger screens
 extension ResponsiveDouble on num {
@@ -432,7 +432,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     // Base top padding for content
     final baseTopPadding = 90.0 * scale;
 
-    return Scaffold(
+    return SwipeToPopWrapper(child: Scaffold(
       backgroundColor: Colors.white,
       body: userAsync.when(
         data: (user) => Stack(
@@ -531,7 +531,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     iconColor: const Color(0xFFF83A71),
                                     onTap: () => Navigator.push(
                                       context,
-                                      MaterialPageRoute(builder: (context) => const RewardsScreen()),
+                                      MaterialPageRoute(builder: (context) => const RewardsScreen(showSwipeBack: true)),
                                     ),
                                     scale: scale,
                                     fontScale: fontScale,
@@ -557,7 +557,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     iconColor: const Color(0xFFF83A71),
                                     onTap: () => Navigator.push(
                                       context,
-                                      MaterialPageRoute(builder: (context) => const WorkoutScreen()),
+                                      MaterialPageRoute(builder: (context) => const WorkoutScreen(showSwipeBack: true)),
                                     ),
                                     scale: scale,
                                     fontScale: fontScale,
@@ -649,22 +649,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: CustomBottomNavigation(
                 currentIndex: _selectedIndex,
                 onTap: (index) {
-                  if (index == 4) return;
-                  
-                  Widget? page;
-                  switch (index) {
-                    case 0: page = const HomeScreen(); break;
-                    case 1: page = const RunningScreen(); break;
-                    case 2: page = const RewardsScreen(); break;
-                    case 3: page = const WorkoutScreen(); break;
-                  }
-                  
-                  if (page != null) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => page!),
-                    );
-                  }
+                  if (index == _selectedIndex) return;
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  ref.read(mainNavTapProvider)?.call(index);
                 },
               ),
             ),
@@ -673,7 +660,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF900EBF))),
         error: (err, stack) => _buildErrorView(err.toString(), scale, l10n, fontScale),
       ),
-    );
+    ));
   }
 
   Widget _buildErrorView(String message, double scale, AppLocalizations l10n, double fontScale) {
@@ -721,8 +708,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildHeader(BuildContext context, bool isTablet, double scale, AppLocalizations l10n, double fontScale, bool isAr) {
     // Responsive sizes for consistency
     final padding = 26.0 * scale;
-    final iconContainerSize = 40.0 * scale;
-    final arrowSize = 28.0 * scale;
     final titleSize = 19.0 * scale * fontScale;
     final logoutSize = 26.0 * scale;
     
@@ -733,19 +718,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         children: [
           GestureDetector(
             onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-              );
+              ref.read(mainTabProvider.notifier).state = 0;
+              Navigator.of(context).pop();
             },
-            child: Container(
-              width: iconContainerSize,
-              height: iconContainerSize,
-              alignment: Alignment.center,
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: 42.0 * scale,
+              height: 42.0 * scale,
               child: Transform.scale(
-                scaleX: isAr ? 1.0 : -1.0,
+                scaleX: Directionality.of(context) == TextDirection.rtl ? 1 : -1,
                 child: CustomArrowIcon(
-                  size: arrowSize,
+                  size: 42.0 * scale,
                   color: const Color(0xFF130F26),
                 ),
               ),
@@ -769,13 +752,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 );
               }
             },
-            child: Transform.scale(
-              scaleX: isAr ? -1.0 : 1.0,
-              child: Icon(
-                Icons.logout,
-                size: logoutSize,
-                color: Colors.black,
-              ),
+            child: Icon(
+              Icons.logout,
+              size: logoutSize,
+              color: Colors.black,
             ),
           ),
         ],
@@ -903,12 +883,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ],
             ),
-            Transform.scale(
-              scaleX: isAr ? -1.0 : 1.0,
-              child: CustomChevronIcon(
-                size: chevronSize,
-                color: const Color(0xFF24252C),
-              ),
+            CustomChevronIcon(
+              size: chevronSize,
+              color: const Color(0xFF24252C),
             ),
           ],
         ),

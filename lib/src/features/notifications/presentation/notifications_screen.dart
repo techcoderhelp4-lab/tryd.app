@@ -7,6 +7,7 @@ import '../data/notification_repository.dart';
 import '../domain/app_notification.dart';
 import '../../../../widgets/custom_arrow_icon.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
+import '../../../../widgets/swipe_to_pop_wrapper.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -46,7 +47,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final fontScale = Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0;
     final l10n = AppLocalizations.of(context)!;
 
-    return Scaffold(
+    return SwipeToPopWrapper(child: Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
@@ -118,7 +119,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildAppBar(BuildContext context, double scale, AppLocalizations l10n, double fontScale) {
@@ -129,16 +130,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 40.0 * scale,
-              height: 40.0 * scale,
-              alignment: Alignment.center,
-              child: Transform.scale(
-                scaleX: Localizations.localeOf(context).languageCode == 'ar' ? 1.0 : -1.0,
-                child: CustomArrowIcon(
-                  size: 24.0 * scale,
-                  color: const Color(0xFF130F26),
-                ),
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: 42.0 * scale,
+              height: 42.0 * scale,
+              child: CustomArrowIcon(
+                size: 42.0 * scale,
+                color: const Color(0xFF130F26),
               ),
             ),
           ),
@@ -225,7 +223,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           decoration: BoxDecoration(
             color: isRead ? Colors.white.withOpacity(0.9) : const Color(0xFFFDF6FF),
             borderRadius: BorderRadius.circular(16.0 * scale),
-            border: Border.all(color: Colors.black.withOpacity(0.05)),
+            border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
             boxShadow: [
               if (!isRead)
                 BoxShadow(
@@ -394,6 +392,18 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         icon = Icons.confirmation_number_outlined;
         color = const Color(0xFF4FFD5B);
         break;
+      case 'download_reward_granted':
+        icon = Icons.workspace_premium_rounded;
+        color = const Color(0xFFFFB300);
+        break;
+      case 'referral_bonus_received':
+        icon = Icons.redeem_rounded;
+        color = const Color(0xFF900EBF);
+        break;
+      case 'referral_credit_received':
+        icon = Icons.people_rounded;
+        color = const Color(0xFFF83A71);
+        break;
       default:
         icon = Icons.notifications_none_rounded;
         color = const Color(0xFF8B88B5);
@@ -403,7 +413,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       width: 42.0 * scale,
       height: 42.0 * scale,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         shape: BoxShape.circle,
       ),
       child: Icon(icon, color: color, size: 22.0 * scale),
@@ -419,7 +429,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16.0 * scale),
-          border: Border.all(color: Colors.black.withOpacity(0.05)),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

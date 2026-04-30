@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../generated/l10n/app_localizations.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../../../widgets/skeleton_loading.dart';
-import '../../../../core/utils/responsive_utils.dart';
-import '../../home/presentation/home_screen.dart';
-import '../../activity/presentation/running_screen.dart';
-import '../../rewards/presentation/rewards_screen.dart';
-import '../../activity/presentation/workout_screen.dart';
-import '../../club/presentation/club_screen.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/challenge_repository.dart';
 import '../domain/leaderboard_data.dart';
+import '../../../../widgets/swipe_to_pop_wrapper.dart';
+import '../../../shell/main_shell.dart' show mainNavTapProvider;
 
 class LeaderboardScreen extends ConsumerStatefulWidget {
   final String challengeId;
@@ -123,7 +117,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     final isRTL = Localizations.localeOf(context).languageCode == 'ar';
     final fontScale = isRTL ? 1.2 : 1.0;
 
-    return Scaffold(
+    return SwipeToPopWrapper(child: Scaffold(
       body: Stack(
         children: [
           // Background Gradient Image
@@ -229,30 +223,17 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
               currentIndex: 4,
               onTap: (index) {
                 if (index == 4) {
-                   Navigator.pop(context);
-                   return;
+                  Navigator.pop(context);
+                  return;
                 }
-
-                Widget? page;
-                switch (index) {
-                  case 0: page = const HomeScreen(); break;
-                  case 1: page = const RunningScreen(); break;
-                  case 2: page = const RewardsScreen(); break;
-                  case 3: page = const WorkoutScreen(); break;
-                }
-
-                if (page != null) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => page!),
-                  );
-                }
+                Navigator.of(context).popUntil((route) => route.isFirst);
+                ref.read(mainNavTapProvider)?.call(index);
               },
             ),
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildStickyUserRank(BuildContext context, LeaderboardData data, double scale, AppLocalizations l10n, bool isRTL) {
@@ -300,16 +281,15 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: Transform.scale(
-              scaleX: isRTL ? -1.0 : 1.0,
-              child: SvgPicture.asset(
-                'assets/images/back_arrow_icon.svg',
-                width: 24.0 * scale,
-                height: 24.0 * scale,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFF24252C),
-                  BlendMode.srcIn,
-                ),
+            behavior: HitTestBehavior.opaque,
+            child: SvgPicture.asset(
+              'assets/images/back_arrow_icon.svg',
+              width: 42.0 * scale,
+              height: 42.0 * scale,
+              matchTextDirection: true,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF24252C),
+                BlendMode.srcIn,
               ),
             ),
           ),

@@ -2,13 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../../../widgets/skeleton_loading.dart';
-import '../../activity/presentation/running_screen.dart';
 import '../../activity/presentation/activity_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
-import '../../activity/presentation/workout_screen.dart';
-import '../../club/presentation/club_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
 import '../../profile/data/user_repository.dart';
 import '../../auth/domain/user.dart';
@@ -18,9 +14,12 @@ import '../../auth/data/auth_repository.dart';
 import '../../onboarding/presentation/start_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
-import '../../../../main.dart' show localeProvider, sharedPreferencesProvider;
+import '../../../../main.dart';
+import '../../../shell/main_shell.dart';
+import '../../referral/presentation/share_earn_card.dart';
+import '../data/home_repository.dart';
+import 'package:image_picker/image_picker.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -29,38 +28,13 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _selectedIndex = 0;
-
+class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAliveClientMixin {
   @override
-  void initState() {
-    super.initState();
-    _requestLocationPermission();
-  }
-
-  Future<void> _requestLocationPermission() async {
-    // If already granted, nothing to do
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.whileInUse ||
-        permission == LocationPermission.always) return;
-
-    // If permanently denied, nothing we can do programmatically
-    if (permission == LocationPermission.deniedForever) return;
-
-    // Only ask once — track via SharedPreferences
-    final prefs = ref.read(sharedPreferencesProvider);
-    const key = 'location_permission_asked';
-    if (prefs.getBool(key) == true) return;
-
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
-
-    await prefs.setBool(key, true);
-    await Geolocator.requestPermission();
-  }
+  bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final size = MediaQuery.of(context).size;
     final screenHeight = size.height;
     final screenWidth = size.width;
@@ -90,33 +64,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final userAsync = ref.watch(userProfileProvider);
     final activityAsync = ref.watch(activitySummaryProvider('month'));
+    final bannerAsync = ref.watch(homeBannerProvider);
     final horizontalPadding = (isTablet ? 16.0 : 15.0) * scale;
     final bottomPadding = (isTablet ? 100.0 : 140.0) * scale;
 
     return Scaffold(
       backgroundColor: Colors.white,
       extendBody: true,
-      bottomNavigationBar: CustomBottomNavigation(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          if (index == 0) return;
-
-          Widget? page;
-          switch (index) {
-            case 1: page = const RunningScreen(); break;
-            case 2: page = const RewardsScreen(); break;
-            case 3: page = const WorkoutScreen(); break;
-            case 4: page = const ClubScreen(); break;
-          }
-
-          if (page != null) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => page!),
-            );
-          }
-        },
-      ),
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
@@ -124,16 +78,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           onRefresh: () async {
             ref.invalidate(userProfileProvider);
             ref.invalidate(activitySummaryProvider('month'));
+            ref.invalidate(homeBannerProvider);
             await Future.wait([
               ref.read(userProfileProvider.future),
               ref.read(activitySummaryProvider('month').future),
+              ref.read(homeBannerProvider.future),
             ]);
           },
+        child: RepaintBoundary(
           child: Stack(
             children: [
               userAsync.when(
                 data: (user) => SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const ClampingScrollPhysics(),
                   child: Column(
                     children: [
                       _buildHeader(context, horizontalPadding, user, isTablet, scale, l10n),
@@ -155,8 +112,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       Padding(
                         padding: EdgeInsets.only(right: horizontalPadding),
-                        child: _buildBannerCard(horizontalPadding, isTablet, scale),
+                        child: bannerAsync.when(
+                          data: (bannerUrl) => _buildBannerCard(horizontalPadding, isTablet, scale, bannerUrl, user.role == 'admin'),
+                          loading: () => SkeletonBox(
+                            width: double.infinity,
+                            height: (isTablet ? (screenWidth * 140 / 334) : (screenWidth * 160 / 334)) * scale,
+                            borderRadius: (isTablet ? 18.0 : 22.0) * scale,
+                          ),
+                          error: (_, __) => _buildBannerCard(horizontalPadding, isTablet, scale, null, user.role == 'admin'),
+                        ),
                       ),
+                      SizedBox(height: 10.0 * scale),
+                      ShareEarnCard(scale: scale, horizontalPadding: horizontalPadding),
+                      SizedBox(height: 12.0 * scale),
                       activityAsync.when(
                         data: (activityData) => Padding(
                           padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
@@ -339,10 +307,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
         ),
+        ),
       ),
     );
   }
 
+
+  Future<void> _pickAndUploadBanner() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    if (image == null) return;
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Uploading new banner...')),
+    );
+
+    final result = await ref.read(homeRepositoryProvider).updateHomeBanner(image.path);
+    if (result != null) {
+      ref.invalidate(homeBannerProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Banner updated successfully!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update banner.')),
+        );
+      }
+    }
+  }
 
   Widget _buildHeader(BuildContext context, double horizontalPadding, User user, bool isTablet, double scale, AppLocalizations l10n) {
     final fontScale = Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0;
@@ -625,34 +621,81 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildBannerCard(double horizontalPadding, bool isTablet, double scale) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular((isTablet ? 18.0 : 22.0) * scale),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+  Widget _buildBannerCard(double horizontalPadding, bool isTablet, double scale, String? bannerUrl, bool isAdmin) {
+    return Stack(
+      children: [
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular((isTablet ? 18.0 : 22.0) * scale),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: AspectRatio(
-        aspectRatio: isTablet ? (334 / 140) : (334 / 160),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular((isTablet ? 18.0 : 22.0) * scale),
-          child: Image.asset(
-            'assets/images/banner.png',
-            fit: BoxFit.cover,
-            semanticLabel: 'Promotional Banner',
-            errorBuilder: (context, error, stackTrace) => Container(
-              color: const Color(0xFFEEEEEE),
-              child: const Center(
-                child: Icon(Icons.broken_image, color: Colors.grey),
+          child: AspectRatio(
+            aspectRatio: isTablet ? (334 / 140) : (334 / 160),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular((isTablet ? 18.0 : 22.0) * scale),
+              child: (bannerUrl != null && bannerUrl.isNotEmpty)
+                  ? Image.network(
+                      bannerUrl,
+                      fit: BoxFit.cover,
+                      semanticLabel: 'Promotional Banner',
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: const Color(0xFFEEEEEE),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF900EBF)),
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) => _buildPlaceholderBanner(),
+                    )
+                  : _buildPlaceholderBanner(),
+            ),
+          ),
+        ),
+        if (isAdmin)
+          Positioned(
+            top: 10 * scale,
+            right: 10 * scale,
+            child: GestureDetector(
+              onTap: _pickAndUploadBanner,
+              child: Container(
+                padding: EdgeInsets.all(8 * scale),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.edit,
+                  color: Colors.white,
+                  size: 20 * scale,
+                ),
               ),
             ),
           ),
+      ],
+    );
+  }
+
+  Widget _buildPlaceholderBanner() {
+    return Image.asset(
+      'assets/images/banner.png',
+      fit: BoxFit.cover,
+      semanticLabel: 'Promotional Banner',
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: const Color(0xFFEEEEEE),
+        child: const Center(
+          child: Icon(Icons.broken_image, color: Colors.grey),
         ),
       ),
     );

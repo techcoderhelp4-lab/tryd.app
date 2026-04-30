@@ -6,10 +6,11 @@ import 'package:dio/dio.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../widgets/gradient_button.dart';
 import 'package:tryd/src/features/auth/data/auth_repository.dart';
-import "../../home/presentation/home_screen.dart";
+import "../../../shell/main_shell.dart";
 import '../../notifications/data/real_time_notification_service.dart';
 import 'dart:async';
 import '../../../../widgets/custom_arrow_icon.dart';
+import '../../../../widgets/swipe_to_pop_wrapper.dart';
 import 'package:tryd/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
 
@@ -73,7 +74,6 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
             _otpControllers[index].text.isEmpty) {
           _otpControllers[index - 1].clear();
           _otpFocusNodes[index - 1].requestFocus();
-          if (mounted) setState(() {});
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
@@ -166,6 +166,13 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         await authController.verifyOtpLogin(widget.email, otp);
       } else if (widget.registrationData != null) {
         await authController.verifyOtp(widget.email, otp);
+        
+        // Only proceed with registration if OTP verification was successful
+        final authState = ref.read(authControllerProvider);
+        if (authState.hasError) {
+          throw authState.error!;
+        }
+        
         await authController.register(
           name: widget.registrationData!['name'] ?? '',
           email: widget.registrationData!['email'] ?? widget.email,
@@ -176,9 +183,15 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         await authController.verifyOtpLogin(widget.email, otp);
       }
 
+      // Check if any error occurred during the auth controller calls (guard swallows them)
+      final authState = ref.read(authControllerProvider);
+      if (authState.hasError) {
+        throw authState.error!;
+      }
+
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const MainShell()),
           (route) => false,
         );
       }
@@ -227,7 +240,6 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         _otpFocusNodes[lastFilledIndex + 1].requestFocus();
       }
       
-      if (mounted) setState(() {});
       return;
     }
 
@@ -239,8 +251,6 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         _handleVerification();
       }
     }
-    
-    if (mounted) setState(() {});
   }
 
   String _getOtpCode() {
@@ -272,9 +282,10 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final fontScale = isAr ? 1.2 : 1.0;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: true,
+    return SwipeToPopWrapper(
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
           Positioned.fill(
@@ -337,18 +348,14 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
             child: SafeArea(
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 56.0 * scale,
-                  height: 56.0 * scale,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
+                behavior: HitTestBehavior.opaque,
+                child: SizedBox(
+                  width: 42.0 * scale,
+                  height: 42.0 * scale,
                   child: Transform.scale(
-                    scaleX: isAr ? 1.0 : -1.0,
+                    scaleX: Directionality.of(context) == TextDirection.rtl ? 1 : -1,
                     child: CustomArrowIcon(
-                      size: 32.0 * scale,
+                      size: 42.0 * scale,
                       color: const Color(0xFF130F26),
                     ),
                   ),
@@ -386,7 +393,8 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
             ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildLogo(double scale) {
@@ -445,64 +453,13 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   }
 
   Widget _buildOtpDigitBox(int index, double scale, double fontScale) {
-    return ListenableBuilder(
-      listenable: _otpFocusNodes[index],
-      builder: (context, child) {
-        final isFocused = _otpFocusNodes[index].hasFocus;
-        final hasValue = _otpControllers[index].text.isNotEmpty;
-        return Container(
-          height: 62.0 * scale,
-          decoration: BoxDecoration(
-            color: _inputBgColor,
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(
-              color: isFocused 
-                  ? const Color(0xFF900EBF) 
-                  : (hasValue ? const Color(0xFF900EBF).withValues(alpha: 0.2) : Colors.transparent),
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                offset: const Offset(0, 4),
-                blurRadius: 10,
-                spreadRadius: 0,
-                color: (isFocused ? const Color(0xFF900EBF) : const Color(0xFFAFA9A9)).withValues(alpha: 0.1),
-              ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: child,
-        );
-      },
-      child: TextField(
-        controller: _otpControllers[index],
-        focusNode: _otpFocusNodes[index],
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        textInputAction: index == 3 ? TextInputAction.done : TextInputAction.next,
-        style: GoogleFonts.poppins(
-          fontSize: 22.0 * scale * fontScale,
-          fontWeight: FontWeight.w600,
-          height: 1.5,
-          color: _inputTextColor,
-        ),
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          counterText: '',
-          contentPadding: EdgeInsets.zero,
-        ),
-        inputFormatters: [
-          LengthLimitingTextInputFormatter(4),
-          FilteringTextInputFormatter.digitsOnly,
-        ],
-        onChanged: (value) => _onOtpDigitChanged(value, index),
-        onTap: () {
-          _otpControllers[index].selection = TextSelection(
-            baseOffset: 0,
-            extentOffset: _otpControllers[index].text.length,
-          );
-        },
-      ),
+    return _OtpDigitBox(
+      controller: _otpControllers[index],
+      focusNode: _otpFocusNodes[index],
+      scale: scale,
+      fontScale: fontScale,
+      isLast: index == 3,
+      onChanged: (value) => _onOtpDigitChanged(value, index),
     );
   }
 
@@ -576,6 +533,117 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─── OTP Digit Box ────────────────────────────────────────────────────────────
+// Isolated StatefulWidget so focus/value changes never rebuild the parent screen.
+
+class _OtpDigitBox extends StatefulWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final double scale;
+  final double fontScale;
+  final bool isLast;
+  final ValueChanged<String> onChanged;
+
+  const _OtpDigitBox({
+    required this.controller,
+    required this.focusNode,
+    required this.scale,
+    required this.fontScale,
+    required this.isLast,
+    required this.onChanged,
+  });
+
+  @override
+  State<_OtpDigitBox> createState() => _OtpDigitBoxState();
+}
+
+class _OtpDigitBoxState extends State<_OtpDigitBox> {
+  static const _purple = Color(0xFF900EBF);
+  static const _purpleFaded = Color(0x33900EBF);
+  static const _shadow = Color(0xFFAFA9A9);
+  static const _inputBg = Color(0xFFFFFFFF);
+  static const _inputText = Color(0xFF221F48);
+
+  @override
+  void initState() {
+    super.initState();
+    widget.focusNode.addListener(_onFocusChange);
+    widget.controller.addListener(_onValueChange);
+  }
+
+  void _onFocusChange() {
+    if (mounted) setState(() {});
+  }
+
+  void _onValueChange() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.focusNode.removeListener(_onFocusChange);
+    widget.controller.removeListener(_onValueChange);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isFocused = widget.focusNode.hasFocus;
+    final hasValue = widget.controller.text.isNotEmpty;
+    final s = widget.scale;
+    final fs = widget.fontScale;
+
+    return Container(
+      height: 62.0 * s,
+      decoration: BoxDecoration(
+        color: _inputBg,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: isFocused ? _purple : (hasValue ? _purpleFaded : Colors.transparent),
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, 4),
+            blurRadius: 10,
+            color: (isFocused ? _purple : _shadow).withValues(alpha: 0.1),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: TextField(
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        textInputAction: widget.isLast ? TextInputAction.done : TextInputAction.next,
+        style: GoogleFonts.poppins(
+          fontSize: 22.0 * s * fs,
+          fontWeight: FontWeight.w600,
+          height: 1.5,
+          color: _inputText,
+        ),
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          counterText: '',
+          contentPadding: EdgeInsets.zero,
+        ),
+        inputFormatters: [
+          LengthLimitingTextInputFormatter(4),
+          FilteringTextInputFormatter.digitsOnly,
+        ],
+        onChanged: widget.onChanged,
+        onTap: () {
+          widget.controller.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: widget.controller.text.length,
+          );
+        },
+      ),
     );
   }
 }

@@ -64,3 +64,38 @@ class Workout extends Activity {
     };
   }
 }
+
+class PreBuiltWorkout {
+  final String id;
+  final String title;
+  final String imageUrl;
+  final int workDuration;
+  final int restDuration;
+  final int totalExercises;
+  final int totalRounds;
+
+  const PreBuiltWorkout({
+    required this.id,
+    required this.title,
+    required this.imageUrl,
+    required this.workDuration,
+    required this.restDuration,
+    required this.totalExercises,
+    required this.totalRounds,
+  });
+
+  factory PreBuiltWorkout.fromJson(Map<String, dynamic> json) {
+    return PreBuiltWorkout(
+      id: json['_id'] ?? json['id'] ?? '',
+      title: json['title'] ?? '',
+      imageUrl: json['imageUrl'] ?? '',
+      workDuration: (json['workDuration'] as num? ?? 0).toInt(),
+      restDuration: (json['restDuration'] as num? ?? 0).toInt(),
+      totalExercises: (json['totalExercises'] as num? ?? 1).toInt(),
+      totalRounds: (json['totalRounds'] as num? ?? 1).toInt(),
+    );
+  }
+
+  int get totalDurationSeconds => totalExercises * totalRounds * (workDuration + restDuration);
+  int get totalDurationMinutes => (totalDurationSeconds / 60).ceil();
+}

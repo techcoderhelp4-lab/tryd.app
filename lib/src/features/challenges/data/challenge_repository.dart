@@ -52,27 +52,33 @@ class ChallengeRepository {
       List<Challenge> allChallenges = [];
 
       if (data is Map<String, dynamic>) {
-        if (data.containsKey('myChallenges') && data['myChallenges'] is List) {
-          final List<dynamic> my = data['myChallenges'];
-          allChallenges.addAll(my.map((json) {
+        if (data['myChallenges'] is List) {
+          allChallenges.addAll((data['myChallenges'] as List).map((json) {
             final map = Map<String, dynamic>.from(json);
             map['isJoined'] = true;
             return Challenge.fromJson(map);
           }));
         }
 
-        if (data.containsKey('joinChallenges') && data['joinChallenges'] is List) {
-          final List<dynamic> join = data['joinChallenges'];
-          allChallenges.addAll(join.map((json) {
+        if (data['joinChallenges'] is List) {
+          allChallenges.addAll((data['joinChallenges'] as List).map((json) {
             final map = Map<String, dynamic>.from(json);
             map['isJoined'] = false;
             return Challenge.fromJson(map);
           }));
         }
 
-        if (allChallenges.isEmpty && data.containsKey('data') && data['data'] is List) {
-          final List<dynamic> raw = data['data'];
-          allChallenges.addAll(raw.map((json) => Challenge.fromJson(json)));
+        // Ended challenges visible to everyone regardless of join status
+        if (data['previousChallenges'] is List) {
+          allChallenges.addAll((data['previousChallenges'] as List).map((json) {
+            final map = Map<String, dynamic>.from(json);
+            map['isJoined'] = false;
+            return Challenge.fromJson(map);
+          }));
+        }
+
+        if (allChallenges.isEmpty && data['data'] is List) {
+          allChallenges.addAll((data['data'] as List).map((json) => Challenge.fromJson(json)));
         }
       } else if (data is List) {
         allChallenges.addAll(data.map((json) => Challenge.fromJson(json)));

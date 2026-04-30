@@ -3,19 +3,21 @@ import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../../../widgets/custom_bottom_navigation.dart';
 import '../../../../widgets/custom_arrow_icon.dart';
-import '../../../../widgets/gradient_button.dart';
+import '../../../../widgets/skeleton_loading.dart';
+import '../../../../widgets/swipe_to_pop_wrapper.dart';
+import '../../../shell/main_shell.dart' show mainNavTapProvider;
 import '../../home/presentation/home_screen.dart';
 import '../../activity/presentation/running_screen.dart';
 import '../../activity/presentation/workout_screen.dart';
 import '../../club/presentation/club_screen.dart';
+import '../../../../widgets/gradient_button.dart';
 import '../../profile/data/user_repository.dart';
 import '../data/reward_repository.dart';
 import '../../notifications/data/real_time_notification_service.dart';
+import '../../../../widgets/custom_bottom_navigation.dart';
 import '../domain/reward.dart';
 import '../domain/redemption.dart';
 import 'package:intl/intl.dart';
@@ -23,14 +25,17 @@ import 'package:shimmer/shimmer.dart';
 import '../../../generated/l10n/app_localizations.dart';
 
 class RewardsScreen extends ConsumerStatefulWidget {
-  const RewardsScreen({super.key});
+  final bool showSwipeBack;
+  const RewardsScreen({super.key, this.showSwipeBack = false});
 
   @override
   ConsumerState<RewardsScreen> createState() => _RewardsScreenState();
 }
 
-class _RewardsScreenState extends ConsumerState<RewardsScreen> {
-  final int _selectedIndex = 2; // Rewards tab
+class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   String _selectedCategory = 'All';
   final ScrollController _scrollController = ScrollController();
   bool _isRedeeming = false;
@@ -46,6 +51,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final userAsync = ref.watch(userProfileProvider);
     final rewardsAsync = ref.watch(filteredRewardsProvider(_selectedCategory == 'All' ? null : _selectedCategory)) as AsyncValue<List<Reward>>;
     final redemptionsAsync = ref.watch(myRedemptionsProvider);
@@ -82,111 +88,102 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     final isRTL = Localizations.localeOf(context).languageCode == 'ar';
     final fontScale = isRTL ? 1.2 : 1.0;
 
-    return Scaffold(
+    final content = Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Background
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.8,
-              child: Image.asset(
-                'assets/images/bg-gradient.png',
-                fit: BoxFit.cover,
+            // Background
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.8,
+                child: Image.asset(
+                  'assets/images/bg-gradient.png',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-
-          SafeArea(
-            bottom: false,
-            child: RefreshIndicator(
-              color: const Color(0xFF900EBF),
-              onRefresh: () async {
-                ref.invalidate(userProfileProvider);
-                ref.invalidate(rewardsListProvider);
-                ref.invalidate(myRedemptionsProvider);
-                await Future.delayed(const Duration(seconds: 1));
-              },
-              child: CustomScrollView(
-                controller: _scrollController,
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Column(
-                      children: [
-                        SizedBox(height: 24.0 * scale),
-                        _buildHeader(context, isTablet, scale, l10n, isRTL, fontScale),
-                        SizedBox(height: 16.0 * scale),
-                        userAsync.when(
-                          data: (user) => _buildPointsSection(user.points ?? 0, isTablet, scale, l10n, isRTL, fontScale),
-                          loading: () => _buildPointsSection(null, isTablet, scale, l10n, isRTL, fontScale),
-                          error: (_, __) => _buildPointsSection(0, isTablet, scale, l10n, isRTL, fontScale),
-                        ),
-                        SizedBox(height: 24.0 * scale),
-                      ],
+  
+            SafeArea(
+              bottom: false,
+              child: RefreshIndicator(
+                color: const Color(0xFF900EBF),
+                onRefresh: () async {
+                  ref.invalidate(userProfileProvider);
+                  ref.invalidate(rewardsListProvider);
+                  ref.invalidate(myRedemptionsProvider);
+                  await Future.delayed(const Duration(seconds: 1));
+                },
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          SizedBox(height: 24.0 * scale),
+                          _buildHeader(context, isTablet, scale, l10n, isRTL, fontScale),
+                          SizedBox(height: 16.0 * scale),
+                          userAsync.when(
+                            data: (user) => _buildPointsSection(user.points ?? 0, isTablet, scale, l10n, isRTL, fontScale),
+                            loading: () => _buildPointsSection(null, isTablet, scale, l10n, isRTL, fontScale),
+                            error: (_, __) => _buildPointsSection(0, isTablet, scale, l10n, isRTL, fontScale),
+                          ),
+                          SizedBox(height: 24.0 * scale),
+                        ],
+                      ),
                     ),
-                  ),
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _StickyFiltersDelegate(
-                      minHeight: _selectedTabIndex == 0 ? headerHeightTabIndex0 : headerHeightTabIndex1,
-                      maxHeight: (_selectedTabIndex == 0 ? headerHeightTabIndex0 : headerHeightTabIndex1) + 1.0,
-                      child: Container(
-                        child: Column(
-                          children: [
-                            _buildTabs(isTablet, scale, l10n, isRTL, fontScale),
-                            if (_selectedTabIndex == 0) ...[
-                              SizedBox(height: tabSpacing0),
-                              _buildCategories(isTablet, scale, l10n, isRTL),
-                              SizedBox(height: categoryBottomSpacing),
-                            ] else
-                              SizedBox(height: tabSpacing1),
-                          ],
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _StickyFiltersDelegate(
+                        minHeight: _selectedTabIndex == 0 ? headerHeightTabIndex0 : headerHeightTabIndex1,
+                        maxHeight: (_selectedTabIndex == 0 ? headerHeightTabIndex0 : headerHeightTabIndex1) + 1.0,
+                        child: Container(
+                          child: Column(
+                            children: [
+                              _buildTabs(isTablet, scale, l10n, isRTL, fontScale),
+                              if (_selectedTabIndex == 0) ...[
+                                SizedBox(height: tabSpacing0),
+                                _buildCategories(isTablet, scale, l10n, isRTL),
+                                SizedBox(height: categoryBottomSpacing),
+                              ] else
+                                SizedBox(height: tabSpacing1),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  _buildRewardsList(rewardsAsync, redemptionsAsync, isTablet, headerHeightTabIndex0, scale, l10n, isRTL, fontScale),
-                ],
+                    _buildRewardsList(rewardsAsync, redemptionsAsync, isTablet, headerHeightTabIndex0, scale, l10n, isRTL, fontScale),
+                  ],
+                ),
               ),
             ),
-          ),
-          
-          // Bottom Navigation
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: CustomBottomNavigation(
-              currentIndex: _selectedIndex,
-              onTap: (index) {
-                if (index == 2) return;
-                
-                Widget? page;
-                switch (index) {
-                  case 0: page = const HomeScreen(); break;
-                  case 1: page = const RunningScreen(); break;
-                  case 3: page = const WorkoutScreen(); break;
-                  case 4: page = const ClubScreen(); break;
-                }
-                
-                if (page != null) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => page!),
-                  );
-                }
-              },
-            ),
-          ),
-        ],
-      ),
+  
+            if (Navigator.of(context).canPop())
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: CustomBottomNavigation(
+                  currentIndex: 2,
+                  onTap: (index) {
+                    if (index == 2) return;
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                    ref.read(mainNavTapProvider)?.call(index);
+                  },
+                ),
+              ),
+          ],
+        ),
     );
+
+    if (widget.showSwipeBack) {
+      return SwipeToPopWrapper(child: content);
+    }
+    return content;
   }
 
   Widget _buildHeader(BuildContext context, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final horizontalPadding = 26.0 * scale;
-    final iconSize = 24.0 * scale;
     final buttonSize = 40.0 * scale;
     final titleSize = 19.0 * scale;
 
@@ -197,21 +194,21 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
         children: [
           GestureDetector(
             onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-              );
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                ref.read(mainNavTapProvider)?.call(0);
+              }
             },
-            child: Container(
-              width: buttonSize,
-              height: buttonSize,
-              alignment: Alignment.center,
-              child: Transform.scale(
-                scaleX: isRTL ? 1.0 : -1.0,
-                child: CustomArrowIcon(
-                  size: iconSize,
-                  color: const Color(0xFF130F26),
-                ),
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: 32.0 * scale,
+              height: 32.0 * scale,
+              child: SvgPicture.asset(
+                'assets/images/back_arrow_icon.svg',
+                width: 32.0 * scale,
+                height: 32.0 * scale,
+                matchTextDirection: true,
               ),
             ),
           ),

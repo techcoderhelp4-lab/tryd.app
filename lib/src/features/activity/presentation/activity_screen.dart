@@ -1,25 +1,19 @@
-import 'dart:ui';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../widgets/custom_bottom_navigation.dart';
-import '../../../../widgets/custom_arrow_icon.dart';
 import '../../../../widgets/custom_calendar_icon.dart';
 import '../../../../widgets/button_shape_clipper.dart';
 import '../data/activity_repository.dart';
 import '../domain/workout.dart';
 import '../domain/activity.dart';
 import '../domain/activity_stats.dart';
-import '../../home/presentation/home_screen.dart';
-import '../../rewards/presentation/rewards_screen.dart';
-import 'running_screen.dart';
-import 'workout_screen.dart';
-import '../../club/presentation/club_screen.dart';
+import '../../../shell/main_shell.dart' show mainNavTapProvider, mainTabProvider;
 import '../../../generated/l10n/app_localizations.dart';
+import '../../../../widgets/swipe_to_pop_wrapper.dart';
 
 class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
@@ -98,7 +92,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
       return true;
     }).toList();
 
-    return Scaffold(
+    return SwipeToPopWrapper(child: Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
@@ -226,34 +220,15 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
             child: CustomBottomNavigation(
               currentIndex: _selectedIndex,
               onTap: (index) {
-                if (index == 0) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  );
-                  return;
-                }
-
-                Widget? page;
-                switch (index) {
-                  case 1: page = const RunningScreen(); break;
-                  case 2: page = const RewardsScreen(); break;
-                  case 3: page = const WorkoutScreen(); break;
-                  case 4: page = const ClubScreen(); break;
-                }
-                
-                if (page != null) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => page!),
-                  );
-                }
+                if (index == _selectedIndex) return;
+                Navigator.of(context).popUntil((route) => route.isFirst);
+                ref.read(mainNavTapProvider)?.call(index);
               },
             ),
           ),
         ],
       ),
-    );
+    ));
   }
 
 
@@ -261,7 +236,6 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
   Widget _buildHeader(BuildContext context, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
     final horizontalPadding = 30.0 * scale;
     final iconContainerSize = 45.0 * scale;
-    final arrowSize = 24.0 * scale;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
@@ -270,21 +244,21 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         children: [
           GestureDetector(
             onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-              );
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                ref.read(mainTabProvider.notifier).state = 0;
+              }
             },
-            child: Container(
-              width: iconContainerSize,
-              height: iconContainerSize,
-              alignment: Alignment.center,
-              child: Transform.scale(
-                scaleX: isRTL ? 1.0 : -1.0,
-                child: CustomArrowIcon(
-                  size: arrowSize,
-                  color: const Color(0xFF130F26),
-                ),
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: 32.0 * scale,
+              height: 32.0 * scale,
+              child: SvgPicture.asset(
+                'assets/images/back_arrow_icon.svg',
+                width: 32.0 * scale,
+                height: 32.0 * scale,
+                matchTextDirection: true,
               ),
             ),
           ),
@@ -793,6 +767,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     }
 
     final isWorkout = activity is Workout;
+    final activityType = isWorkout ? 'workout' : (activity as Activity).type;
     return _buildActivityCard(
       day: day,
       kilometers: km,
@@ -804,7 +779,35 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
       isRTL: isRTL,
       fontScale: fontScale,
       isWorkout: isWorkout,
+      activityType: activityType,
     );
+  }
+
+  String _activityTypeLabel(String type, AppLocalizations l10n, bool isRTL) {
+    switch (type) {
+      case 'walk': return l10n.walkingLabel;
+      case 'cycling': return l10n.cyclingLabel;
+      case 'workout': return isRTL ? 'تمرين' : 'Workout';
+      default: return l10n.runningLabel;
+    }
+  }
+
+  Widget _buildActivityTypeIcon(String type, double scale) {
+    IconData icon;
+    switch (type) {
+      case 'walk':
+        icon = Icons.directions_walk_rounded;
+        break;
+      case 'cycling':
+        icon = Icons.directions_bike_rounded;
+        break;
+      case 'workout':
+        icon = Icons.fitness_center_rounded;
+        break;
+      default:
+        icon = Icons.directions_run_rounded;
+    }
+    return Icon(icon, size: 24.0 * scale, color: const Color(0xFFF83A71));
   }
 
   Widget _buildActivityCard({
@@ -818,14 +821,28 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     required bool isRTL,
     required double fontScale,
     required bool isWorkout,
+    required String activityType,
   }) {
     final cardHeight = 140.0 * scale;
     final hPadding = 18.0 * scale;
 
+    final String distLabel;
+    final String paceLabel;
+    if (isWorkout) {
+      distLabel = l10n.exercisesLabel;
+      paceLabel = l10n.roundsLabel;
+    } else if (activityType == 'cycling') {
+      distLabel = l10n.kilometersLabel;
+      paceLabel = l10n.avgSpeedShort;
+    } else {
+      distLabel = l10n.kilometersLabel;
+      paceLabel = l10n.avgPaceShort;
+    }
+
     final statsRow = [
-      _buildActivityStat(isWorkout ? l10n.exercisesLabel : l10n.kilometersLabel, kilometers, isTablet, scale, isRTL, fontScale),
+      _buildActivityStat(distLabel, kilometers, isTablet, scale, isRTL, fontScale),
       SizedBox(width: 56.0 * scale),
-      _buildActivityStat(isWorkout ? l10n.roundsLabel : l10n.avgPaceShort, avgPace, isTablet, scale, isRTL, fontScale),
+      _buildActivityStat(paceLabel, avgPace, isTablet, scale, isRTL, fontScale),
       SizedBox(width: 56.0 * scale),
       _buildActivityStat(l10n.timeLabel, time, isTablet, scale, isRTL, fontScale),
     ];
@@ -842,36 +859,57 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
       ),
       child: Stack(
         children: [
-          // Header with calendar icon and day name
+          // Header: day on one side, type icon+label on other
           Positioned(
             left: isRTL ? null : hPadding,
             right: isRTL ? hPadding : null,
             top: 22.0 * scale,
+            child: Text(
+              day,
+              style: isRTL
+                  ? GoogleFonts.cairo(
+                      fontSize: 18.0 * scale * fontScale,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF221F48),
+                      height: 1.2,
+                    )
+                  : GoogleFonts.poppins(
+                      fontSize: 18.0 * scale,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF221F48),
+                      height: 1.2,
+                    ),
+            ),
+          ),
+          // Activity type icon + label (opposite side)
+          Positioned(
+            left: isRTL ? hPadding : null,
+            right: isRTL ? null : hPadding,
+            top: 20.0 * scale,
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: isRTL
                   ? [
                       Text(
-                        day,
+                        _activityTypeLabel(activityType, l10n, isRTL),
                         style: GoogleFonts.cairo(
-                          fontSize: 18.0 * scale * fontScale,
+                          fontSize: 14.0 * scale * fontScale,
                           fontWeight: FontWeight.w500,
-                          color: const Color(0xFF221F48),
-                          height: 1.2,
+                          color: const Color(0xFFF83A71),
                         ),
                       ),
-                      SizedBox(width: 7.0 * scale),
-                      CustomCalendarIcon(size: 24.0 * scale, color: const Color(0xFFF83A71)),
+                      SizedBox(width: 4.0 * scale),
+                      _buildActivityTypeIcon(activityType, scale),
                     ]
                   : [
-                      CustomCalendarIcon(size: 24.0 * scale, color: const Color(0xFFF83A71)),
-                      SizedBox(width: 7.0 * scale),
+                      _buildActivityTypeIcon(activityType, scale),
+                      SizedBox(width: 4.0 * scale),
                       Text(
-                        day,
+                        _activityTypeLabel(activityType, l10n, isRTL),
                         style: GoogleFonts.poppins(
-                          fontSize: 18.0 * scale,
+                          fontSize: 14.0 * scale,
                           fontWeight: FontWeight.w500,
-                          color: const Color(0xFF221F48),
-                          height: 1.2,
+                          color: const Color(0xFFF83A71),
                         ),
                       ),
                     ],
