@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:audio_session/audio_session.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +24,36 @@ import 'package:tryd/src/generated/l10n/app_localizations.dart';
 class MusicPlayerService extends ChangeNotifier {
   MusicPlayerService() {
     _initPlayerListener();
+    _initAudioSession();
+  }
+
+  /// Configure the iOS audio session so music ducks (lowers volume) when
+  /// TTS announcements fire instead of being interrupted entirely. On
+  /// Android each stream has its own volume so this is a no-op.
+  Future<void> _initAudioSession() async {
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(
+        const AudioSessionConfiguration(
+          avAudioSessionCategory: AVAudioSessionCategory.playback,
+          avAudioSessionCategoryOptions:
+              AVAudioSessionCategoryOptions.duckOthers,
+          avAudioSessionMode: AVAudioSessionMode.defaultMode,
+          avAudioSessionRouteSharingPolicy:
+              AVAudioSessionRouteSharingPolicy.defaultPolicy,
+          avAudioSessionSetActiveOptions:
+              AVAudioSessionSetActiveOptions.notifyOthersOnDeactivation,
+          androidAudioAttributes: AndroidAudioAttributes(
+            contentType: AndroidAudioContentType.music,
+            usage: AndroidAudioUsage.media,
+          ),
+          androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
+          androidWillPauseWhenDucked: false,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Audio session config error: $e');
+    }
   }
 
   // ─── Audio/Music State ──────────────────────────────────────────────────
@@ -40,6 +71,12 @@ class MusicPlayerService extends ChangeNotifier {
   StreamSubscription<int?>? _indexSubscription;
 
   bool _initialized = false;
+  // True once the user has been prompted for audio permission this session.
+  // Prevents the modal from re-popping on every tab swap / app resume after
+  // the user has already chosen (granted or denied). Re-checked silently
+  // each call — if OS-level status flipped to granted, we pick it up without
+  // re-prompting.
+  bool _audioPromptedThisSession = false;
 
   // ─── Initialization ─────────────────────────────────────────────────────
 
@@ -61,7 +98,7 @@ class MusicPlayerService extends ChangeNotifier {
   /// modal again if still denied. Returns when modal closes (or immediately
   /// when granted).
   Future<void> initMusic(BuildContext context, {bool showModal = true}) async {
-    // Already granted — load library on first call only.
+    // Already granted — load library on first call only, then no-op silently.
     if (hasAudioPermission) {
       if (!_initialized) {
         _initialized = true;
@@ -74,29 +111,57 @@ class MusicPlayerService extends ChangeNotifier {
 
     if (Platform.isIOS) {
       final status = await Permission.mediaLibrary.status;
+
+      // Already granted via OS settings — pick it up silently.
       if (status.isGranted) {
         hasAudioPermission = true;
         _initialized = true;
         notifyListeners();
         return;
       }
-      // Not granted yet — show modal and await its closure.
-      if (context.mounted && showModal) {
-        await showAudioPermissionModal(context);
+
+      // First-time encounter: trigger the OS-native prompt directly.
+      // Apple HIG forbids preceding it with a custom pre-prompt modal —
+      // doing so is a common rejection reason and confuses users with
+      // back-to-back "allow?" dialogs.
+      if (status.isDenied) {
+        if (_audioPromptedThisSession) return;
+        _audioPromptedThisSession = true;
+        final result = await Permission.mediaLibrary.request();
+        if (result.isGranted) {
+          hasAudioPermission = true;
+          _initialized = true;
+          notifyListeners();
+        }
+        return;
+      }
+
+      // Permanently denied (user previously tapped "Don't Allow") — only
+      // way back is OS settings. Show our custom modal once per session
+      // explaining how to enable it.
+      if (status.isPermanentlyDenied || status.isRestricted) {
+        if (_audioPromptedThisSession) return;
+        if (context.mounted && showModal) {
+          _audioPromptedThisSession = true;
+          await showAudioPermissionModal(context);
+        }
       }
       return;
     }
 
-    // Android
-    final audioStatus = await Permission.audio.status;
-    final storageStatus = await Permission.storage.status;
-    if (audioStatus.isGranted || storageStatus.isGranted) {
+    // Android — re-check silently (covers grant-via-settings case).
+    final granted = await isAudioPermissionGranted();
+    if (granted) {
       hasAudioPermission = true;
       _initialized = true;
       await _loadAndroidSongs();
       return;
     }
+
+    // Not granted. Show modal at most once per app session.
+    if (_audioPromptedThisSession) return;
     if (context.mounted && showModal) {
+      _audioPromptedThisSession = true;
       await showAudioPermissionModal(context);
     }
   }

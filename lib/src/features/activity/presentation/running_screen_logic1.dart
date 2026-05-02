@@ -372,8 +372,13 @@ class RunningCoreLogic {
             )
           : AppleSettings(
               accuracy: LocationAccuracy.bestForNavigation,
+              activityType: ActivityType.fitness,
               distanceFilter: 0,
               pauseLocationUpdatesAutomatically: false,
+              // Required so GPS keeps streaming when the phone is locked or
+              // the user switches apps mid-run. Pairs with the `location`
+              // entry in UIBackgroundModes (Info.plist).
+              allowBackgroundLocationUpdates: true,
               showBackgroundLocationIndicator: true,
             );
 

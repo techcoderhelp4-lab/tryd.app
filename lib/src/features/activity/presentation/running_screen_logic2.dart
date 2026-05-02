@@ -93,13 +93,14 @@ class RunningSupportLogic {
     flutterTts.stop();
   }
 
-  // Returns true only when the RunningScreen widget is still in the tree,
-  // the BuildContext is valid, AND this tab is currently visible — 
-  // prevents dialogs leaking onto other screens (like Home or Settings).
-  bool get _canShowDialog => 
-      isMounted() && 
-      context.mounted && 
-      ref.read(mainTabProvider) == 1;
+  // Returns true only when the RunningScreen widget is still in the tree
+  // and the BuildContext is valid. The mounted+context.mounted pair anchors
+  // dialogs to the running screen — when the screen is unmounted, the
+  // context is invalid and the check fails, preventing leaks. We don't
+  // also check mainTabProvider because the running screen can also be
+  // pushed as a route (e.g. from the workout screen's bottom-nav), in
+  // which case mainTabProvider stays on whatever tab the shell was on.
+  bool get _canShowDialog => isMounted() && context.mounted;
 
   // True while a run is in progress — health/audio modals must not interrupt.
   bool get _isRunActive =>
@@ -107,6 +108,13 @@ class RunningSupportLogic {
       (_coreLogic!.runningState == RunningState.running ||
           _coreLogic!.runningState == RunningState.paused ||
           _coreLogic!.runningState == RunningState.countdown);
+
+  // True only when the running tab is the currently visible PageView page.
+  // Used by the auto-prompt path (initState / tab listener / app resume) so
+  // permission modals don't leak onto Home, Workout, etc. when the shell
+  // happens to be on a different tab. User-initiated paths
+  // (checkLocationForStart) bypass this — they always show.
+  bool get _isRunningTabVisible => ref.read(mainTabProvider) == 1;
 
   // ─────────────────────────────────────────────────────────────────────────
   // TTS Methods
@@ -122,9 +130,15 @@ class RunningSupportLogic {
       await _pickArabicEngine();
     } else if (Platform.isIOS) {
       await flutterTts.setSharedInstance(true);
+      // mixWithOthers + duckOthers lets TTS speak while music plays,
+      // briefly lowering the music volume instead of killing playback.
       await flutterTts.setIosAudioCategory(
         IosTextToSpeechAudioCategory.playback,
-        [IosTextToSpeechAudioCategoryOptions.defaultToSpeaker],
+        [
+          IosTextToSpeechAudioCategoryOptions.mixWithOthers,
+          IosTextToSpeechAudioCategoryOptions.duckOthers,
+          IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+        ],
         IosTextToSpeechAudioMode.defaultMode,
       );
     }
@@ -641,25 +655,30 @@ class RunningSupportLogic {
   Future<void> checkAllPermissions() async {
     if (!context.mounted) return;
     if (_isRunActive) return;
+    // Auto-prompt path — only fire when the running tab is actually visible.
+    // RunningScreen lives inside the shell PageView and stays mounted even
+    // when Home/Workout/etc are the visible tab; without this guard the
+    // location modal would surface on top of those other screens.
+    if (!_isRunningTabVisible) return;
     if (_promptCycleRunning) return; // already prompting on this entry
     _promptCycleRunning = true;
     try {
       // 1. Location — awaits modal close (or returns immediately if granted)
       await initLocationWithPermission();
-      if (!_canShowDialog || _isRunActive) return;
+      if (!_canShowDialog || _isRunActive || !_isRunningTabVisible) return;
 
       // 2. Health
       if (!isHealthConnected) {
         await initHealth();
       }
-      if (!_canShowDialog || _isRunActive) return;
+      if (!_canShowDialog || _isRunActive || !_isRunningTabVisible) return;
 
       // 3. Audio
       if (!hasAudioPermission) {
         final granted = await _music.isAudioPermissionGranted();
         if (granted) {
           onStateChanged();
-        } else if (_canShowDialog && !_isRunActive) {
+        } else if (_canShowDialog && !_isRunActive && _isRunningTabVisible) {
           await _music.showAudioPermissionModal(context);
         }
       }

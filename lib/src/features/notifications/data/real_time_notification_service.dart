@@ -96,8 +96,14 @@ class RealTimeNotificationService {
     try {
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
+      // iOS requires explicit permission flags here — without them, local
+      // notifications fired from the app silently fail (no banner, no sound).
       const DarwinInitializationSettings initializationSettingsIOS =
-          DarwinInitializationSettings();
+          DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
       const InitializationSettings initializationSettings = InitializationSettings(
         android: initializationSettingsAndroid,
         iOS: initializationSettingsIOS,
