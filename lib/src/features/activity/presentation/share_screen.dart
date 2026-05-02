@@ -168,7 +168,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                 leading: const Icon(Icons.photo_library),
                 title: Text(
                   l10n.chooseFromGallery,
-                  style: isRTL ? GoogleFonts.cairo() : null,
+                  style: isRTL ? GoogleFonts.tajawal() : null,
                 ),
                 onTap: () async {
                   Navigator.pop(context);
@@ -187,7 +187,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                 leading: const Icon(Icons.camera_alt),
                 title: Text(
                   l10n.takeAPhoto,
-                  style: isRTL ? GoogleFonts.cairo() : null,
+                  style: isRTL ? GoogleFonts.tajawal() : null,
                 ),
                 onTap: () async {
                   Navigator.pop(context);
@@ -228,9 +228,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
           padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 2 * scale),
           child: Row(children: [
             Text('English',
-                style: GoogleFonts.lexendDeca(
+                style: GoogleFonts.tajawal(
                     fontSize: 14 * scale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: !isAr ? const Color(0xFF900EBF) : const Color(0xFF24252C))),
             const Spacer(),
             if (!isAr) Icon(Icons.check_rounded, size: 18 * scale, color: const Color(0xFF900EBF)),
@@ -242,9 +242,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
           padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 2 * scale),
           child: Row(children: [
             Text('العربية',
-                style: GoogleFonts.cairo(
+                style: GoogleFonts.tajawal(
                     fontSize: 14 * scale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: isAr ? const Color(0xFF900EBF) : const Color(0xFF24252C))),
             const Spacer(),
             if (isAr) Icon(Icons.check_rounded, size: 18 * scale, color: const Color(0xFF900EBF)),
@@ -518,8 +518,8 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                   Text(
                     l10n.shareButton,
                     style: isRTL
-                        ? GoogleFonts.cairo(fontSize: 18 * scale, fontWeight: FontWeight.w600, color: const Color(0xFF24252C))
-                        : GoogleFonts.lexend(fontSize: 18 * scale, fontWeight: FontWeight.w600, color: const Color(0xFF24252C)),
+                        ? GoogleFonts.tajawal(fontSize: 18 * scale, fontWeight: FontWeight.w800, color: const Color(0xFF24252C))
+                        : GoogleFonts.tajawal(fontSize: 18 * scale, fontWeight: FontWeight.w800, color: const Color(0xFF24252C)),
                   ),
                   _buildLangToggle(scale),
                 ],
@@ -567,15 +567,15 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                                         ? l10n.shareGenZAlreadyClaimed
                                         : l10n.shareGenZCta(_rewardPoints!),
                                     style: isRTL
-                                        ? GoogleFonts.cairo(fontSize: 13 * scale, fontWeight: FontWeight.w700, color: Colors.white)
-                                        : GoogleFonts.lexendDeca(fontSize: 13 * scale, fontWeight: FontWeight.w700, color: Colors.white),
+                                        ? GoogleFonts.tajawal(fontSize: 13 * scale, fontWeight: FontWeight.w800, color: Colors.white)
+                                        : GoogleFonts.tajawal(fontSize: 13 * scale, fontWeight: FontWeight.w800, color: Colors.white),
                                   ),
                                   if (!_claimedToday)
                                     Text(
                                       l10n.shareGenZSubtitle,
                                       style: isRTL
-                                          ? GoogleFonts.cairo(fontSize: 10 * scale, color: Colors.white70)
-                                          : GoogleFonts.lexend(fontSize: 10 * scale, color: Colors.white70),
+                                          ? GoogleFonts.tajawal(fontSize: 10 * scale, color: Colors.white70)
+                                          : GoogleFonts.tajawal(fontSize: 10 * scale, color: Colors.white70),
                                     ),
                                 ],
                               ),
@@ -611,9 +611,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                           padding: EdgeInsets.symmetric(horizontal: 14 * scale),
                           child: Text(
                             '${_currentPage + 1} / $_totalPages',
-                            style: GoogleFonts.lexend(
+                            style: GoogleFonts.tajawal(
                               fontSize: 17 * scale,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w800,
                               color: Colors.black87,
                             ),
                           ),
@@ -657,8 +657,8 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                                         child: Text(
                                           _pickedImage == null ? l10n.uploadImage : l10n.changePicture,
                                           style: isRTL
-                                              ? GoogleFonts.cairo(fontSize: 14 * scale, fontWeight: FontWeight.w600, color: const Color(0xFF900EBF))
-                                              : GoogleFonts.lexendDeca(fontSize: 14 * scale, fontWeight: FontWeight.w600, color: const Color(0xFF900EBF)),
+                                              ? GoogleFonts.tajawal(fontSize: 14 * scale, fontWeight: FontWeight.w800, color: const Color(0xFF900EBF))
+                                              : GoogleFonts.tajawal(fontSize: 14 * scale, fontWeight: FontWeight.w800, color: const Color(0xFF900EBF)),
                                         ),
                                       ),
                                     ),
@@ -675,8 +675,8 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                                         width: double.infinity,
                                         height: 46 * scale,
                                         textStyle: isRTL
-                                            ? GoogleFonts.cairo(fontSize: 18 * scale, fontWeight: FontWeight.w600, color: Colors.white)
-                                            : GoogleFonts.lexendDeca(fontSize: 18 * scale, fontWeight: FontWeight.w600, color: Colors.white),
+                                            ? GoogleFonts.tajawal(fontSize: 18 * scale, fontWeight: FontWeight.w800, color: Colors.white)
+                                            : GoogleFonts.tajawal(fontSize: 18 * scale, fontWeight: FontWeight.w800, color: Colors.white),
                                         showIcon: false,
                                         showShadow: false,
                                       ),
@@ -692,8 +692,8 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                                   width: double.infinity,
                                   height: 46 * scale,
                                   textStyle: isRTL
-                                      ? GoogleFonts.cairo(fontSize: 18 * scale, fontWeight: FontWeight.w600, color: Colors.white)
-                                      : GoogleFonts.lexendDeca(fontSize: 18 * scale, fontWeight: FontWeight.w600, color: Colors.white),
+                                      ? GoogleFonts.tajawal(fontSize: 18 * scale, fontWeight: FontWeight.w800, color: Colors.white)
+                                      : GoogleFonts.tajawal(fontSize: 18 * scale, fontWeight: FontWeight.w800, color: Colors.white),
                                   showIcon: false,
                                   showShadow: false,
                                 ),
@@ -851,9 +851,9 @@ class _WorkoutShareCardState extends State<_WorkoutShareCard> {
                                       widget.userName,
                                       overflow: TextOverflow.ellipsis,
                                       maxLines: 1,
-                                      style: GoogleFonts.lexend(
+                                      style: GoogleFonts.tajawal(
                                         fontSize: 8 * cardScale, 
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w800,
                                         color: Colors.black,
                                       ),
                                     ),
@@ -861,9 +861,9 @@ class _WorkoutShareCardState extends State<_WorkoutShareCard> {
                                   SizedBox(width: 6 * cardScale),
                                   Text(
                                     widget.date,
-                                    style: GoogleFonts.roboto(
+                                    style: GoogleFonts.tajawal(
                                       fontSize: 9.5 * cardScale, 
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: FontWeight.w700,
                                       color: Colors.black54,
                                     ),
                                   ),
@@ -1027,9 +1027,9 @@ class _StatItem extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Text(
               value,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 12 * scale,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
                 color: Colors.black,
               ),
             ),
@@ -1039,9 +1039,9 @@ class _StatItem extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Text(
               label,
-              style: GoogleFonts.roboto(
+              style: GoogleFonts.tajawal(
                 fontSize: 8 * scale,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
                 color: const Color(0xFF8B88B5),
               ),
             ),
@@ -1147,9 +1147,9 @@ class _PhotoShareCard extends StatelessWidget {
                 bottom: 200 * s,
                 child: Text(
                   date,
-                  style: GoogleFonts.roboto(
+                  style: GoogleFonts.tajawal(
                     fontSize: 26 * s,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
                 ),
@@ -1287,9 +1287,9 @@ class _StatsShareCard extends StatelessWidget {
                 top: h * 0.695,
                 child: Text(
                   date,
-                  style: GoogleFonts.roboto(
+                  style: GoogleFonts.tajawal(
                     fontSize: 26 * s,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
                 ),
@@ -1352,9 +1352,9 @@ class _BigStat extends StatelessWidget {
       children: [
         Text(
           value,
-          style: GoogleFonts.oswald(
+          style: GoogleFonts.tajawal(
             fontSize: 50 * s,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w800,
             color: Colors.white,
             height: 1.0,
           ),
@@ -1362,9 +1362,9 @@ class _BigStat extends StatelessWidget {
         SizedBox(height: 6 * s),
         Text(
           label,
-          style: GoogleFonts.roboto(
+          style: GoogleFonts.tajawal(
             fontSize: 24 * s,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w600,
             color: Colors.white70,
           ),
         ),
@@ -1423,9 +1423,9 @@ class _AspectToggle extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     '4:5',
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: !isFullHeight ? const Color(0xFF900EBF) : Colors.white60,
                     ),
                   ),
@@ -1460,9 +1460,9 @@ class _AspectToggle extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'Full',
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: isFullHeight ? const Color(0xFF900EBF) : Colors.white60,
                     ),
                   ),
@@ -1579,9 +1579,9 @@ class _PolaroidShareCard extends StatelessWidget {
                             bottom: 125 * s,
                             child: Text(
                               date,
-                              style: GoogleFonts.lexend(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 12 * s, // Slightly smaller
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.white,
                                 shadows: [
                                   Shadow(
@@ -1667,9 +1667,9 @@ class _PolaroidStatItem extends StatelessWidget {
       children: [
         Text(
           value,
-          style: GoogleFonts.oswald(
+          style: GoogleFonts.tajawal(
             fontSize: fontSize,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w800,
             color: Colors.white,
             height: 1.0,
           ),
@@ -1677,9 +1677,9 @@ class _PolaroidStatItem extends StatelessWidget {
         SizedBox(height: 6 * (fontSize / 52)), // proportion based on Page 2
         Text(
           label,
-          style: GoogleFonts.roboto(
+          style: GoogleFonts.tajawal(
             fontSize: labelSize,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w600,
             color: Colors.white70,
           ),
         ),
@@ -1949,9 +1949,9 @@ class _RoutePathShareCardState extends State<_RoutePathShareCard> {
                     SizedBox(height: 10 * s),
                     Text(
                       widget.date,
-                      style: GoogleFonts.roboto(
+                      style: GoogleFonts.tajawal(
                         fontSize: 26 * s,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
                     ),
@@ -1979,9 +1979,9 @@ class _CenteredBigStat extends StatelessWidget {
       children: [
         Text(
           value,
-          style: GoogleFonts.oswald(
+          style: GoogleFonts.tajawal(
             fontSize: 50 * s,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w800,
             color: Colors.white,
             height: 1.0,
           ),
@@ -1989,9 +1989,9 @@ class _CenteredBigStat extends StatelessWidget {
         SizedBox(height: 6 * s),
         Text(
           label,
-          style: GoogleFonts.roboto(
+          style: GoogleFonts.tajawal(
             fontSize: 24 * s,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w600,
             color: Colors.white70,
           ),
         ),
@@ -1999,3 +1999,4 @@ class _CenteredBigStat extends StatelessWidget {
     );
   }
 }
+

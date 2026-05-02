@@ -79,7 +79,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             children: [
                               Icon(Icons.notifications_none, size: 60.0 * scale, color: Colors.grey.withOpacity(0.5)),
                               SizedBox(height: 10.0 * scale),
-                              Text(l10n.noNotifications, style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14.0 * scale * fontScale)),
+                              Text(l10n.noNotifications, style: GoogleFonts.tajawal(color: Colors.grey, fontSize: 14.0 * scale * fontScale)),
                             ],
                           ),
                         );
@@ -134,17 +134,20 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             child: SizedBox(
               width: 42.0 * scale,
               height: 42.0 * scale,
-              child: CustomArrowIcon(
-                size: 42.0 * scale,
-                color: const Color(0xFF130F26),
+              child: Transform.scale(
+                scaleX: Directionality.of(context) == TextDirection.rtl ? 1 : -1,
+                child: CustomArrowIcon(
+                  size: 42.0 * scale,
+                  color: const Color(0xFF130F26),
+                ),
               ),
             ),
           ),
           Text(
             l10n.notificationsTitle,
-            style: GoogleFonts.lexendDeca(
+            style: GoogleFonts.tajawal(
               fontSize: 19.0 * scale * fontScale,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
               color: const Color(0xFF24252C),
             ),
           ),
@@ -248,9 +251,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         Expanded(
                           child: Text(
                             notification.title,
-                            style: GoogleFonts.lexendDeca(
+                            style: GoogleFonts.tajawal(
                               fontSize: 15.0 * scale * fontScale,
-                              fontWeight: isRead ? FontWeight.w500 : FontWeight.w700,
+                              fontWeight: isRead ? FontWeight.w700 : FontWeight.w800,
                               color: const Color(0xFF24252C),
                             ),
                             maxLines: 1,
@@ -261,7 +264,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         ),
                         Text(
                           _formatTime(notification.createdAt, l10n),
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.tajawal(
                             fontSize: 11.0 * scale * fontScale,
                             color: const Color(0xFF8B88B5),
                           ),
@@ -271,7 +274,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     SizedBox(height: 6.0 * scale),
                       Text(
                         notification.message,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.tajawal(
                           fontSize: 13.0 * scale * fontScale,
                           color: const Color(0xFF24252C).withOpacity(0.7),
                           height: 1.4,
@@ -500,3 +503,4 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
   }
 }
+

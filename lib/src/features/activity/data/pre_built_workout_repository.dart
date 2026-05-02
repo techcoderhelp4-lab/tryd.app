@@ -29,3 +29,4 @@ final preBuiltWorkoutRepositoryProvider = Provider<PreBuiltWorkoutRepository>((r
 final preBuiltWorkoutsProvider = FutureProvider<List<PreBuiltWorkout>>((ref) async {
   return ref.watch(preBuiltWorkoutRepositoryProvider).getPreBuiltWorkouts();
 });
+

@@ -141,14 +141,14 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                           Text(
                             l10n.recentActivities,
                             style: isRTL
-                                ? GoogleFonts.cairo(
+                                ? GoogleFonts.tajawal(
                                     fontSize: 18.0 * scale * fontScale,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w800,
                                     color: const Color(0xFF221F48),
                                   )
-                                : GoogleFonts.lexendDeca(
+                                : GoogleFonts.tajawal(
                                     fontSize: 18.0 * scale,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w800,
                                     color: const Color(0xFF221F48),
                                   ),
                           ),
@@ -172,8 +172,8 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                                   child: Text(
                                     l10n.noRecentActivities,
                                     style: isRTL
-                                        ? GoogleFonts.cairo(color: Colors.grey, fontSize: 14.0 * scale * fontScale)
-                                        : GoogleFonts.lexend(color: Colors.grey, fontSize: 14.0 * scale),
+                                        ? GoogleFonts.tajawal(color: Colors.grey, fontSize: 14.0 * scale * fontScale)
+                                        : GoogleFonts.tajawal(color: Colors.grey, fontSize: 14.0 * scale),
                                   ),
                                 ));
                               }
@@ -265,14 +265,14 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
           Text(
             l10n.activityTitle,
             style: isRTL
-                ? GoogleFonts.cairo(
+                ? GoogleFonts.tajawal(
                     fontSize: 19.0 * scale * fontScale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFF24252C),
                   )
-                : GoogleFonts.lexendDeca(
+                : GoogleFonts.tajawal(
                     fontSize: 19.0 * scale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFF24252C),
                   ),
           ),
@@ -347,8 +347,8 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                   child: Text(
                     label,
                     style: isRTL
-                        ? GoogleFonts.cairo(fontSize: fontSize * fontScale, fontWeight: FontWeight.w400, color: Colors.white)
-                        : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.white),
+                        ? GoogleFonts.tajawal(fontSize: fontSize * fontScale, fontWeight: FontWeight.w600, color: Colors.white)
+                        : GoogleFonts.tajawal(fontSize: fontSize, fontWeight: FontWeight.w600, color: Colors.white),
                   ),
                 ),
               )
@@ -357,8 +357,8 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                 child: Text(
                   label,
                   style: isRTL
-                      ? GoogleFonts.cairo(fontSize: fontSize * fontScale, fontWeight: FontWeight.w400, color: Colors.black)
-                      : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.black),
+                      ? GoogleFonts.tajawal(fontSize: fontSize * fontScale, fontWeight: FontWeight.w600, color: Colors.black)
+                      : GoogleFonts.tajawal(fontSize: fontSize, fontWeight: FontWeight.w600, color: Colors.black),
                 ),
               ),
       ),
@@ -408,9 +408,9 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                   ? [
                       Text(
                         periodLabel,
-                        style: GoogleFonts.cairo(
+                        style: GoogleFonts.tajawal(
                           fontSize: 19.0 * scale * fontScale,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                           color: const Color(0xFF221F48),
                           height: 1.15,
                         ),
@@ -423,9 +423,9 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                       SizedBox(width: 7.0 * scale),
                       Text(
                         periodLabel,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.tajawal(
                           fontSize: 19.0 * scale,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                           color: const Color(0xFF221F48),
                           height: 1.15,
                         ),
@@ -440,9 +440,9 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
             top: 76.0 * scale,
             child: Text(
               stats.totalDistance.toStringAsFixed(2),
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 51.0 * scale,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
                 color: const Color(0xFF221F48),
                 height: 1.0,
               ),
@@ -456,15 +456,15 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
             child: Text(
               l10n.kilometersLabel,
               style: isRTL
-                  ? GoogleFonts.cairo(
+                  ? GoogleFonts.tajawal(
                       fontSize: 14.0 * scale * fontScale,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF221F48),
                       height: 2.2,
                     )
-                  : GoogleFonts.roboto(
+                  : GoogleFonts.tajawal(
                       fontSize: 14.0 * scale,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF221F48),
                       height: 2.2,
                     ),
@@ -492,15 +492,15 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         Text(
           label,
           style: isRTL
-              ? GoogleFonts.cairo(fontSize: 14.0 * scale * fontScale, fontWeight: FontWeight.w400, color: const Color(0xFF221F48))
-              : GoogleFonts.roboto(fontSize: 14.0 * scale, fontWeight: FontWeight.w400, color: const Color(0xFF221F48)),
+              ? GoogleFonts.tajawal(fontSize: 14.0 * scale * fontScale, fontWeight: FontWeight.w600, color: const Color(0xFF221F48))
+              : GoogleFonts.tajawal(fontSize: 14.0 * scale, fontWeight: FontWeight.w600, color: const Color(0xFF221F48)),
         ),
         SizedBox(height: 2.0 * scale),
         Text(
           value,
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.tajawal(
             fontSize: 18.0 * scale,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w800,
             color: const Color(0xFF221F48),
           ),
         ),
@@ -716,9 +716,9 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
   }
 
   TextStyle _chartLabelStyle(bool isTablet, double scale) {
-    return GoogleFonts.roboto(
+    return GoogleFonts.tajawal(
       fontSize: 14.0 * scale,
-      fontWeight: FontWeight.w400,
+      fontWeight: FontWeight.w600,
       color: const Color(0xFF221F48),
       height: 2.2,
     );
@@ -867,15 +867,15 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
             child: Text(
               day,
               style: isRTL
-                  ? GoogleFonts.cairo(
+                  ? GoogleFonts.tajawal(
                       fontSize: 18.0 * scale * fontScale,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                       color: const Color(0xFF221F48),
                       height: 1.2,
                     )
-                  : GoogleFonts.poppins(
+                  : GoogleFonts.tajawal(
                       fontSize: 18.0 * scale,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                       color: const Color(0xFF221F48),
                       height: 1.2,
                     ),
@@ -892,9 +892,9 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                   ? [
                       Text(
                         _activityTypeLabel(activityType, l10n, isRTL),
-                        style: GoogleFonts.cairo(
+                        style: GoogleFonts.tajawal(
                           fontSize: 14.0 * scale * fontScale,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                           color: const Color(0xFFF83A71),
                         ),
                       ),
@@ -906,9 +906,9 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                       SizedBox(width: 4.0 * scale),
                       Text(
                         _activityTypeLabel(activityType, l10n, isRTL),
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.tajawal(
                           fontSize: 14.0 * scale,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                           color: const Color(0xFFF83A71),
                         ),
                       ),
@@ -937,15 +937,15 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         Text(
           label,
           style: isRTL
-              ? GoogleFonts.cairo(fontSize: 12.0 * scale * fontScale, fontWeight: FontWeight.w400, color: const Color(0xFF8B88B5))
-              : GoogleFonts.roboto(fontSize: 12.0 * scale, fontWeight: FontWeight.w400, color: const Color(0xFF8B88B5)),
+              ? GoogleFonts.tajawal(fontSize: 12.0 * scale * fontScale, fontWeight: FontWeight.w600, color: const Color(0xFF8B88B5))
+              : GoogleFonts.tajawal(fontSize: 12.0 * scale, fontWeight: FontWeight.w600, color: const Color(0xFF8B88B5)),
         ),
         SizedBox(height: 2.0 * scale),
         Text(
           value,
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.tajawal(
             fontSize: 16.0 * scale,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w800,
             color: const Color(0xFF221F48),
           ),
         ),
@@ -988,3 +988,4 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     );
   }
 }
+

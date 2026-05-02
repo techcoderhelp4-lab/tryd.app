@@ -43,3 +43,4 @@ class AppNotification {
 
   Map<String, dynamic> toJson() => _$AppNotificationToJson(this);
 }
+

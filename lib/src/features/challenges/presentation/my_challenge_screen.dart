@@ -86,9 +86,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
                           // Unlock Rewards heading
                           Text(
                             l10n.unlockRewards,
-                            style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                            style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                               fontSize: 18.0 * scale * fontScale,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w800,
                               color: const Color(0xFF221F48),
                               height: 1.2,
                             ),
@@ -146,9 +146,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
             child: Text(
               l10n.myChallengeTitle,
               textAlign: TextAlign.center,
-              style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+              style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                 fontSize: 19.0 * scale * fontScale,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w800,
                 color: const Color(0xFF24252C),
                 height: 1.2,
               ),
@@ -224,9 +224,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
                     ),
                     child: Text(
                       badgeText,
-                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                      style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                         fontSize: 10.0 * scale * fontScale,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
                         color: Colors.white,
                         height: 1.5,
                       ),
@@ -236,9 +236,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
                   // Title
                   Text(
                     challenge.title,
-                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                    style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                       fontSize: 18.0 * scale * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                       height: 1.2,
                     ),
@@ -256,9 +256,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
                       Flexible(
                         child: Text(
                           timeText,
-                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                             fontSize: 14.0 * scale * fontScale,
-                            fontWeight: FontWeight.w400,
+                            fontWeight: FontWeight.w600,
                             color: Colors.white,
                             height: 1.5,
                           ),
@@ -338,9 +338,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
                 children: [
                   Text(
                     currentText,
-                    style: GoogleFonts.lexendDeca(
+                    style: GoogleFonts.tajawal(
                       fontSize: 12.0 * scale,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                       height: 1,
                     ),
@@ -348,9 +348,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
                   SizedBox(height: 2.0 * scale),
                   Text(
                     totalText,
-                    style: GoogleFonts.lexendDeca(
+                    style: GoogleFonts.tajawal(
                       fontSize: 11.0 * scale,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                       height: 1,
                     ),
@@ -399,18 +399,18 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
       children: [
         Text(
           label,
-          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
             fontSize: 14.0 * scale * fontScale,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w700,
             color: const Color(0xFF1B2D51),
             height: 1.3,
           ),
         ),
         Text(
           value,
-          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
             fontSize: 14.0 * scale * fontScale,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w600,
             color: const Color(0xFF8B88B5).withValues(alpha: 0.7),
             height: 1.5,
           ),
@@ -441,9 +441,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
           children: [
             Text(
               l10n.leaderboardTitle,
-              style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+              style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                 fontSize: 19.0 * scale * fontScale,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w800,
                 color: Colors.white,
                 height: 1.2,
               ),
@@ -495,9 +495,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
                   children: [
                     Text(
                       'Run ${challenge.targetKm.toStringAsFixed(0)} km',
-                      style: GoogleFonts.lexendDeca(
+                      style: GoogleFonts.tajawal(
                         fontSize: 11.0 * scale * fontScale,
-                        fontWeight: FontWeight.w400,
+                        fontWeight: FontWeight.w600,
                         color: const Color(0xFF6E6A7C),
                         height: 1.3,
                       ),
@@ -505,9 +505,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
                     SizedBox(height: 4.0 * scale),
                     Text(
                       'win ${NumberFormat.compact().format(challenge.rewardPoints)} points',
-                      style: GoogleFonts.lexendDeca(
+                      style: GoogleFonts.tajawal(
                         fontSize: 14.0 * scale * fontScale,
-                        fontWeight: FontWeight.w400,
+                        fontWeight: FontWeight.w600,
                         color: Colors.black,
                         height: 1.3,
                       ),
@@ -541,9 +541,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
                   children: [
                     Text(
                       'اركض ${challenge.targetKm.toStringAsFixed(0)} كم',
-                      style: GoogleFonts.cairo(
+                      style: GoogleFonts.tajawal(
                         fontSize: 11.0 * scale * fontScale,
-                        fontWeight: FontWeight.w400,
+                        fontWeight: FontWeight.w600,
                         color: const Color(0xFF6E6A7C),
                         height: 1.3,
                       ),
@@ -551,9 +551,9 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
                     SizedBox(height: 4.0 * scale),
                     Text(
                       'اربح ${NumberFormat.compact().format(challenge.rewardPoints)} نقطة',
-                      style: GoogleFonts.cairo(
+                      style: GoogleFonts.tajawal(
                         fontSize: 14.0 * scale * fontScale,
-                        fontWeight: FontWeight.w400,
+                        fontWeight: FontWeight.w600,
                         color: Colors.black,
                         height: 1.3,
                       ),
@@ -586,3 +586,4 @@ class _MyChallengeScreenState extends ConsumerState<MyChallengeScreen> {
     );
   }
 }
+

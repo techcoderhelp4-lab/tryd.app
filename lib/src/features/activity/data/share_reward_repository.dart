@@ -73,3 +73,4 @@ final shareRewardRepositoryProvider = Provider<ShareRewardRepository>((ref) {
 final shareRewardStatusProvider = FutureProvider<ShareRewardStatus>((ref) {
   return ref.watch(shareRewardRepositoryProvider).getStatus();
 });
+

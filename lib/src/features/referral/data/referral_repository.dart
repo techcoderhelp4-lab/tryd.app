@@ -40,3 +40,4 @@ final referralRepositoryProvider = Provider<ReferralRepository>((ref) {
 final myReferralInfoProvider = FutureProvider<ReferralInfo>((ref) {
   return ref.watch(referralRepositoryProvider).getMyReferralInfo();
 });
+

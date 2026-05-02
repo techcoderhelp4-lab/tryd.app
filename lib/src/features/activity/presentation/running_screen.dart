@@ -441,9 +441,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
                           scale: value,
                           child: Text(
                             '${_coreLogic.countdownSeconds}',
-                            style: GoogleFonts.lexend(
+                            style: GoogleFonts.tajawal(
                               fontSize: (isTablet ? 120.0 : 110.0) * scale,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w800,
                               color: Colors.white,
                             ),
                           ),
@@ -581,9 +581,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
             child: Center(
               child: Text(
                 l10n.startRun,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: 17.0 * scale * fontScale,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                   color: Colors.white,
                 ),
               ),
@@ -634,9 +634,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
                 onAction: _coreLogic.finishRun,
                 width: stopWidth,
                 height: stopHeight,
-                textStyle: GoogleFonts.lexendDeca(
+                textStyle: GoogleFonts.tajawal(
                   fontSize: 20.0 * scale,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                   color: Colors.white,
                 ),
               ),
@@ -777,9 +777,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
                           color: isActive ? activeColor : inactiveColor),
                       SizedBox(height: 4.0 * scale),
                       Text(label,
-                          style: GoogleFonts.lexend(
+                          style: GoogleFonts.tajawal(
                             fontSize: labelSize,
-                            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                            fontWeight: isActive ? FontWeight.w800 : FontWeight.w700,
                             color: isActive ? activeColor : inactiveColor,
                             letterSpacing: 0.2,
                           )),
@@ -836,9 +836,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
         children: [
           Text(
             label,
-            style: GoogleFonts.lexend(
+            style: GoogleFonts.tajawal(
               fontSize: labelSize * fontScale,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w600,
               height: 1.2,
               color: const Color(0xFF8B88B5),
             ),
@@ -850,9 +850,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
             children: [
               Text(
                 value,
-                style: GoogleFonts.lexendDeca(
+                style: GoogleFonts.tajawal(
                   fontSize: valueSize,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                   height: 1.2,
                   color: const Color(0xFF1B2D51),
                 ),
@@ -861,9 +861,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
                 SizedBox(width: 4 * scale),
                 Text(
                   unit,
-                  style: GoogleFonts.lexendDeca(
+                  style: GoogleFonts.tajawal(
                     fontSize: unitSize * fontScale,
-                    fontWeight: FontWeight.w400,
+                    fontWeight: FontWeight.w600,
                     color: const Color(0xFF8B88B5),
                   ),
                 ),
@@ -948,9 +948,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
           children: [
             Text(
               value,
-              style: GoogleFonts.lexend(
+              style: GoogleFonts.tajawal(
                 fontSize: valueSize,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
                 height: 1.1,
                 color: Colors.black,
               ),
@@ -958,9 +958,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
             const SizedBox(width: 3),
             Text(
               unit,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: unitSize,
-                fontWeight: FontWeight.w400,
+                fontWeight: FontWeight.w600,
                 color: const Color(0xFF8B88B5),
               ),
             ),
@@ -970,9 +970,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
         Text(
           label,
           textAlign: TextAlign.center,
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.tajawal(
             fontSize: labelSize * fontScale,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w600,
             height: 1.1,
             color: const Color(0xFF8B88B5),
           ),
@@ -1018,7 +1018,7 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
                 _supportLogic.currentSongName ??
                     (_supportLogic.songs.isNotEmpty ? _supportLogic.songs[_supportLogic.currentSongIndex].title : ''),
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(fontSize: titleFontSize, color: const Color(0xFF6F86B5)),
+                style: GoogleFonts.tajawal(fontSize: titleFontSize, color: const Color(0xFF6F86B5)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -1165,9 +1165,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
                           child: Center(
                             child: Text(
                               l10n.newRunButton,
-                              style: GoogleFonts.lexendDeca(
+                              style: GoogleFonts.tajawal(
                                 fontSize: (isTablet ? 18.0 : 16.0) * fontScale,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w800,
                                 color: const Color(0xFF900EBF),
                               ),
                             ),
@@ -1182,9 +1182,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
                         width: double.infinity,
                         height: isTablet ? 60.0 : 52.0,
                         showIcon: false,
-                        textStyle: GoogleFonts.lexendDeca(
+                        textStyle: GoogleFonts.tajawal(
                           fontSize: (isTablet ? 18.0 : 16.0) * fontScale,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                           color: Colors.white,
                         ),
                         onPressed: () {
@@ -1244,9 +1244,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
       children: [
         Text(
           label,
-          style: GoogleFonts.lexend(
+          style: GoogleFonts.tajawal(
             fontSize: labelSize,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w600,
             color: const Color(0xFF8B88B5),
             textStyle: const TextStyle(letterSpacing: 0.5),
           ),
@@ -1259,9 +1259,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
           children: [
             Text(
               value,
-              style: GoogleFonts.lexend(
+              style: GoogleFonts.tajawal(
                 fontSize: valueSize,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
                 color: const Color(0xFF1B2D51),
               ),
             ),
@@ -1269,9 +1269,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
               SizedBox(width: 4 * scale),
               Text(
                 unit,
-                style: GoogleFonts.lexend(
+                style: GoogleFonts.tajawal(
                   fontSize: unitSize,
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w600,
                   color: const Color(0xFF1B2D51),
                 ),
               ),
@@ -1302,9 +1302,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
                   fit: BoxFit.scaleDown,
                   child: Text(
                     value,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.tajawal(
                       fontSize: valueSize,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                       color: Colors.black,
                     ),
                   ),
@@ -1313,9 +1313,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
               const SizedBox(width: 4),
               Text(
                 unit,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: unitSize,
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w600,
                   color: const Color(0xFF8B88B5),
                 ),
               ),
@@ -1325,9 +1325,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
           Text(
             label,
             textAlign: TextAlign.center,
-            style: GoogleFonts.lexend(
+            style: GoogleFonts.tajawal(
               fontSize: labelSize,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF8B88B5),
               textStyle: const TextStyle(letterSpacing: 0.5),
             ),
@@ -1396,9 +1396,9 @@ class _RunningScreenState extends ConsumerState<RunningScreen> with AutomaticKee
           Flexible(
             child: Text(
               text,
-              style: GoogleFonts.lexend(
+              style: GoogleFonts.tajawal(
                 fontSize: 13.0 * scale,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
             ),
@@ -1681,4 +1681,5 @@ class _RunHoldGradientState extends State<_RunHoldGradient>
     );
   }
 }
+
 

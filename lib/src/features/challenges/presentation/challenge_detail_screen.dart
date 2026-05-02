@@ -127,7 +127,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
                   children: [
                      Icon(Icons.error_outline, color: Colors.red, size: 48.0 * scale),
                     SizedBox(height: 16.0 * scale),
-                    Text(l10n.errorLoadingChallenge, style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(fontSize: 14 * scale * fontScale)),
+                    Text(l10n.errorLoadingChallenge, style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(fontSize: 14 * scale * fontScale)),
                     TextButton(
                       onPressed: () => ref.refresh(challengeDetailsProvider(challengeId)),
                       child: Text(l10n.retryButton, style: TextStyle(fontSize: 14 * scale * fontScale)),
@@ -161,9 +161,9 @@ class ChallengeDetailScreen extends ConsumerWidget {
             child: Text(
               l10n.challengeDetailTitle,
               textAlign: TextAlign.center,
-              style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+              style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                 fontSize: 19.0 * scale * fontScale,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w800,
                 color: const Color(0xFF24252C),
                 height: 1.25,
               ),
@@ -254,9 +254,9 @@ class ChallengeDetailScreen extends ConsumerWidget {
                         // Title
                         Text(
                           challenge.title,
-                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                             fontSize: 22.0 * scale * fontScale,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
                             color: Colors.white,
                             height: 1.2,
                           ),
@@ -273,9 +273,9 @@ class ChallengeDetailScreen extends ConsumerWidget {
                             isRTL
                                 ? 'ستربح ${NumberFormat.compact().format(challenge.rewardPoints)} نقطة'
                                 : 'You will win ${NumberFormat.compact().format(challenge.rewardPoints)} points',
-                            style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                            style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                               fontSize: 11.0 * scale * fontScale,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
                               color: Colors.white,
                             ),
                           ),
@@ -293,9 +293,9 @@ class ChallengeDetailScreen extends ConsumerWidget {
                                 SizedBox(width: 6.0 * scale),
                                 Text(
                                   dateFormat.format(challenge.startDate),
-                                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                                  style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                                     fontSize: 11.0 * scale * fontScale,
-                                    fontWeight: FontWeight.w400,
+                                    fontWeight: FontWeight.w600,
                                     color: Colors.white,
                                   ),
                                 ),
@@ -308,9 +308,9 @@ class ChallengeDetailScreen extends ConsumerWidget {
                                 SizedBox(width: 6.0 * scale),
                                 Text(
                                   timeLabel,
-                                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                                  style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                                     fontSize: 11.0 * scale * fontScale,
-                                    fontWeight: FontWeight.w400,
+                                    fontWeight: FontWeight.w600,
                                     color: Colors.white,
                                   ),
                                 ),
@@ -335,7 +335,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
                       children: [
                         Text(
                           challenge.targetKm.toStringAsFixed(0),
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.tajawal(
                             fontSize: 23.0 * scale,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
@@ -344,9 +344,9 @@ class ChallengeDetailScreen extends ConsumerWidget {
                         ),
                         Text(
                           l10n.kmLabel,
-                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                             fontSize: 13.0 * scale * fontScale,
-                            fontWeight: FontWeight.w400,
+                            fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
                         ),
@@ -404,9 +404,9 @@ class ChallengeDetailScreen extends ConsumerWidget {
                     isRTL
                         ? 'اربح ${NumberFormat.compact().format(challenge.rewardPoints)} نقطة'
                         : 'Win ${NumberFormat.compact().format(challenge.rewardPoints)} points',
-                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                    style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                       fontSize: 18.0 * scale * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: Colors.black,
                       height: 1.22,
                     ),
@@ -416,9 +416,9 @@ class ChallengeDetailScreen extends ConsumerWidget {
                     isRTL
                         ? 'أكمل ${challenge.targetKm.toStringAsFixed(0)} كم بحلول ${dateFormat.format(challenge.endDate)}'
                         : 'Complete ${challenge.targetKm.toStringAsFixed(0)} km by ${dateFormat.format(challenge.endDate)}',
-                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                    style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                       fontSize: 11.0 * scale * fontScale,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF6E6A7C),
                       height: 1.25,
                     ),
@@ -486,16 +486,16 @@ class ChallengeDetailScreen extends ConsumerWidget {
       children: [
         Text(
           label,
-          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
             fontSize: 12.0 * scale * fontScale,
             color: const Color(0xFF8B88B5),
           ),
         ),
         Text(
           value,
-          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
             fontSize: 14.0 * scale * fontScale,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w800,
             color: const Color(0xFF24252C),
           ),
         ),
@@ -596,3 +596,4 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 }
+

@@ -146,3 +146,4 @@ class _ArrowPainter extends CustomPainter {
   @override
   bool shouldRepaint(_ArrowPainter oldDelegate) => oldDelegate.color != color;
 }
+

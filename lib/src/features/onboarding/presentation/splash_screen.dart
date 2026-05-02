@@ -268,3 +268,4 @@ class _WavePainter extends CustomPainter {
   @override
   bool shouldRepaint(_WavePainter old) => old.t != t;
 }
+

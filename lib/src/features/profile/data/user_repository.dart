@@ -256,3 +256,4 @@ final activitySummaryProvider = FutureProvider.family<Map<String, dynamic>, Stri
   final repository = ref.watch(userRepositoryProvider);
   return repository.getActivitySummary(period: period, ref: ref);
 });
+

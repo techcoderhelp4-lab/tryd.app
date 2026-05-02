@@ -133,6 +133,7 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF910EBF)),
               useMaterial3: true,
+              fontFamily: 'Tajawal',
               pageTransitionsTheme: const PageTransitionsTheme(
                 builders: {
                   TargetPlatform.android: CupertinoPageTransitionsBuilder(),
@@ -156,3 +157,4 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
     );
   }
 }
+

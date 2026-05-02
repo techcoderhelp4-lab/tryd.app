@@ -116,8 +116,8 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                       Text(
                         l10n.challengesTitle,
                         style: isRTL
-                            ? GoogleFonts.cairo(fontSize: titleFontSize, fontWeight: FontWeight.w700, color: const Color(0xFF1B2D51))
-                            : GoogleFonts.lexendDeca(fontSize: titleFontSize, fontWeight: FontWeight.w600, color: const Color(0xFF1B2D51)),
+                            ? GoogleFonts.tajawal(fontSize: titleFontSize, fontWeight: FontWeight.w800, color: const Color(0xFF1B2D51))
+                            : GoogleFonts.tajawal(fontSize: titleFontSize, fontWeight: FontWeight.w800, color: const Color(0xFF1B2D51)),
                       ),
                       SizedBox(height: 18.0 * scale),
                       // Subtitle
@@ -127,8 +127,8 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                           l10n.challengesSubtitle,
                           textAlign: TextAlign.center,
                           style: isRTL
-                              ? GoogleFonts.cairo(fontSize: subtitleFontSize, fontWeight: FontWeight.w400, color: const Color(0xFF1B2D51), height: 1.5)
-                              : GoogleFonts.poppins(fontSize: subtitleFontSize, fontWeight: FontWeight.w400, color: const Color(0xFF1B2D51), height: 1.5),
+                              ? GoogleFonts.tajawal(fontSize: subtitleFontSize, fontWeight: FontWeight.w600, color: const Color(0xFF1B2D51), height: 1.5)
+                              : GoogleFonts.tajawal(fontSize: subtitleFontSize, fontWeight: FontWeight.w600, color: const Color(0xFF1B2D51), height: 1.5),
                         ),
                       ),
                       SizedBox(height: 22.0 * scale),
@@ -156,8 +156,8 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                                   Text(
                                     l10n.myChallengesTab,
                                     style: isRTL
-                                        ? GoogleFonts.cairo(fontSize: sectionTitleSize, fontWeight: FontWeight.w700, color: const Color(0xFF1B2D51))
-                                        : GoogleFonts.lexendDeca(fontSize: sectionTitleSize, fontWeight: FontWeight.w600, color: const Color(0xFF1B2D51)),
+                                        ? GoogleFonts.tajawal(fontSize: sectionTitleSize, fontWeight: FontWeight.w800, color: const Color(0xFF1B2D51))
+                                        : GoogleFonts.tajawal(fontSize: sectionTitleSize, fontWeight: FontWeight.w800, color: const Color(0xFF1B2D51)),
                                   ),
                                   SizedBox(height: 10.0 * scale),
                                   if (activeChallenges.isEmpty)
@@ -166,7 +166,7 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                                       child: Center(
                                         child: Text(
                                           l10n.noActiveChallenges,
-                                          style: isRTL ? GoogleFonts.cairo(color: Colors.grey) : GoogleFonts.poppins(color: Colors.grey),
+                                          style: isRTL ? GoogleFonts.tajawal(color: Colors.grey) : GoogleFonts.tajawal(color: Colors.grey),
                                         ),
                                       ),
                                     )
@@ -189,8 +189,8 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                                     Text(
                                       l10n.previousChallenges,
                                       style: isRTL
-                                          ? GoogleFonts.cairo(fontSize: sectionTitleSize, fontWeight: FontWeight.w700, color: const Color(0xFF1B2D51))
-                                          : GoogleFonts.lexendDeca(fontSize: sectionTitleSize, fontWeight: FontWeight.w600, color: const Color(0xFF1B2D51)),
+                                          ? GoogleFonts.tajawal(fontSize: sectionTitleSize, fontWeight: FontWeight.w800, color: const Color(0xFF1B2D51))
+                                          : GoogleFonts.tajawal(fontSize: sectionTitleSize, fontWeight: FontWeight.w800, color: const Color(0xFF1B2D51)),
                                     ),
                                     SizedBox(height: 10.0 * scale),
                                     ...previousChallenges.map((challenge) => Padding(
@@ -218,7 +218,7 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                                       child: Center(
                                         child: Text(
                                           l10n.noAvailableChallenges,
-                                          style: isRTL ? GoogleFonts.cairo(color: Colors.grey) : GoogleFonts.poppins(color: Colors.grey),
+                                          style: isRTL ? GoogleFonts.tajawal(color: Colors.grey) : GoogleFonts.tajawal(color: Colors.grey),
                                         ),
                                       ),
                                     )
@@ -297,8 +297,8 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                       height: buttonHeight,
                       showIcon: false,
                       textStyle: isRTL
-                          ? GoogleFonts.cairo(fontSize: fontSize, fontWeight: FontWeight.w600, color: Colors.white)
-                          : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.white),
+                          ? GoogleFonts.tajawal(fontSize: fontSize, fontWeight: FontWeight.w800, color: Colors.white)
+                          : GoogleFonts.tajawal(fontSize: fontSize, fontWeight: FontWeight.w600, color: Colors.white),
                     )
                   : GestureDetector(
                       onTap: () => setState(() => _selectedTab = 'My Challenges'),
@@ -308,8 +308,8 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                         child: Text(
                           l10n.myChallengesTab,
                           style: isRTL
-                              ? GoogleFonts.cairo(fontSize: fontSize, fontWeight: FontWeight.w500, color: Colors.black)
-                              : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.black),
+                              ? GoogleFonts.tajawal(fontSize: fontSize, fontWeight: FontWeight.w700, color: Colors.black)
+                              : GoogleFonts.tajawal(fontSize: fontSize, fontWeight: FontWeight.w600, color: Colors.black),
                         ),
                       ),
                     ),
@@ -322,8 +322,8 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                       height: buttonHeight,
                       showIcon: false,
                       textStyle: isRTL
-                          ? GoogleFonts.cairo(fontSize: fontSize, fontWeight: FontWeight.w600, color: Colors.white)
-                          : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.white),
+                          ? GoogleFonts.tajawal(fontSize: fontSize, fontWeight: FontWeight.w800, color: Colors.white)
+                          : GoogleFonts.tajawal(fontSize: fontSize, fontWeight: FontWeight.w600, color: Colors.white),
                     )
                   : GestureDetector(
                       onTap: () => setState(() => _selectedTab = 'Join a Challenge'),
@@ -333,8 +333,8 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                         child: Text(
                           l10n.joinAChallengeTab,
                           style: isRTL
-                              ? GoogleFonts.cairo(fontSize: fontSize, fontWeight: FontWeight.w500, color: Colors.black)
-                              : GoogleFonts.poppins(fontSize: fontSize, fontWeight: FontWeight.w400, color: Colors.black),
+                              ? GoogleFonts.tajawal(fontSize: fontSize, fontWeight: FontWeight.w700, color: Colors.black)
+                              : GoogleFonts.tajawal(fontSize: fontSize, fontWeight: FontWeight.w600, color: Colors.black),
                         ),
                       ),
                     ),
@@ -423,9 +423,9 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                       challenge.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                      style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                         fontSize: titleFontSize,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
                         color: const Color(0xFF24252C),
                       ),
                     ),
@@ -434,9 +434,9 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                       challenge.description,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                      style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                         fontSize: descFontSize,
-                        fontWeight: FontWeight.w400,
+                        fontWeight: FontWeight.w600,
                         color: const Color(0xFF6E6A7C),
                       ),
                     ),
@@ -453,8 +453,8 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                           child: Text(
                             _challengeDateLabel(challenge, isActive, l10n, isRTL),
                             style: isRTL
-                                ? GoogleFonts.cairo(fontSize: progressFontSize, fontWeight: FontWeight.w400, color: isActive ? const Color(0xFF24252C) : const Color(0xFF8B88B5))
-                                : GoogleFonts.lexendDeca(fontSize: progressFontSize, fontWeight: FontWeight.w400, color: isActive ? const Color(0xFF24252C) : const Color(0xFF8B88B5)),
+                                ? GoogleFonts.tajawal(fontSize: progressFontSize, fontWeight: FontWeight.w600, color: isActive ? const Color(0xFF24252C) : const Color(0xFF8B88B5))
+                                : GoogleFonts.tajawal(fontSize: progressFontSize, fontWeight: FontWeight.w600, color: isActive ? const Color(0xFF24252C) : const Color(0xFF8B88B5)),
                           ),
                         ),
                       ],
@@ -482,9 +482,9 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                           fit: BoxFit.scaleDown,
                           child: Text(
                             challenge.targetKm.toStringAsFixed(0),
-                            style: GoogleFonts.lexendDeca(
+                            style: GoogleFonts.tajawal(
                               fontSize: badgeNumSize,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w800,
                               color: isActive ? const Color(0xFFF83A71) : Colors.white,
                             ),
                           ),
@@ -493,9 +493,9 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                           fit: BoxFit.scaleDown,
                           child: Text(
                             l10n.kmLabel,
-                            style: (isRTL ? GoogleFonts.cairo : GoogleFonts.roboto)(
+                            style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                               fontSize: badgeLabelSize,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
                               color: isActive ? const Color(0xFFF83A71) : Colors.white,
                             ),
                           ),
@@ -598,9 +598,9 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                           challenge.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                             fontSize: titleFontSize,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w700,
                             color: const Color(0xFF24252C),
                           ),
                         ),
@@ -609,9 +609,9 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                           challenge.description,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                             fontSize: descFontSize,
-                            fontWeight: FontWeight.w400,
+                            fontWeight: FontWeight.w600,
                             color: const Color(0xFF6E6A7C),
                           ),
                         ),
@@ -634,9 +634,9 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                           fit: BoxFit.scaleDown,
                           child: Text(
                             challenge.targetKm.toStringAsFixed(0),
-                            style: GoogleFonts.lexendDeca(
+                            style: GoogleFonts.tajawal(
                               fontSize: badgeNumSize,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w800,
                               color: const Color(0xFFF83A71),
                             ),
                           ),
@@ -645,9 +645,9 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                           fit: BoxFit.scaleDown,
                           child: Text(
                             l10n.kmLabel,
-                            style: (isRTL ? GoogleFonts.cairo : GoogleFonts.roboto)(
+                            style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                               fontSize: badgeLabelSize,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
                               color: const Color(0xFFF83A71),
                             ),
                           ),
@@ -678,9 +678,9 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
                           : (isRTL
                               ? '$timeLeft أيام متبقية  |  ${NumberFormat.compact().format(challenge.rewardPoints)} نقطة ستربحها'
                               : '$timeLeft Days remaining  |  ${NumberFormat.compact().format(challenge.rewardPoints)} pts you will win'),
-                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                      style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                         fontSize: footerFontSize,
-                        fontWeight: FontWeight.w400,
+                        fontWeight: FontWeight.w600,
                         color: const Color(0xFF8B88B5),
                       ),
                     ),
@@ -699,3 +699,4 @@ class _ClubScreenState extends ConsumerState<ClubScreen> with AutomaticKeepAlive
     );
   }
 }
+

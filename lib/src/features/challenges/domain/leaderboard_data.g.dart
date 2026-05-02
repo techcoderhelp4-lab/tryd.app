@@ -80,3 +80,4 @@ Map<String, dynamic> _$LeaderboardChallengeInfoToJson(
   'userProgress': instance.userProgress,
   'progressPercentage': instance.progressPercentage,
 };
+

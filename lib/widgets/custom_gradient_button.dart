@@ -143,9 +143,9 @@ class _CustomGradientButtonState extends State<CustomGradientButton>
                       child: Text(
                         widget.text,
                         style: widget.textStyle ??
-                            GoogleFonts.lexendDeca(
+                            GoogleFonts.tajawal(
                               fontSize: 19,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w800,
                               height: 1.26,
                               color: Colors.white,
                             ),
@@ -200,3 +200,4 @@ class _ShapeProgressPainter extends CustomPainter {
   bool shouldRepaint(_ShapeProgressPainter old) =>
       old.progress != progress || old.color != color;
 }
+

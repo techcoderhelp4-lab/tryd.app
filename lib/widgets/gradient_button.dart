@@ -97,18 +97,22 @@ class GradientButton extends StatelessWidget {
                   child: InkWell(
                     onTap: enabled ? onPressed : null,
                     child: SizedBox(
-                      height: _defaultHeight,
+                      height: height ?? _defaultHeight,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
                           Center(
-                            child: Text(
-                              text,
-                              style: textStyle ?? GoogleFonts.lexendDeca(
-                                fontSize: 19,
-                                fontWeight: FontWeight.w600,
-                                height: 1.26,
-                                color: effectiveTextColor,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 2.0),
+                              child: Text(
+                                text,
+                                textAlign: TextAlign.center,
+                                style: textStyle ?? GoogleFonts.tajawal(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.0,
+                                  color: effectiveTextColor,
+                                ),
                               ),
                             ),
                           ),
@@ -133,3 +137,4 @@ class GradientButton extends StatelessWidget {
     );
   }
 }
+

@@ -68,3 +68,4 @@ extension ResponsiveFont on num {
   /// Convert to responsive font size using context
   double rf(BuildContext context) => ResponsiveUtils.responsiveFont(context, toDouble());
 }
+

@@ -56,3 +56,4 @@ class _ExercisesIconPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+

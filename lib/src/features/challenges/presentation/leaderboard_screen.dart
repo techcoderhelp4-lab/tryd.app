@@ -297,9 +297,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             child: Text(
               l10n.leaderboardTitle,
               textAlign: TextAlign.center,
-              style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+              style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                 fontSize: 19.0 * scale * fontScale,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w800,
                 color: const Color(0xFF24252C),
                 height: 1.2,
               ),
@@ -377,9 +377,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                     ),
                     child: Text(
                       badgeText,
-                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                      style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                         fontSize: 10.0 * scale * fontScale,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
                         color: Colors.white,
                         height: 1.5,
                       ),
@@ -389,9 +389,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   // Title
                   Text(
                     challenge.title,
-                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                    style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                       fontSize: 18.0 * scale * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                       height: 1.2,
                     ),
@@ -409,9 +409,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                       Flexible(
                         child: Text(
                           timeText,
-                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                             fontSize: 14.0 * scale * fontScale,
-                            fontWeight: FontWeight.w400,
+                            fontWeight: FontWeight.w600,
                             color: Colors.white,
                             height: 1.5,
                           ),
@@ -496,9 +496,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                 children: [
                   Text(
                     currentText,
-                    style: GoogleFonts.lexendDeca(
+                    style: GoogleFonts.tajawal(
                       fontSize: 11.0 * scale,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                       height: 1,
                     ),
@@ -506,9 +506,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   SizedBox(height: 2.0 * scale),
                   Text(
                     totalText,
-                    style: GoogleFonts.lexendDeca(
+                    style: GoogleFonts.tajawal(
                       fontSize: 10.0 * scale,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                       height: 1,
                     ),
@@ -549,9 +549,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             children: [
               Text(
                 'Your Rank',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: 18.0 * scale,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w700,
                   color: const Color(0xFF1B2D51),
                   height: 1.0,
                 ),
@@ -569,9 +569,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                     Flexible(
                       child: Text(
                         '${data.leaderboard.length} participants',
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.tajawal(
                           fontSize: 14.0 * scale,
-                          fontWeight: FontWeight.w400,
+                          fontWeight: FontWeight.w600,
                           color: const Color(0xFF1B2D51),
                           height: 1.0,
                         ),
@@ -595,9 +595,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             padding: EdgeInsets.symmetric(horizontal: 20.0 * scale, vertical: 15.0 * scale),
             child: Text(
               '#${data.currentUserRank}',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 31.0 * scale,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
                 color: const Color(0xFFF83A71),
                 height: 1,
               ),
@@ -608,9 +608,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             alignment: Alignment.centerLeft,
             child: Text(
               'Top Performers Rank',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 18.0 * scale,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
                 color: const Color(0xFF1B2D51),
                 height: 1.0,
               ),
@@ -622,9 +622,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   }
 
   Widget _buildTableHeader(double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
-    final textStyle = (isRTL ? GoogleFonts.cairo : GoogleFonts.lexend)(
+    final textStyle = (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
       fontSize: 10.0 * scale * fontScale,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w800,
       color: const Color(0xFF8B88B5),
       letterSpacing: isRTL ? 0.0 : 0.5,
     );
@@ -752,9 +752,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
               children: [
                 Text(
                   name,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.tajawal(
                     fontSize: 14.0 * scale,
-                    fontWeight: isYou ? FontWeight.w700 : FontWeight.w600,
+                    fontWeight: isYou ? FontWeight.w800 : FontWeight.w800,
                     color: const Color(0xFF121212),
                     height: 1.2,
                   ),
@@ -766,9 +766,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                     padding: EdgeInsets.only(top: 2.0 * scale),
                     child: Text(
                       rankLabel,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.tajawal(
                         fontSize: 11.0 * scale,
-                        fontWeight: FontWeight.w400,
+                        fontWeight: FontWeight.w600,
                         color: const Color(0xFF8B88B5).withOpacity(0.7),
                         height: 1.2,
                       ),
@@ -784,9 +784,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             child: Text(
               km,
               textAlign: TextAlign.right,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.tajawal(
                 fontSize: 13.0 * scale,
-                fontWeight: isYou ? FontWeight.w800 : FontWeight.w500,
+                fontWeight: isYou ? FontWeight.w800 : FontWeight.w700,
                 color: isYou ? const Color(0xFF121212) : const Color(0xFF121212).withOpacity(0.5),
                 height: 1.2,
                 letterSpacing: -0.5,
@@ -812,12 +812,13 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     
     return Text(
       rankText,
-      style: GoogleFonts.lexend(
+      style: GoogleFonts.tajawal(
         fontSize: isYou ? 16.0 * scale : 14.0 * scale,
-        fontWeight: isYou ? FontWeight.w800 : FontWeight.w600,
+        fontWeight: isYou ? FontWeight.w800 : FontWeight.w800,
         color: const Color(0xFF121212).withOpacity(isYou ? 1.0 : 0.5),
         height: 1.2,
       ),
     );
   }
 }
+

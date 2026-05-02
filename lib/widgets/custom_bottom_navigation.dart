@@ -168,15 +168,15 @@ class CustomBottomNavigation extends StatelessWidget {
             Text(
               label,
               style: isRTL
-                  ? GoogleFonts.cairo(
+                  ? GoogleFonts.tajawal(
                       fontSize: 12.0 * scale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: color,
                       height: 1.5,
                     )
-                  : GoogleFonts.lexend(
+                  : GoogleFonts.tajawal(
                       fontSize: 12.0 * scale,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                       color: color,
                       height: 1.5,
                     ),
@@ -316,3 +316,4 @@ class BottomNavPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+

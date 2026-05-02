@@ -161,3 +161,4 @@ class AuthController extends _$AuthController {
     }
   }
 }
+

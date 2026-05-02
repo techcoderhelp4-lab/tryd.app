@@ -115,10 +115,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     ));
   }
 
-  TextStyle _textStyle(bool isRTL, {required double size, FontWeight weight = FontWeight.w400, Color color = Colors.black, double? height}) {
+  TextStyle _textStyle(bool isRTL, {required double size, FontWeight weight = FontWeight.w600, Color color = Colors.black, double? height}) {
     return isRTL
-        ? GoogleFonts.cairo(fontSize: size, fontWeight: weight, color: color, height: height)
-        : GoogleFonts.lexend(fontSize: size, fontWeight: weight, color: color, height: height);
+        ? GoogleFonts.tajawal(fontSize: size, fontWeight: weight, color: color, height: height)
+        : GoogleFonts.tajawal(fontSize: size, fontWeight: weight, color: color, height: height);
   }
 
   Widget _buildHeader(BuildContext context, bool isTablet, double scale, AppLocalizations l10n, bool isRTL, double fontScale) {
@@ -143,14 +143,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           Text(
             l10n.historyTitle,
             style: isRTL
-                ? GoogleFonts.cairo(
+                ? GoogleFonts.tajawal(
                     fontSize: 19.0 * scale * fontScale,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFF24252C),
                   )
-                : GoogleFonts.lexendDeca(
+                : GoogleFonts.tajawal(
                     fontSize: 19.0 * scale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFF24252C),
                   ),
           ),
@@ -201,15 +201,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 Text(
                   _formatDay(workout.date, l10n, isRTL),
                   style: isRTL
-                      ? GoogleFonts.cairo(
+                      ? GoogleFonts.tajawal(
                           fontSize: 19.0 * scale * fontScale,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                           color: const Color(0xFF221F48),
                           height: 1.15,
                         )
-                      : GoogleFonts.poppins(
+                      : GoogleFonts.tajawal(
                           fontSize: 19.0 * scale,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                           color: const Color(0xFF221F48),
                           height: 1.15,
                         ),
@@ -253,16 +253,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           label,
           style: _textStyle(isRTL,
             size: 14.0 * scale * fontScale,
-            weight: FontWeight.w400,
+            weight: FontWeight.w600,
             color: const Color(0xFF221F48),
             height: 2.2,
           ),
         ),
         Text(
           value,
-          style: GoogleFonts.roboto(
+          style: GoogleFonts.tajawal(
             fontSize: 24.0 * scale,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             color: const Color(0xFF221F48),
             height: 1.3,
           ),
@@ -271,3 +271,4 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 }
+

@@ -54,3 +54,4 @@ class _SwipeToPopWrapperState extends State<SwipeToPopWrapper> {
     );
   }
 }
+

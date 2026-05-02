@@ -99,3 +99,4 @@ class PreBuiltWorkout {
   int get totalDurationSeconds => totalExercises * totalRounds * (workDuration + restDuration);
   int get totalDurationMinutes => (totalDurationSeconds / 60).ceil();
 }
+

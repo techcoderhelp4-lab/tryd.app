@@ -156,3 +156,4 @@ class _HoldProgressButtonState extends State<HoldProgressButton> with SingleTick
     );
   }
 }
+

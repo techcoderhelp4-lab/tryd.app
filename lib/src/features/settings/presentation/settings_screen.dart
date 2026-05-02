@@ -177,9 +177,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     Text(
                       l10n.deleteAccountTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: _textDark,
                     ),
                     textAlign: TextAlign.center,
@@ -187,7 +187,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 12.0),
                   Text(
                     l10n.deleteAccountWarning,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0 * fontScale,
                       color: _textDark.withValues(alpha: 0.8),
                       height: 1.4,
@@ -207,10 +207,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 alignment: Alignment.center,
                 child: Text(
                   l10n.deleteAccountButton,
-                  style: GoogleFonts.lexend(
+                  style: GoogleFonts.tajawal(
                     fontSize: 16.0 * fontScale,
                     color: _dangerColor,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -228,10 +228,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 alignment: Alignment.center,
                 child: Text(
                   l10n.cancelButton,
-                  style: GoogleFonts.lexend(
+                  style: GoogleFonts.tajawal(
                     fontSize: 16.0 * fontScale,
                     color: _textMuted,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -324,17 +324,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           width: 40.0 * scale,
                           height: 40.0 * scale,
                           alignment: Alignment.center,
-                          child: CustomArrowIcon(
-                            size: 28.0 * scale,
-                            color: const Color(0xFF130F26),
+                          child: Transform.scale(
+                            scaleX: Directionality.of(context) == TextDirection.rtl ? 1 : -1,
+                            child: CustomArrowIcon(
+                              size: 28.0 * scale,
+                              color: const Color(0xFF130F26),
+                            ),
                           ),
                         ),
                       ),
                       Text(
                         l10n.settingsTitle,
-                        style: GoogleFonts.lexendDeca(
+                        style: GoogleFonts.tajawal(
                           fontSize: 19.0 * scale * fontScale,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                           color: _textDark,
                         ),
                       ),
@@ -401,7 +404,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             title: l10n.appVersionLabel,
                             trailing: Text(
                               'v1.0.0',
-                              style: GoogleFonts.poppins(fontSize: 14 * scale * fontScale, color: _textMuted),
+                              style: GoogleFonts.tajawal(fontSize: 14 * scale * fontScale, color: _textMuted),
                             ),
                             scale: scale,
                             fontScale: fontScale,
@@ -430,9 +433,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               alignment: Alignment.center,
                               child: Text(
                                 l10n.logoutButton,
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.tajawal(
                                   fontSize: 16 * scale * fontScale,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w800,
                                   color: _dangerColor,
                                 ),
                               ),
@@ -469,15 +472,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildLangItem(double scale, double fontScale, bool isAr) {
-    return PopupMenuButton<String>(
+    final dropdownPart = PopupMenuButton<String>(
       onSelected: (value) {
         ref.read(localeProvider.notifier).setLocale(Locale(value));
       },
       color: Colors.white,
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      offset: Offset(0, 60 * scale),
-      constraints: BoxConstraints(minWidth: 170 * scale),
+      offset: Offset(0, 8 * scale),
+      position: PopupMenuPosition.under,
+      constraints: BoxConstraints(minWidth: 150 * scale),
       itemBuilder: (_) => [
         PopupMenuItem(
           value: 'en',
@@ -485,9 +489,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 2 * scale),
           child: Row(children: [
             Text('English',
-                style: GoogleFonts.lexendDeca(
+                style: GoogleFonts.tajawal(
                     fontSize: 14 * scale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: !isAr ? const Color(0xFF900EBF) : const Color(0xFF24252C))),
             const Spacer(),
             if (!isAr) Icon(Icons.check_rounded, size: 18 * scale, color: const Color(0xFF900EBF)),
@@ -499,9 +503,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 2 * scale),
           child: Row(children: [
             Text('العربية',
-                style: GoogleFonts.cairo(
+                style: GoogleFonts.tajawal(
                     fontSize: 14 * scale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: isAr ? const Color(0xFF900EBF) : const Color(0xFF24252C))),
             const Spacer(),
             if (isAr) Icon(Icons.check_rounded, size: 18 * scale, color: const Color(0xFF900EBF)),
@@ -509,42 +513,56 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ],
       child: Container(
-        height: 60 * scale,
+        padding: EdgeInsets.symmetric(horizontal: 12 * scale, vertical: 6 * scale),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: _cardBorder.withValues(alpha: 0.62)),
-          borderRadius: BorderRadius.circular(15 * scale),
-          boxShadow: [
-            BoxShadow(offset: const Offset(0, 3), blurRadius: 20, color: Colors.black.withValues(alpha: 0.04)),
-          ],
+          color: const Color(0xFFF8F9FB),
+          borderRadius: BorderRadius.circular(10 * scale),
         ),
-        padding: EdgeInsets.symmetric(horizontal: 20 * scale),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.language_rounded, size: 24 * scale, color: _accentColor),
-            SizedBox(width: 12 * scale),
-            Expanded(
-              child: Text(
-                isAr ? 'اللغة' : 'Language',
-                style: GoogleFonts.poppins(
-                  fontSize: 15 * scale * fontScale,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF1B2D51),
-                ),
-              ),
-            ),
             Text(
               isAr ? 'العربية' : 'English',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 14 * scale * fontScale,
-                fontWeight: FontWeight.w500,
-                color: _textMuted,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1B2D51),
               ),
             ),
-            SizedBox(width: 6 * scale),
-            
+            SizedBox(width: 4 * scale),
+            Icon(Icons.keyboard_arrow_down_rounded, size: 18 * scale, color: const Color(0xFF1B2D51)),
           ],
         ),
+      ),
+    );
+
+    return Container(
+      height: 60 * scale,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: _cardBorder.withValues(alpha: 0.62)),
+        borderRadius: BorderRadius.circular(15 * scale),
+        boxShadow: [
+          BoxShadow(offset: const Offset(0, 3), blurRadius: 20, color: Colors.black.withValues(alpha: 0.04)),
+        ],
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 20 * scale),
+      child: Row(
+        children: [
+          Icon(Icons.language_rounded, size: 24 * scale, color: _accentColor),
+          SizedBox(width: 12 * scale),
+          Expanded(
+            child: Text(
+              isAr ? 'اللغة' : 'Language',
+              style: GoogleFonts.tajawal(
+                fontSize: 15 * scale * fontScale,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1B2D51),
+              ),
+            ),
+          ),
+          dropdownPart,
+        ],
       ),
     );
   }
@@ -555,9 +573,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       padding: EdgeInsets.symmetric(horizontal: 4 * scale),
       child: Text(
         title,
-        style: GoogleFonts.lexendDeca(
+        style: GoogleFonts.tajawal(
           fontSize: 15 * scale * fontScale,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w800,
           color: _textDark,
         ),
       ),
@@ -597,14 +615,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Expanded(
               child: Text(
                 title,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: 15 * scale * fontScale,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w700,
                   color: danger ? _dangerColor : const Color(0xFF1B2D51),
                 ),
               ),
             ),
-            trailing ?? CustomChevronIcon(size: 10 * scale, color: _textDark),
+            trailing ?? Transform.scale(
+              scaleX: isAr ? -1 : 1,
+              child: CustomChevronIcon(size: 10 * scale, color: _textDark),
+            ),
           ],
         ),
       ),
@@ -639,9 +660,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Expanded(
             child: Text(
               title,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 15 * scale * fontScale,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
                 color: const Color(0xFF1B2D51),
               ),
             ),
@@ -676,9 +697,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Expanded(
             child: Text(
               label,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 15 * scale,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
                 color: const Color(0xFF1B2D51),
               ),
             ),
@@ -761,7 +782,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
           children: [
             Text(
               AppLocalizations.of(context)!.changePasswordTitle,
-              style: GoogleFonts.lexend(fontSize: 18 * s * (Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0), fontWeight: FontWeight.w600, color: const Color(0xFF24252C)),
+              style: GoogleFonts.tajawal(fontSize: 18 * s * (Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0), fontWeight: FontWeight.w800, color: const Color(0xFF24252C)),
             ),
             SizedBox(height: 20 * s),
             _buildPasswordField(AppLocalizations.of(context)!.currentPasswordLabel, widget.currentController, _obscureCurrent, () {
@@ -781,7 +802,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: Text(AppLocalizations.of(context)!.cancelButton, style: GoogleFonts.poppins(color: const Color(0xFF8B88B5))),
+                  child: Text(AppLocalizations.of(context)!.cancelButton, style: GoogleFonts.tajawal(color: const Color(0xFF8B88B5))),
                 ),
                 SizedBox(width: 8 * s),
                 TextButton(
@@ -802,7 +823,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                   },
                   child: Text(
                     localL10n.saveButton,
-                    style: GoogleFonts.poppins(color: const Color(0xFF900EBF), fontWeight: FontWeight.w600),
+                    style: GoogleFonts.tajawal(color: const Color(0xFF900EBF), fontWeight: FontWeight.w800),
                   ),
                 ),
               ],
@@ -830,13 +851,20 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
         children: [
           Text(
             label,
-            style: GoogleFonts.lexendDeca(fontSize: 11 * s * (Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0), fontWeight: FontWeight.w500, color: const Color(0xFF8B88B5)),
+            style: GoogleFonts.tajawal(fontSize: 11 * s * (Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0), fontWeight: FontWeight.w700, color: const Color(0xFF8B88B5)),
           ),
           SizedBox(height: 4 * s),
            TextField(
             controller: controller,
             obscureText: obscure,
-            style: GoogleFonts.poppins(fontSize: 15 * s * (Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0), fontWeight: FontWeight.w500, color: const Color(0xFF24252C)),
+            textAlignVertical: const TextAlignVertical(y: -0.25),
+            cursorHeight: 15 * s * (Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0),
+            style: GoogleFonts.tajawal(
+              fontSize: 15 * s * (Localizations.localeOf(context).languageCode == 'ar' ? 1.15 : 1.0),
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF24252C),
+              height: 1.2,
+            ),
             decoration: InputDecoration(
               border: InputBorder.none,
               isDense: true,
@@ -853,3 +881,4 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
     );
   }
 }
+

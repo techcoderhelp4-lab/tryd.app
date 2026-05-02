@@ -91,15 +91,15 @@ class StartScreen extends StatelessWidget {
       l10n.startHeadline,
       textAlign: TextAlign.center,
       style: isRTL
-          ? GoogleFonts.cairo(
+          ? GoogleFonts.tajawal(
               fontSize: 24.0 * scale,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
               height: 1.25,
               color: _primaryTextColor,
             )
-          : GoogleFonts.lexendDeca(
+          : GoogleFonts.tajawal(
               fontSize: 24.0 * scale,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
               height: 1.25,
               color: _primaryTextColor,
               letterSpacing: -0.2,
@@ -112,15 +112,15 @@ class StartScreen extends StatelessWidget {
       l10n.startSubtitle,
       textAlign: TextAlign.center,
       style: isRTL
-          ? GoogleFonts.cairo(
+          ? GoogleFonts.tajawal(
               fontSize: 14.0 * scale,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w600,
               height: 1.5,
               color: _secondaryTextColor,
             )
-          : GoogleFonts.poppins(
+          : GoogleFonts.tajawal(
               fontSize: 14.0 * scale,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w600,
               height: 1.5,
               color: _secondaryTextColor,
             ),
@@ -147,9 +147,9 @@ class StartScreen extends StatelessWidget {
       children: [
         Text(
           "Already have an account? ",
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.tajawal(
             fontSize: 14.0 * scale,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w600,
             color: _secondaryTextColor,
           ),
         ),
@@ -163,9 +163,9 @@ class StartScreen extends StatelessWidget {
           },
           child: Text(
             "Sign In",
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.tajawal(
               fontSize: 14.0 * scale,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
               color: const Color(0xFFF83A71),
             ),
           ),
@@ -174,3 +174,4 @@ class StartScreen extends StatelessWidget {
     );
   }
 }
+

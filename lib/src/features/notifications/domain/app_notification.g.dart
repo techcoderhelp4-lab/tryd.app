@@ -27,3 +27,4 @@ Map<String, dynamic> _$AppNotificationToJson(AppNotification instance) =>
       'isRead': instance.isRead,
       'data': instance.data,
     };
+

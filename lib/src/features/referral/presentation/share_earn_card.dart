@@ -30,7 +30,7 @@ class ShareEarnCard extends ConsumerWidget {
       SnackBar(
         content: Text(
           'Code copied!',
-          style: GoogleFonts.poppins(fontSize: 13.0, color: Colors.white),
+          style: GoogleFonts.tajawal(fontSize: 13.0, color: Colors.white),
         ),
         backgroundColor: const Color(0xFF8A0BBB),
         duration: const Duration(seconds: 2),
@@ -96,7 +96,7 @@ class ShareEarnCard extends ConsumerWidget {
                       children: [
                         Text(
                           'Invite & Earn $pts Points',
-                          style: GoogleFonts.lexendDeca(
+                          style: GoogleFonts.tajawal(
                             fontSize: 16 * scale,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
@@ -107,9 +107,9 @@ class ShareEarnCard extends ConsumerWidget {
                         SizedBox(height: 4 * scale),
                         Text(
                           'You each earn $pts pts when a friend joins',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.tajawal(
                             fontSize: 12 * scale,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w700,
                             color: Colors.white.withValues(alpha: 0.88),
                             height: 1.4,
                           ),
@@ -133,7 +133,7 @@ class ShareEarnCard extends ConsumerWidget {
                                 children: [
                                   Text(
                                     code,
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.tajawal(
                                       fontSize: 13 * scale,
                                       fontWeight: FontWeight.w800,
                                       color: const Color(0xFF8A0BBB),
@@ -174,9 +174,9 @@ class ShareEarnCard extends ConsumerWidget {
                         SizedBox(height: 5 * scale),
                         Text(
                           'Invite',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.tajawal(
                             fontSize: 13 * scale,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w800,
                             color: Colors.white.withValues(alpha: 0.9),
                             height: 1,
                           ),
@@ -195,3 +195,4 @@ class ShareEarnCard extends ConsumerWidget {
   );
   }
 }
+

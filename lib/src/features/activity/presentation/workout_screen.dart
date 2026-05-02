@@ -10,6 +10,7 @@ import '../../../../widgets/custom_exercises_icon.dart';
 import '../../../../widgets/custom_rounds_icon.dart';
 import '../../../../widgets/custom_arrow_icon.dart';
 import '../data/activity_repository.dart';
+import '../data/music_player_service.dart';
 import '../domain/workout.dart';
 import '../domain/workout_controller.dart';
 import 'add_number_screen.dart';
@@ -43,6 +44,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
   @override
   bool get wantKeepAlive => true;
 
+  void _onMusicChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
@@ -55,6 +60,12 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
       };
       ref.read(workoutControllerProvider.notifier)
           .setLocale(ref.read(localeProvider).languageCode);
+      // Subscribe to the shared music service so the controls card rebuilds
+      // when playback state changes from any screen. Trigger first-launch
+      // permission flow if it hasn't run yet.
+      final music = ref.read(musicPlayerServiceProvider);
+      music.addListener(_onMusicChanged);
+      music.initMusic(context);
     });
   }
 
@@ -62,6 +73,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
   void dispose() {
     ref.read(gymWorkoutNavGuardProvider.notifier).state = null;
     ref.read(isGymWorkoutActiveProvider.notifier).state = false;
+    ref.read(musicPlayerServiceProvider).removeListener(_onMusicChanged);
     WidgetsBinding.instance.removeObserver(this);
     _disableWakelock();
     super.dispose();
@@ -74,6 +86,11 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
       controller.handleAppPaused();
     } else if (state == AppLifecycleState.resumed) {
       controller.handleAppResumed();
+      // Re-check audio permission on resume in case the user changed it in
+      // OS settings while the app was backgrounded.
+      if (mounted) {
+        ref.read(musicPlayerServiceProvider).initMusic(context);
+      }
     }
   }
 
@@ -191,9 +208,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                 children: [
                   Text(
                     l10n.workoutComplete,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
@@ -201,7 +218,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                   const SizedBox(height: 12.0),
                   Text(
                     l10n.workoutCompleteMessage,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
@@ -233,10 +250,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                 alignment: Alignment.center,
                 child: Text(
                   l10n.doneButton,
-                  style: GoogleFonts.lexend(
+                  style: GoogleFonts.tajawal(
                     fontSize: 16.0,
                     color: const Color(0xFF900EBF),
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -266,9 +283,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                   children: [
                     Text(
                       l10n.endWorkoutTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
@@ -276,7 +293,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                   const SizedBox(height: 12.0),
                   Text(
                     l10n.endWorkoutMessage,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
@@ -299,10 +316,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                         alignment: Alignment.center,
                         child: Text(
                           l10n.cancelButton,
-                          style: GoogleFonts.lexend(
+                          style: GoogleFonts.tajawal(
                             fontSize: 16.0,
                             color: const Color(0xFF989898),
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -327,10 +344,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                         alignment: Alignment.center,
                         child: Text(
                           l10n.endButton,
-                          style: GoogleFonts.lexend(
+                          style: GoogleFonts.tajawal(
                             fontSize: 16.0,
                             color: const Color(0xFFFF5656),
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
@@ -366,9 +383,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                 children: [
                   Text(
                     l10n.endWorkoutTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
@@ -376,7 +393,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                   const SizedBox(height: 12.0),
                   Text(
                     l10n.endWorkoutMessage,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0,
                       color: const Color(0xFF24252C).withValues(alpha: 0.8),
                       height: 1.4,
@@ -399,10 +416,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                         alignment: Alignment.center,
                         child: Text(
                           l10n.cancelButton,
-                          style: GoogleFonts.lexend(
+                          style: GoogleFonts.tajawal(
                             fontSize: 16.0,
                             color: const Color(0xFF989898),
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -427,10 +444,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                         alignment: Alignment.center,
                         child: Text(
                           l10n.endButton,
-                          style: GoogleFonts.lexend(
+                          style: GoogleFonts.tajawal(
                             fontSize: 16.0,
                             color: const Color(0xFFFF5656),
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
@@ -479,6 +496,14 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
     super.build(context);
     ref.listen(localeProvider, (_, locale) {
       ref.read(workoutControllerProvider.notifier).setLocale(locale.languageCode);
+    });
+    // Re-prompt audio permission when this tab becomes active and permission
+    // is still missing. Tab index 3 = Workout. initMusic() is idempotent —
+    // silent no-op when granted, modal otherwise.
+    ref.listen<int>(mainTabProvider, (previous, current) {
+      if (current == 3 && previous != 3 && mounted) {
+        ref.read(musicPlayerServiceProvider).initMusic(context);
+      }
     });
     final state = ref.watch(workoutControllerProvider);
     final size = MediaQuery.of(context).size;
@@ -567,9 +592,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                         ),
                         Text(
                           _selectedPreBuiltWorkout!.title,
-                          style: GoogleFonts.lexendDeca(
+                          style: GoogleFonts.tajawal(
                             fontSize: 19.0 * scale * fontScale,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w800,
                             color: const Color(0xFF24252C),
                           ),
                         ),
@@ -682,6 +707,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                           SizedBox(height: 20.0 * scale),
                           _buildWorkoutControls(isTablet, state, scale, l10n, fontScale),
                           SizedBox(height: 20.0 * scale),
+                          _buildMediaControlsCard(scale, isTablet),
+                          SizedBox(height: 20.0 * scale),
                           _buildPreBuiltWorkouts(isTablet, state, scale, l10n, fontScale),
 
                           SizedBox(height: (isTablet ? 140.0 : 160.0) * scale),
@@ -754,9 +781,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
           ),
           Text(
             l10n.workoutsTitle,
-            style: GoogleFonts.lexendDeca(
+            style: GoogleFonts.tajawal(
               fontSize: 19.0 * scale * fontScale,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
               color: const Color(0xFF24252C),
             ),
           ),
@@ -806,9 +833,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
               state.currentExercise.toString(),
               state.totalExercises.toString(),
             ),
-            style: GoogleFonts.lexend(
+            style: GoogleFonts.tajawal(
               fontSize: 17.0 * scale * fontScale,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w700,
               color: Colors.white,
               height: 1.2,
             ),
@@ -817,9 +844,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
           SizedBox(height: 5.0 * scale),
           Text(
             _formatTime(state.remainingSeconds),
-            style: GoogleFonts.lexend(
+            style: GoogleFonts.tajawal(
               fontSize: 52.0 * scale,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: Colors.white,
               height: 1.0,
             ),
@@ -827,9 +854,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
           SizedBox(height: 5.0 * scale),
           Text(
             "${_formatSecondsToWords(state.workDuration, l10n)} ${l10n.workLabel} / ${_formatSecondsToWords(state.restDuration, l10n)} ${l10n.restLabel}",
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.tajawal(
               fontSize: 16.0 * scale * fontScale,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w700,
               color: Colors.white,
               height: 1.2,
             ),
@@ -866,9 +893,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                 SizedBox(width: 6.0 * scale),
                 Text(
                   l10n.skipRest,
-                  style: GoogleFonts.lexend(
+                  style: GoogleFonts.tajawal(
                     fontSize: 12.0 * scale * fontScale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFFFEB720),
                   ),
                 ),
@@ -1004,9 +1031,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
               child: Center(
                 child: Text(
                   l10n.startRun,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: 17.0 * scale * fontScale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                 ),
@@ -1082,9 +1109,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                 onAction: _showExitConfirmation,
                 width: stopWidth,
                 height: stopHeight,
-                textStyle: GoogleFonts.lexendDeca(
+                textStyle: GoogleFonts.tajawal(
                   fontSize: 18.0 * scale,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                   color: Colors.white,
                 ),
               ),
@@ -1167,18 +1194,18 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
               children: [
                 Text(
                   l10n.totalWorkoutTime,
-                  style: GoogleFonts.lexend(
+                  style: GoogleFonts.tajawal(
                     fontSize: 15.0 * scale * fontScale,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFF24252C),
                   ),
                 ),
                 SizedBox(height: 2.0 * scale),
                 Text(
                   l10n.totalWithTime(_formatSecondsToWords(totalSeconds, l10n, colonStyle: true)),
-                  style: GoogleFonts.lexend(
+                  style: GoogleFonts.tajawal(
                     fontSize: 12.0 * scale * fontScale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFF24252C),
                   ),
                 ),
@@ -1207,9 +1234,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
           padding: EdgeInsets.symmetric(horizontal: 4.0 * scale),
           child: Text(
             l10n.preBuiltWorkoutsTitle,
-            style: GoogleFonts.lexendDeca(
+            style: GoogleFonts.tajawal(
               fontSize: 14.0 * scale * fontScale,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: const Color(0xFF24252C),
               letterSpacing: 1.2,
             ),
@@ -1319,9 +1346,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                     children: [
                       Text(
                         l10n.exerciseTimer,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 13.0 * scale * fontScale,
-                          fontWeight: FontWeight.w400,
+                          fontWeight: FontWeight.w600,
                           color: const Color(0xFF8B88B5),
                         ),
                       ),
@@ -1331,33 +1358,33 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                           children: [
                             TextSpan(
                               text: '${workout.workDuration} ${l10n.secUnit}',
-                              style: GoogleFonts.lexend(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 26.0 * scale * fontScale,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 color: const Color(0xFF1B2D51),
                               ),
                             ),
                             TextSpan(
                               text: ' ${l10n.workSlash} / ',
-                              style: GoogleFonts.lexend(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 20.0 * scale * fontScale,
-                                fontWeight: FontWeight.w400,
+                                fontWeight: FontWeight.w600,
                                 color: const Color(0xFF8B88B5),
                               ),
                             ),
                             TextSpan(
                               text: '${workout.restDuration} ${l10n.secUnit}',
-                              style: GoogleFonts.lexend(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 26.0 * scale * fontScale,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 color: const Color(0xFF1B2D51),
                               ),
                             ),
                             TextSpan(
                               text: ' ${l10n.restWord}',
-                              style: GoogleFonts.lexend(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 20.0 * scale * fontScale,
-                                fontWeight: FontWeight.w400,
+                                fontWeight: FontWeight.w600,
                                 color: const Color(0xFF8B88B5),
                               ),
                             ),
@@ -1417,18 +1444,18 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                     children: [
                       Text(
                         l10n.totalTimeColon,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 13.0 * scale * fontScale,
-                          fontWeight: FontWeight.w400,
+                          fontWeight: FontWeight.w600,
                           color: const Color(0xFF8B88B5),
                         ),
                       ),
                       SizedBox(height: 4.0 * scale),
                       Text(
                         _formatTotalTime(workout),
-                        style: GoogleFonts.lexendDeca(
+                        style: GoogleFonts.tajawal(
                           fontSize: 32.0 * scale,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                           color: const Color(0xFF1B2D51),
                           height: 1.1,
                         ),
@@ -1436,7 +1463,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                       SizedBox(height: 2.0 * scale),
                       Text(
                         '(${l10n.exercisesPlusRest})',
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 12.0 * scale * fontScale,
                           color: const Color(0xFF8B88B5),
                         ),
@@ -1464,9 +1491,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
         children: [
           Text(
             label,
-            style: GoogleFonts.lexend(
+            style: GoogleFonts.tajawal(
               fontSize: 11.0 * scale * fontScale,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF8B88B5),
             ),
             textAlign: TextAlign.center,
@@ -1474,9 +1501,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
           SizedBox(height: 3.0 * scale),
           Text(
             value,
-            style: GoogleFonts.lexendDeca(
+            style: GoogleFonts.tajawal(
               fontSize: 22.0 * scale,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
               color: const Color(0xFF1B2D51),
               height: 1.1,
             ),
@@ -1485,9 +1512,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
           if (unit != null)
             Text(
               unit,
-              style: GoogleFonts.lexendDeca(
+              style: GoogleFonts.tajawal(
                 fontSize: 11.0 * scale * fontScale,
-                fontWeight: FontWeight.w400,
+                fontWeight: FontWeight.w600,
                 color: const Color(0xFF8B88B5),
               ),
               textAlign: TextAlign.center,
@@ -1542,9 +1569,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
               child: Center(
                 child: Text(
                   l10n.startRun,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: 17.0 * scale * fontScale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                 ),
@@ -1620,9 +1647,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                 onAction: _showExitConfirmation,
                 width: stopWidth,
                 height: stopHeight,
-                textStyle: GoogleFonts.lexendDeca(
+                textStyle: GoogleFonts.tajawal(
                   fontSize: 18.0 * scale,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                   color: Colors.white,
                 ),
               ),
@@ -1689,9 +1716,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                   children: [
                     Text(
                       workout.title,
-                      style: GoogleFonts.lexend(
+                      style: GoogleFonts.tajawal(
                         fontSize: 13.0 * scale * fontScale,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         color: Colors.white,
                         height: 1.2,
                       ),
@@ -1703,9 +1730,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                     SizedBox(height: 2.0 * scale),
                     Text(
                       '(${workout.totalDurationMinutes} min)',
-                      style: GoogleFonts.lexend(
+                      style: GoogleFonts.tajawal(
                         fontSize: 11.0 * scale * fontScale,
-                        fontWeight: FontWeight.w400,
+                        fontWeight: FontWeight.w600,
                         color: Colors.white.withValues(alpha: 0.85),
                       ),
                       textAlign: TextAlign.center,
@@ -1727,9 +1754,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                         alignment: Alignment.center,
                         child: Text(
                           l10n.letsGoFire,
-                          style: GoogleFonts.lexendDeca(
+                          style: GoogleFonts.tajawal(
                             fontSize: 13.0 * scale * fontScale,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
                             color: const Color(0xFF900EBF),
                             letterSpacing: 0.8,
                           ),
@@ -1805,9 +1832,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                   SizedBox(height: 12.0 * scale),
                   Text(
                     label,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 16.0 * scale * fontScale,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: Colors.black,
                       height: 1.1,
                     ),
@@ -1817,9 +1844,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
                   SizedBox(height: 4.0 * scale),
                   Text(
                     value,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0 * scale * fontScale,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF8B88B5),
                       height: 1.1,
                     ),
@@ -1888,6 +1915,113 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> with AutomaticKee
         ref.read(workoutControllerProvider.notifier).updateConfig(totalRounds: result);
       }
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Media Controls — same UI as RunningScreen, backed by shared service.
+  // Visible at all times: before, during, and after the workout.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildMediaControlsCard(double scale, bool isTablet) {
+    final music = ref.read(musicPlayerServiceProvider);
+    final minHeight = isTablet ? 66.0 * scale : 56.0 * scale;
+    final hPadding = isTablet ? 15.0 * scale : 12.0 * scale;
+    final vPadding = isTablet ? 11.0 * scale : 9.0 * scale;
+    final listIconSize = (isTablet ? 31.0 : 28.0) * scale;
+    final skipIconSize = (isTablet ? 29.0 : 26.0) * scale;
+    final volumeIconSize = (isTablet ? 26.0 : 24.0) * scale;
+    final titleFontSize = (isTablet ? 12.0 : 12.0) * scale;
+
+    return Container(
+      width: double.infinity,
+      constraints: BoxConstraints(minHeight: minHeight),
+      padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: vPadding),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFF5F3F3)),
+        borderRadius: BorderRadius.circular(isTablet ? 15.0 : 12.0),
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, 3),
+            blurRadius: 20,
+            color: Colors.black.withValues(alpha: 0.04),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (music.songs.isNotEmpty || music.currentSongName != null)
+            Padding(
+              padding: EdgeInsets.only(bottom: isTablet ? 8.0 : 5.0),
+              child: Text(
+                music.currentSongName ??
+                    (music.songs.isNotEmpty
+                        ? music.songs[music.currentSongIndex].title
+                        : ''),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.tajawal(
+                  fontSize: titleFontSize,
+                  color: const Color(0xFF6F86B5),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: music.pickSong,
+                child: Icon(Icons.list_rounded,
+                    size: listIconSize, color: const Color(0xFF96AAD2)),
+              ),
+              GestureDetector(
+                onTap: music.prevSong,
+                child: Icon(Icons.skip_previous,
+                    size: skipIconSize, color: const Color(0xFF96AAD2)),
+              ),
+              _buildPlayPauseButton(scale, isTablet),
+              GestureDetector(
+                onTap: music.nextSong,
+                child: Icon(Icons.skip_next,
+                    size: skipIconSize, color: const Color(0xFF96AAD2)),
+              ),
+              GestureDetector(
+                onTap: music.toggleMute,
+                child: Icon(
+                  music.isMusicMuted ? Icons.volume_off : Icons.volume_up,
+                  size: volumeIconSize,
+                  color: const Color(0xFF96AAD2),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlayPauseButton(double scale, bool isTablet) {
+    final music = ref.read(musicPlayerServiceProvider);
+    final size = (isTablet ? 44.0 : 44.0) * scale;
+    final iconSize = (isTablet ? 24.0 : 24.0) * scale;
+    return GestureDetector(
+      onTap: music.togglePlay,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: const BoxDecoration(
+          color: Color(0xFF96AAD2),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          music.isMusicPlaying ? Icons.pause : Icons.play_arrow,
+          color: Colors.white,
+          size: iconSize,
+        ),
+      ),
+    );
   }
 }
 
@@ -1998,3 +2132,4 @@ class _WorkoutHoldGradientState extends State<_WorkoutHoldGradient>
     );
   }
 }
+

@@ -43,3 +43,4 @@ final homeRepositoryProvider = Provider<HomeRepository>((ref) {
 final homeBannerProvider = FutureProvider<String?>((ref) async {
   return ref.watch(homeRepositoryProvider).getHomeBanner();
 });
+

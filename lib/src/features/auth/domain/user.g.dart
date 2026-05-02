@@ -27,3 +27,4 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
   'points': instance.points,
   'referralCode': instance.referralCode,
 };
+

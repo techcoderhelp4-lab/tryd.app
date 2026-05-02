@@ -177,9 +177,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: Text(
                 l10n.changePicture,
-                style: GoogleFonts.lexend(
+                style: GoogleFonts.tajawal(
                   fontSize: 18 * fontScale,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                   color: const Color(0xFF24252C),
                 ),
               ),
@@ -187,7 +187,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined, color: Color(0xFF900EBF)),
-              title: Text(l10n.takeAPhoto, style: GoogleFonts.lexend(fontSize: 16 * fontScale)),
+              title: Text(l10n.takeAPhoto, style: GoogleFonts.tajawal(fontSize: 16 * fontScale)),
               onTap: () {
                 Navigator.pop(context);
                 _pickAndUploadImage(ImageSource.camera);
@@ -195,7 +195,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF900EBF)),
-              title: Text(l10n.chooseFromGallery, style: GoogleFonts.lexend(fontSize: 16 * fontScale)),
+              title: Text(l10n.chooseFromGallery, style: GoogleFonts.tajawal(fontSize: 16 * fontScale)),
               onTap: () {
                 Navigator.pop(context);
                 _pickAndUploadImage(ImageSource.gallery);
@@ -207,7 +207,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 title: Text(
                   // Look for localized string or fallback
                   (l10n as dynamic).removePhotoLabel ?? "Remove Photo", 
-                  style: GoogleFonts.lexend(fontSize: 16 * fontScale, color: Colors.red),
+                  style: GoogleFonts.tajawal(fontSize: 16 * fontScale, color: Colors.red),
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -245,9 +245,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   children: [
                     Text(
                       l10n.editNameTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                   ),
@@ -276,9 +276,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         children: [
                           Text(
                             l10n.fullNameLabel,
-                            style: GoogleFonts.lexendDeca(
+                            style: GoogleFonts.tajawal(
                               fontSize: 12.0 * fontScale,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
                               height: 1.25,
                               color: const Color(0xFF8B88B5),
                               letterSpacing: 0.2,
@@ -288,18 +288,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           TextField(
                             controller: controller,
                             autofocus: true,
-                            style: GoogleFonts.poppins(
+                            textAlignVertical: const TextAlignVertical(y: -0.25),
+                            cursorHeight: 16.0,
+                            style: GoogleFonts.tajawal(
                               fontSize: 16.0,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
                               color: const Color(0xFF24252C),
-                              height: 1.4,
+                              height: 1.2,
                             ),
                             decoration: InputDecoration(
                               hintText: l10n.fullNamePlaceholder,
-                              hintStyle: GoogleFonts.poppins(
+                              hintStyle: GoogleFonts.tajawal(
                                 fontSize: 16.0 * fontScale,
-                                fontWeight: FontWeight.w400,
+                                fontWeight: FontWeight.w600,
                                 color: const Color(0xFF8B88B5).withOpacity(0.5),
+                                height: 1.2,
                               ),
                               border: InputBorder.none,
                               isDense: true,
@@ -327,10 +330,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       alignment: Alignment.center,
                       child: Text(
                         l10n.cancelButton,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 16.0 * fontScale,
                           color: const Color(0xFF8B88B5),
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -352,10 +355,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       alignment: Alignment.center,
                       child: Text(
                         l10n.saveButton,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 16.0 * fontScale,
                           color: const Color(0xFF900EBF),
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -503,9 +506,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   Flexible(
                                     child: Text(
                                       user.name,
-                                      style: GoogleFonts.lexendDeca(
+                                      style: GoogleFonts.tajawal(
                                         fontSize: 18.0 * scale * fontScale,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w800,
                                         color: const Color(0xFF24252C),
                                       ),
                                       overflow: TextOverflow.ellipsis,
@@ -674,9 +677,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           SizedBox(height: 16.0 * scale),
           Text(
             l10n.loadProfileError,
-            style: GoogleFonts.lexendDeca(
+            style: GoogleFonts.tajawal(
               fontSize: 20.0 * scale * fontScale,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
               color: const Color(0xFF24252C),
             ),
           ),
@@ -684,7 +687,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.tajawal(
               fontSize: 14.0 * scale * fontScale,
               color: const Color(0xFF8B88B5),
             ),
@@ -736,9 +739,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           Text(
             l10n.profileTitle,
-            style: GoogleFonts.lexendDeca(
+            style: GoogleFonts.tajawal(
               fontSize: titleSize,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
               color: const Color(0xFF24252C),
             ),
           ),
@@ -875,17 +878,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 SizedBox(width: 10.0 * scale),
                 Text(
                   title,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: fontSize,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                     color: const Color(0xFF1B2D51),
                   ),
                 ),
               ],
             ),
-            CustomChevronIcon(
-              size: chevronSize,
-              color: const Color(0xFF24252C),
+            Transform.scale(
+              scaleX: isAr ? -1 : 1,
+              child: CustomChevronIcon(
+                size: chevronSize,
+                color: const Color(0xFF24252C),
+              ),
             ),
           ],
         ),
@@ -929,9 +935,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 Text(
                   l10n.freePlan,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: titleSize,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     height: 1.1,
                     color: const Color(0xFF1B2D51),
                   ),
@@ -939,9 +945,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const SizedBox(height: 2),
                 Text(
                   l10n.freePlanSubtitle,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: subtitleSize,
-                    fontWeight: FontWeight.w400,
+                    fontWeight: FontWeight.w600,
                     height: 1.5,
                     color: const Color(0xFF96AAD2),
                   ),
@@ -957,9 +963,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             child: Text(
               'Current',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: badgeFontSize,
-                fontWeight: FontWeight.w400,
+                fontWeight: FontWeight.w600,
                 height: 1.25,
                 color: Colors.white,
               ),
@@ -1000,9 +1006,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: [
               Text(
                 'Premium Plan',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: titleSize,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                   height: 1.1,
                   color: Colors.white,
                 ),
@@ -1012,9 +1018,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 width: 200, // Fixed max width for description
                 child: Text(
                   'Advanced features & exclusive rewards',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: subtitleSize,
-                    fontWeight: FontWeight.w400,
+                    fontWeight: FontWeight.w600,
                     height: 1.5,
                     color: Colors.white,
                   ),
@@ -1033,9 +1039,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 alignment: Alignment.center,
                 child: Text(
                   'Upgrade Now',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: buttonFontSize,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                     height: 1.43,
                     color: Colors.white,
                   ),
@@ -1059,3 +1065,4 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 }
+

@@ -103,3 +103,4 @@ final myRedemptionsProvider = FutureProvider<List<Redemption>>((ref) {
   final repository = ref.watch(rewardRepositoryProvider);
   return repository.getMyRedemptions();
 });
+

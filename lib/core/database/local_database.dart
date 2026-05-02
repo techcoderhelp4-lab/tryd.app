@@ -278,3 +278,4 @@ class LocalDatabase {
 final localDatabaseProvider = Provider<LocalDatabase>((ref) {
   return LocalDatabase();
 });
+

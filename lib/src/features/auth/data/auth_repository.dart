@@ -193,3 +193,4 @@ AuthRepository authRepository(AuthRepositoryRef ref) {
   final dio = ref.watch(apiClientProvider);
   return AuthRepository(dio);
 }
+

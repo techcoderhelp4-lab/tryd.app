@@ -64,3 +64,4 @@ class ApiConstants {
   static const String adminPreBuiltWorkouts = '/admin/pre-built-workouts';
   static String adminPreBuiltWorkout(String id) => '/admin/pre-built-workouts/$id';
 }
+

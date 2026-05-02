@@ -192,10 +192,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
                               Expanded(
                                 child: Text(
                                   l10n.activityLoadError,
-                                  style: GoogleFonts.poppins(
+                                  style: GoogleFonts.tajawal(
                                     fontSize: 14 * scale * fontScale,
                                     color: Colors.red,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
@@ -235,9 +235,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
                           }
                         },
                         icon: Icon(Icons.logout, size: 18.0 * scale, color: const Color(0xFFF83A71)),
-                        label: Text(l10n.logoutLabel, style: GoogleFonts.poppins(
+                        label: Text(l10n.logoutLabel, style: GoogleFonts.tajawal(
                           fontSize: 13.0 * scale * fontScale,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                           color: const Color(0xFFF83A71),
                         )),
                       ),
@@ -255,10 +255,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
                           padding: const EdgeInsets.all(24.0),
                           child: Text(
                             l10n.somethingWentWrong,
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.tajawal(
                               color: const Color(0xFF221F48),
                               fontSize: 16 * fontScale,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -292,8 +292,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
                           ),
                           child: Text(
                             l10n.loginLabel,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600,
+                            style: GoogleFonts.tajawal(
+                              fontWeight: FontWeight.w800,
                               fontSize: 15 * fontScale,
                             ),
                           ),
@@ -400,18 +400,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
                 children: [
                   Text(
                     l10n.helloGreeting,
-                    style: GoogleFonts.lexendDeca(
+                    style: GoogleFonts.tajawal(
                       fontSize: 16.0 * scale * fontScale,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF24252C),
                     ),
                   ),
                   const SizedBox(height: 2.0),
                   Text(
                     user.name,
-                    style: GoogleFonts.lexendDeca(
+                    style: GoogleFonts.tajawal(
                       fontSize: 22.0 * scale * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     maxLines: 1,
@@ -421,66 +421,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
               ),
             ),
           ),
-          SizedBox(width: 8.0 * scale),
-          _buildLangToggle(scale),
           SizedBox(width: 4.0 * scale),
           _buildNotificationBell(context, isTablet, scale),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLangToggle(double scale) {
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    return PopupMenuButton<String>(
-      onSelected: (value) {
-        ref.read(localeProvider.notifier).setLocale(Locale(value));
-      },
-      color: Colors.white,
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      offset: Offset(0, 40 * scale),
-      constraints: BoxConstraints(minWidth: 170 * scale),
-      itemBuilder: (_) => [
-        PopupMenuItem(
-          value: 'en',
-          height: 44 * scale,
-          padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 2 * scale),
-          child: Row(
-            children: [
-              Text('English',
-                  style: GoogleFonts.lexendDeca(
-                      fontSize: 14 * scale,
-                      fontWeight: FontWeight.w600,
-                      color: !isAr ? const Color(0xFF900EBF) : const Color(0xFF24252C))),
-              const Spacer(),
-              if (!isAr)
-                Icon(Icons.check_rounded, size: 18 * scale, color: const Color(0xFF900EBF)),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: 'ar',
-          height: 44 * scale,
-          padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 2 * scale),
-          child: Row(
-            children: [
-              Text('العربية',
-                  style: GoogleFonts.cairo(
-                      fontSize: 14 * scale,
-                      fontWeight: FontWeight.w600,
-                      color: isAr ? const Color(0xFF900EBF) : const Color(0xFF24252C))),
-              const Spacer(),
-              if (isAr)
-                Icon(Icons.check_rounded, size: 18 * scale, color: const Color(0xFF900EBF)),
-            ],
-          ),
-        ),
-      ],
-      child: Icon(
-        Icons.language_rounded,
-        size: 34.0 * scale,
-        color: const Color(0xFF24252C),
       ),
     );
   }
@@ -527,9 +470,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
                     child: Center(
                       child: Text(
                         count > 9 ? '9+' : count.toString(),
-                        style: GoogleFonts.lexendDeca(
+                        style: GoogleFonts.tajawal(
                           fontSize: 11.5 * scale * fontScale,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                           color: Colors.white,
                           height: 1.0,
                         ),
@@ -595,9 +538,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
                   Flexible(
                     child: Text(
                       points.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.tajawal(
                         fontSize: 24.0 * scale * fontScale,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w800,
                         color: const Color(0xFF221F48),
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -606,9 +549,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
                   SizedBox(height: (isTablet ? 1.0 : 4.0) * scale),
                   Text(
                     l10n.availablePointsLabel,
-                    style: GoogleFonts.lexendDeca(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0 * scale * fontScale,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF221F48),
                     ),
                   ),
@@ -757,17 +700,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
                 children: [
                   Text(
                     l10n.currentMonthLabel,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.tajawal(
                       fontSize: 13.0 * scale * fontScale,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF24252C),
                     ),
                   ),
                   Text(
                     '$distance ${l10n.kmSuffix}',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.tajawal(
                       fontSize: 19.0 * scale * fontScale,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF221F48),
                     ),
                   ),
@@ -940,9 +883,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
                 Flexible(
                   child: Text(
                     value,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.tajawal(
                       fontSize: 19.0 * scale * fontScale,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: Colors.black,
                       height: 1.1,
                     ),
@@ -955,9 +898,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
                     padding: EdgeInsets.only(bottom: 2.0 * scale),
                     child: Text(
                       suffix,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.tajawal(
                         fontSize: 13.0 * scale * fontScale,
-                        fontWeight: FontWeight.w400,
+                        fontWeight: FontWeight.w600,
                         color: const Color(0xFF8B88B5),
                       ),
                     ),
@@ -968,9 +911,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
             SizedBox(height: 4.0 * scale),
             Text(
               label,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 16.0 * scale * fontScale,
-                fontWeight: FontWeight.w400,
+                fontWeight: FontWeight.w600,
                 color: const Color(0xFF8B88B5),
                 height: 1.1,
               ),
@@ -983,3 +926,4 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
     );
   }
 }
+

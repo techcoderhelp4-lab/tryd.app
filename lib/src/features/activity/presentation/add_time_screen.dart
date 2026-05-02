@@ -156,8 +156,8 @@ class _AddTimeScreenState extends ConsumerState<AddTimeScreen> {
           Text(
             widget.title,
             style: isRTL
-                ? GoogleFonts.cairo(fontSize: 19.0 * scale * fontScale, fontWeight: FontWeight.w700, color: _primary)
-                : GoogleFonts.lexendDeca(fontSize: 19.0 * scale, fontWeight: FontWeight.w600, color: _primary),
+                ? GoogleFonts.tajawal(fontSize: 19.0 * scale * fontScale, fontWeight: FontWeight.w800, color: _primary)
+                : GoogleFonts.tajawal(fontSize: 19.0 * scale, fontWeight: FontWeight.w800, color: _primary),
           ),
           SizedBox(width: 40.0 * scale),
         ],
@@ -189,14 +189,14 @@ class _AddTimeScreenState extends ConsumerState<AddTimeScreen> {
     final itemHeight = itemH * scale;
     final pickerH    = itemHeight * 5;
 
-    final labelStyle = GoogleFonts.lexend(
+    final labelStyle = GoogleFonts.tajawal(
       fontSize: 11.0 * scale,
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w800,
       color: _accent,
       letterSpacing: 1.2,
     );
 
-    final sepStyle = GoogleFonts.lexend(
+    final sepStyle = GoogleFonts.tajawal(
       fontSize: 30.0 * scale,
       fontWeight: FontWeight.w200,
       color: _primary.withValues(alpha: 0.25),
@@ -333,7 +333,7 @@ class _AddTimeScreenState extends ConsumerState<AddTimeScreen> {
         height: 58.0 * scale,
         enabled: isValid,
         textStyle: isRTL
-            ? GoogleFonts.cairo(fontSize: 19.0 * fontScale, fontWeight: FontWeight.w600, color: Colors.white)
+            ? GoogleFonts.tajawal(fontSize: 19.0 * fontScale, fontWeight: FontWeight.w800, color: Colors.white)
             : null,
       ),
     );
@@ -391,9 +391,9 @@ class _InfinitePickerColumn extends StatelessWidget {
         return Center(
           child: Text(
             valueAt(i),
-            style: GoogleFonts.lexend(
+            style: GoogleFonts.tajawal(
               fontSize: (isSelected ? 28.0 : 23.0) * scale * fontScale,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
               color: _primary.withValues(alpha: opacity),
               height: 1.0,
             ),
@@ -403,3 +403,4 @@ class _InfinitePickerColumn extends StatelessWidget {
     );
   }
 }
+

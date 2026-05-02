@@ -314,3 +314,4 @@ final challengeLeaderboardProvider = FutureProvider.family<LeaderboardData, Stri
   // No cache — fetch from API (first visit)
   return repository.getLeaderboard(id);
 });
+

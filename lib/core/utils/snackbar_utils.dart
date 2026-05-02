@@ -14,10 +14,10 @@ class CustomSnackBar {
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.tajawal(
             color: Colors.white,
             fontSize: 14,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w700,
           ),
         ),
         backgroundColor: isError ? Colors.red.shade400 : const Color(0xFF22D198),
@@ -35,3 +35,4 @@ class CustomSnackBar {
     );
   }
 }
+

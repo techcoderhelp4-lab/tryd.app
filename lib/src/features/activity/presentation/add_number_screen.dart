@@ -181,14 +181,14 @@ class _AddNumberScreenState extends ConsumerState<AddNumberScreen> {
           Text(
             widget.title,
             style: isRTL
-                ? GoogleFonts.cairo(
+                ? GoogleFonts.tajawal(
                     fontSize: 19.0 * scale * fontScale,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFF24252C),
                   )
-                : GoogleFonts.lexendDeca(
+                : GoogleFonts.tajawal(
                     fontSize: 19.0 * scale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFF24252C),
                   ),
           ),
@@ -240,7 +240,7 @@ class _AddNumberScreenState extends ConsumerState<AddNumberScreen> {
             ).createShader(bounds),
             child: Text(
               '-',
-              style: GoogleFonts.lexendDeca(
+              style: GoogleFonts.tajawal(
                 fontSize: 60.0 * scale,
                 fontWeight: FontWeight.w300,
                 color: Colors.white,
@@ -251,9 +251,9 @@ class _AddNumberScreenState extends ConsumerState<AddNumberScreen> {
         SizedBox(width: 40.0 * scale),
         Text(
           value.toString().padLeft(2, '0'),
-          style: GoogleFonts.lexendDeca(
+          style: GoogleFonts.tajawal(
             fontSize: 56.0 * scale,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w800,
             color: const Color(0xFF1B2D51),
           ),
         ),
@@ -268,7 +268,7 @@ class _AddNumberScreenState extends ConsumerState<AddNumberScreen> {
             ).createShader(bounds),
             child: Text(
               '+',
-              style: GoogleFonts.lexendDeca(
+              style: GoogleFonts.tajawal(
                 fontSize: 60.0 * scale,
                 fontWeight: FontWeight.w300,
                 color: Colors.white,
@@ -291,9 +291,9 @@ class _AddNumberScreenState extends ConsumerState<AddNumberScreen> {
         },
         height: 58.0 * scale,
         textStyle: isRTL
-            ? GoogleFonts.cairo(
+            ? GoogleFonts.tajawal(
                 fontSize: 19.0 * fontScale,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w800,
                 color: Colors.white,
               )
             : null,
@@ -301,3 +301,4 @@ class _AddNumberScreenState extends ConsumerState<AddNumberScreen> {
     );
   }
 }
+

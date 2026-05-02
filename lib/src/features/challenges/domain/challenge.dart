@@ -63,3 +63,4 @@ class Challenge {
     return 0;
   }
 }
+

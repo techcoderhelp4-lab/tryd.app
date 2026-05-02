@@ -2,19 +2,18 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:health/health.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../../shell/main_shell.dart' show mainNavTapProvider;
+import '../../../shell/main_shell.dart' show mainNavTapProvider, mainTabProvider;
 import '../data/health_repository.dart';
+import '../data/music_player_service.dart';
 import 'running_screen_logic1.dart';
 import 'package:tryd/src/generated/l10n/app_localizations.dart';
 import 'package:tryd/main.dart' show localeProvider;
@@ -36,30 +35,33 @@ class RunningSupportLogic {
     required this.isMounted,
   });
 
-  // ─── Audio/Music ────────────────────────────────────────────────────────
-  final AudioPlayer audioPlayer = AudioPlayer();
-  final OnAudioQuery audioQuery = OnAudioQuery();
-  List<SongModel> songs = [];      // Android MediaStore songs
-  List<String> _iosNames = [];     // iOS picked file display names
-  int currentSongIndex = 0;
-  bool hasAudioPermission = false;
-  String? currentSongName;
-  bool isMusicPlaying = false;
-  bool isMusicMuted = false;
-  bool _isIosPlaylist = false;     // true when iOS multi-file playlist is loaded
-  StreamSubscription<int?>? _indexSubscription;  // iOS current-index listener
+  // ─── Audio/Music — delegates to shared MusicPlayerService ───────────────
+  MusicPlayerService get _music => ref.read(musicPlayerServiceProvider);
+
+  // Pass-through getters keep the old call sites in running_screen.dart
+  // working without changes.
+  List<SongModel> get songs => _music.songs;
+  int get currentSongIndex => _music.currentSongIndex;
+  bool get hasAudioPermission => _music.hasAudioPermission;
+  String? get currentSongName => _music.currentSongName;
+  bool get isMusicPlaying => _music.isMusicPlaying;
+  bool get isMusicMuted => _music.isMusicMuted;
 
   // ─── TTS ────────────────────────────────────────────────────────────────
   final FlutterTts flutterTts = FlutterTts();
 
   // ─── Health ─────────────────────────────────────────────────────────────
   bool isHealthConnected = false;
-  bool healthDialogShown = false;
-  bool _permissionsDialogShownOnce = false;
-  DateTime? _lastHealthCheckTime;
+  bool healthDialogShown = false; // True only while dialog is on screen
 
   // ─── Location ───────────────────────────────────────────────────────────
-  bool _locationDialogShown = false;
+  bool _locationDialogShown = false; // True only while dialog is on screen
+
+  // ─── Sequencer ──────────────────────────────────────────────────────────
+  // Set to true while the Location → Health → Audio cycle is mid-flight on
+  // this screen entry. Prevents re-entry from concurrent triggers
+  // (initState + tab listener + app resume firing at once).
+  bool _promptCycleRunning = false;
 
 
   // ─── App Lifecycle ──────────────────────────────────────────────────────
@@ -79,19 +81,25 @@ class RunningSupportLogic {
     );
     WidgetsBinding.instance.addObserver(_observer);
     _initTts();
-    _initMusic();
+    _music.addListener(onStateChanged);
+    if (context.mounted) {
+      _music.initMusic(context, showModal: false);
+    }
   }
 
   void dispose() {
     WidgetsBinding.instance.removeObserver(_observer);
-    _indexSubscription?.cancel();
-    audioPlayer.dispose();
+    _music.removeListener(onStateChanged);
     flutterTts.stop();
   }
 
-  // Returns true only when the RunningScreen widget is still in the tree and
-  // the BuildContext is still valid — prevents dialogs leaking onto other screens.
-  bool get _canShowDialog => isMounted() && context.mounted;
+  // Returns true only when the RunningScreen widget is still in the tree,
+  // the BuildContext is valid, AND this tab is currently visible — 
+  // prevents dialogs leaking onto other screens (like Home or Settings).
+  bool get _canShowDialog => 
+      isMounted() && 
+      context.mounted && 
+      ref.read(mainTabProvider) == 1;
 
   // True while a run is in progress — health/audio modals must not interrupt.
   bool get _isRunActive =>
@@ -180,204 +188,14 @@ class RunningSupportLogic {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Music Methods
+  // Music Methods — thin delegations to MusicPlayerService
   // ─────────────────────────────────────────────────────────────────────────
 
-  Future<void> _initMusic() async {
-    // Single player-state listener — tracks play/pause and auto-advances
-    // Android-only single-song mode advances via currentSongIndex.
-    audioPlayer.playerStateStream.listen((state) {
-      if (!context.mounted) return;
-      isMusicPlaying = state.playing;
-      onStateChanged();
-      if (state.processingState == ProcessingState.completed) {
-        // iOS playlist: just_audio auto-advances; only do manual advance for
-        // Android single-song mode (no queue loaded).
-        if (!_isIosPlaylist && songs.length > 1) {
-          nextSong();
-        }
-      }
-    });
-
-    // Sync initial playing state in case player was already active.
-    isMusicPlaying = audioPlayer.playing;
-
-    if (Platform.isIOS) {
-      final status = await Permission.mediaLibrary.request();
-      if (status.isGranted) {
-        hasAudioPermission = true;
-        if (context.mounted) onStateChanged();
-      } else if (context.mounted) {
-        _showAudioPermissionModal();
-      }
-      return;
-    }
-
-    // Android: check existing permission before requesting.
-    final audioStatus = await Permission.audio.status;
-    final storageStatus = await Permission.storage.status;
-    if (audioStatus.isGranted || storageStatus.isGranted) {
-      hasAudioPermission = true;
-      await _loadAndroidSongs();
-    } else {
-      final result = await Permission.audio.request();
-      if (result.isGranted) {
-        hasAudioPermission = true;
-        await _loadAndroidSongs();
-      } else if (context.mounted) {
-        _showAudioPermissionModal();
-      }
-    }
-  }
-
-  Future<void> _loadAndroidSongs() async {
-    try {
-      final loaded = await audioQuery.querySongs(
-        sortType: SongSortType.TITLE,
-        orderType: OrderType.ASC_OR_SMALLER,
-        uriType: UriType.EXTERNAL,
-        ignoreCase: true,
-      );
-      if (loaded.isNotEmpty && context.mounted) {
-        songs = loaded;
-        currentSongIndex = 0;
-        onStateChanged();
-        // Pre-load first song so controls are ready, but don't auto-play.
-        await _loadAndroidSong(songs[0]);
-      }
-    } catch (e) {
-      debugPrint("Load Android Songs Error: $e");
-    }
-  }
-
-  Future<void> _loadAndroidSong(SongModel song) async {
-    try {
-      final uri = song.uri;
-      final path = song.data;
-      if (uri != null && uri.isNotEmpty) {
-        await audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(uri)));
-      } else if (path.isNotEmpty) {
-        await audioPlayer.setAudioSource(AudioSource.file(path));
-      }
-      if (context.mounted) {
-        currentSongName = song.title;
-        onStateChanged();
-      }
-    } catch (e) {
-      debugPrint("Load Android Song Error: $e");
-    }
-  }
-
-  Future<void> pickSong() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.audio,
-        allowMultiple: Platform.isIOS,
-      );
-      if (result == null || result.files.isEmpty) return;
-
-      if (Platform.isIOS) {
-        final validFiles = result.files.where((f) => f.path != null).toList();
-        if (validFiles.isEmpty) return;
-
-        final sources = validFiles.map((f) => AudioSource.file(f.path!)).toList();
-        _iosNames = validFiles.map((f) => f.name).toList();
-
-        // Cancel previous index-tracking subscription to avoid leaks.
-        await _indexSubscription?.cancel();
-
-        // Load playlist — setAudioSources replaces whatever was loaded before.
-        await audioPlayer.setAudioSources(sources, initialIndex: 0);
-
-        _isIosPlaylist = true;
-        songs = []; // iOS playlist supersedes Android song list
-
-        if (context.mounted) {
-          currentSongName = _iosNames.first;
-          onStateChanged();
-
-          // Track current track name as user skips through the playlist.
-          _indexSubscription = audioPlayer.currentIndexStream.listen((idx) {
-            if (idx != null && idx < _iosNames.length && context.mounted) {
-              currentSongName = _iosNames[idx];
-              onStateChanged();
-            }
-          });
-
-          await audioPlayer.play();
-        }
-      } else {
-        // Android: single-file pick — replace current source and play immediately.
-        final file = result.files.first;
-        if (file.path == null) return;
-
-        _isIosPlaylist = false;
-        await audioPlayer.setAudioSource(AudioSource.file(file.path!));
-
-        if (context.mounted) {
-          currentSongName = file.name;
-          onStateChanged();
-          await audioPlayer.play();
-        }
-      }
-    } catch (e) {
-      debugPrint("Pick Song Error: $e");
-    }
-  }
-
-  Future<void> togglePlay() async {
-    try {
-      if (audioPlayer.playing) {
-        await audioPlayer.pause();
-      } else {
-        await audioPlayer.play();
-      }
-    } catch (e) {
-      debugPrint("Toggle Play Error: $e");
-    }
-  }
-
-  Future<void> nextSong() async {
-    try {
-      if (_isIosPlaylist) {
-        // Playlist mode: let just_audio handle advancement.
-        await audioPlayer.seekToNext();
-        await audioPlayer.play();
-        return;
-      }
-      // Android single-song list mode.
-      if (songs.isEmpty) return;
-      currentSongIndex = (currentSongIndex + 1) % songs.length;
-      onStateChanged();
-      await _loadAndroidSong(songs[currentSongIndex]);
-      await audioPlayer.play();
-    } catch (e) {
-      debugPrint("Next Song Error: $e");
-    }
-  }
-
-  Future<void> prevSong() async {
-    try {
-      if (_isIosPlaylist) {
-        await audioPlayer.seekToPrevious();
-        await audioPlayer.play();
-        return;
-      }
-      if (songs.isEmpty) return;
-      currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
-      onStateChanged();
-      await _loadAndroidSong(songs[currentSongIndex]);
-      await audioPlayer.play();
-    } catch (e) {
-      debugPrint("Prev Song Error: $e");
-    }
-  }
-
-  void toggleMute() {
-    isMusicMuted = !isMusicMuted;
-    audioPlayer.setVolume(isMusicMuted ? 0 : 1);
-    onStateChanged();
-  }
+  Future<void> pickSong() => _music.pickSong();
+  Future<void> togglePlay() => _music.togglePlay();
+  Future<void> nextSong() => _music.nextSong();
+  Future<void> prevSong() => _music.prevSong();
+  void toggleMute() => _music.toggleMute();
 
   // ─────────────────────────────────────────────────────────────────────────
   // Health Connect Methods
@@ -400,18 +218,12 @@ class RunningSupportLogic {
     }
   }
 
+  /// Returns a Future that resolves only after the health flow finishes —
+  /// either silently (already granted) or when the user closes the modal.
+  /// Used by the sequencer in checkAllPermissions().
   Future<void> initHealth({bool force = false}) async {
     if (isHealthConnected && !force) return;
     if (healthDialogShown) return;
-
-    // Throttle checks to once per 60 seconds unless forced
-    final now = DateTime.now();
-    if (!force &&
-        _lastHealthCheckTime != null &&
-        now.difference(_lastHealthCheckTime!) < const Duration(seconds: 60)) {
-      return;
-    }
-    _lastHealthCheckTime = now;
 
     try {
       // Check actual granted permissions first — most reliable source
@@ -420,7 +232,6 @@ class RunningSupportLogic {
       if (alreadyGranted) {
         await _coreLogic?.initializeHealthConnect();
         isHealthConnected = true;
-        _permissionsDialogShownOnce = false;
         onStateChanged();
         debugPrint("Health: ✅ Permissions confirmed — connected silently");
         return;
@@ -434,8 +245,8 @@ class RunningSupportLogic {
       if (status == HealthSetupStatus.notInstalled && Platform.isAndroid) {
         isHealthConnected = false;
         onStateChanged();
-        if (context.mounted) {
-          _showHealthConnectDialog(HealthConnectSdkStatus.sdkUnavailable);
+        if (_canShowDialog) {
+          await _showHealthConnectDialog(HealthConnectSdkStatus.sdkUnavailable);
         }
         return;
       }
@@ -443,11 +254,8 @@ class RunningSupportLogic {
       if (status == HealthSetupStatus.needsPermissions) {
         isHealthConnected = false;
         onStateChanged();
-        // Show permissions dialog only once per session unless forced
-        if (_permissionsDialogShownOnce && !force) return;
-        if (context.mounted) {
-          _permissionsDialogShownOnce = true;
-          _showHealthPermissionsDialog();
+        if (_canShowDialog) {
+          await _showHealthPermissionsDialog();
         }
         return;
       }
@@ -460,7 +268,7 @@ class RunningSupportLogic {
   RunningCoreLogic? _coreLogic;
   void setCoreLogic(RunningCoreLogic logic) => _coreLogic = logic;
 
-  void _showHealthConnectDialog(HealthConnectSdkStatus status) {
+  Future<void> _showHealthConnectDialog(HealthConnectSdkStatus status) async {
     if (healthDialogShown || isHealthConnected) {
       debugPrint("Health: Dialog already shown or already connected, skipping");
       return;
@@ -473,7 +281,7 @@ class RunningSupportLogic {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final fontScale = isAr ? 1.15 : 1.0;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
@@ -493,9 +301,9 @@ class RunningSupportLogic {
                     status == HealthConnectSdkStatus.sdkUnavailableProviderUpdateRequired
                         ? l10n.healthUpdateTitle
                         : l10n.healthConnectTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
@@ -505,7 +313,7 @@ class RunningSupportLogic {
                     status == HealthConnectSdkStatus.sdkUnavailableProviderUpdateRequired
                         ? l10n.healthUpdateMessage
                         : l10n.healthConnectMessage,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0 * fontScale,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
@@ -533,10 +341,10 @@ class RunningSupportLogic {
                       child: Text(
                         l10n.later,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 14.0 * fontScale,
                           color: const Color(0xFF8B88B5),
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -563,10 +371,10 @@ class RunningSupportLogic {
                       child: Text(
                         l10n.installUpdate,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 13.0 * fontScale,
                           color: const Color(0xFF900EBF),
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -582,7 +390,7 @@ class RunningSupportLogic {
     });
   }
 
-  void _showHealthPermissionsDialog() {
+  Future<void> _showHealthPermissionsDialog() async {
     if (healthDialogShown || isHealthConnected) return;
     if (!_canShowDialog) return;
     healthDialogShown = true;
@@ -591,7 +399,7 @@ class RunningSupportLogic {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final fontScale = isAr ? 1.15 : 1.0;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
@@ -609,9 +417,9 @@ class RunningSupportLogic {
                 children: [
                   Text(
                     l10n.healthPermissionTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
@@ -619,7 +427,7 @@ class RunningSupportLogic {
                   const SizedBox(height: 12.0),
                   Text(
                     l10n.healthPermissionMessage,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0 * fontScale,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
@@ -645,10 +453,10 @@ class RunningSupportLogic {
                       child: Text(
                         l10n.later,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 14.0 * fontScale,
                           color: const Color(0xFF8B88B5),
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -672,7 +480,6 @@ class RunningSupportLogic {
                       if (granted) {
                         await _coreLogic?.initializeHealthConnect();
                         isHealthConnected = true;
-                        _permissionsDialogShownOnce = false;
                         onStateChanged();
                         debugPrint("Health: ✅ Connected after user granted");
                       } else {
@@ -686,10 +493,10 @@ class RunningSupportLogic {
                       child: Text(
                         l10n.enablePermissions,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 13.0 * fontScale,
                           color: const Color(0xFF900EBF),
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -736,9 +543,9 @@ class RunningSupportLogic {
                 children: [
                   Text(
                     l10n.appleHealthTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
@@ -746,7 +553,7 @@ class RunningSupportLogic {
                   const SizedBox(height: 12.0),
                   Text(
                     l10n.appleHealthMessage,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0 * fontScale,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
@@ -774,10 +581,10 @@ class RunningSupportLogic {
                       child: Text(
                         l10n.later,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 14.0 * fontScale,
                           color: const Color(0xFF8B88B5),
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -804,10 +611,10 @@ class RunningSupportLogic {
                       child: Text(
                         l10n.openSettings,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 13.0 * fontScale,
                           color: const Color(0xFF900EBF),
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -827,42 +634,37 @@ class RunningSupportLogic {
   // All-permissions check — called every time the Running screen becomes visible
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// Sequential prompt cycle: Location → Health → Audio. Each step awaits
+  /// modal closure before the next opens, so only one modal is ever on
+  /// screen at once. Re-entering the screen runs a fresh cycle if any
+  /// permission is still missing.
   Future<void> checkAllPermissions() async {
     if (!context.mounted) return;
-
-    // Suppress all setup modals while a run is active — only running modals allowed.
     if (_isRunActive) return;
+    if (_promptCycleRunning) return; // already prompting on this entry
+    _promptCycleRunning = true;
+    try {
+      // 1. Location — awaits modal close (or returns immediately if granted)
+      await initLocationWithPermission();
+      if (!_canShowDialog || _isRunActive) return;
 
-    // 1. Location — always re-check, modal only shows when denied
-    await initLocationWithPermission();
+      // 2. Health
+      if (!isHealthConnected) {
+        await initHealth();
+      }
+      if (!_canShowDialog || _isRunActive) return;
 
-    if (!context.mounted || _isRunActive) return;
-    // Small gap so modals don't stack on top of each other
-    await Future.delayed(const Duration(milliseconds: 400));
-
-    // 2. Health — reset one-time guards so modal can appear again on re-visit
-    if (!isHealthConnected) {
-      if (_isRunActive) return;
-      healthDialogShown = false;
-      _permissionsDialogShownOnce = false;
-      await initHealth();
-    }
-
-    if (!context.mounted || _isRunActive) return;
-    await Future.delayed(const Duration(milliseconds: 400));
-
-    // 3. Audio — show modal only if permission was never granted
-    if (!hasAudioPermission && !_isRunActive) {
-      if (Platform.isIOS) {
-        final status = await Permission.mediaLibrary.status;
-        if (!status.isGranted) _showAudioPermissionModal();
-      } else {
-        final audioStatus = await Permission.audio.status;
-        final storageStatus = await Permission.storage.status;
-        if (!audioStatus.isGranted && !storageStatus.isGranted) {
-          _showAudioPermissionModal();
+      // 3. Audio
+      if (!hasAudioPermission) {
+        final granted = await _music.isAudioPermissionGranted();
+        if (granted) {
+          onStateChanged();
+        } else if (_canShowDialog && !_isRunActive) {
+          await _music.showAudioPermissionModal(context);
         }
       }
+    } finally {
+      _promptCycleRunning = false;
     }
   }
 
@@ -870,27 +672,44 @@ class RunningSupportLogic {
   // Location Permission Methods
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// Awaits modal closure when permission is missing. Always calls
+  /// fetchInitialLocation() so the map UI renders (with fallback coords if
+  /// permission is denied) — preventing the "blank page" bug.
   Future<void> initLocationWithPermission() async {
-    // Reset so the modal shows every time the screen is visited
-    _locationDialogShown = false;
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!context.mounted) return;
+
       if (!serviceEnabled) {
+        // Surface the modal but still render the map with fallback coords
+        // so the screen isn't blank.
+        unawaited(_coreLogic?.fetchInitialLocation() ?? Future.value());
+        if (_canShowDialog) await _showLocationServiceDisabledModal();
+        return;
+      }
+
+      final permission = await Geolocator.checkPermission();
+      if (!_canShowDialog) return;
+
+      // Permission already granted — silent success path.
+      if (permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse) {
         await _coreLogic?.fetchInitialLocation();
         return;
       }
-      final permission = await Geolocator.checkPermission();
-      if (!context.mounted) return;
+
+      // Render fallback map immediately so the page is never blank,
+      // then surface the appropriate modal and await its closure.
+      unawaited(_coreLogic?.fetchInitialLocation() ?? Future.value());
 
       if (permission == LocationPermission.deniedForever) {
-        _showLocationDeniedModal();
+        if (_canShowDialog) await _showLocationDeniedModal();
         return;
       }
       if (permission == LocationPermission.denied) {
-        _showLocationPermissionModal();
+        if (_canShowDialog) await _showLocationPermissionModal();
         return;
       }
-      await _coreLogic?.fetchInitialLocation();
     } catch (e) {
       debugPrint("Location init error: $e");
       await _coreLogic?.fetchInitialLocation();
@@ -901,16 +720,16 @@ class RunningSupportLogic {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (context.mounted) _showLocationServiceDisabledModal();
+        if (context.mounted) await _showLocationServiceDisabledModal();
         return false;
       }
       final permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.deniedForever) {
-        if (context.mounted) _showLocationDeniedModal();
+        if (context.mounted) await _showLocationDeniedModal();
         return false;
       }
       if (permission == LocationPermission.denied) {
-        if (context.mounted) _showLocationPermissionModal();
+        if (context.mounted) await _showLocationPermissionModal();
         return false;
       }
       return true;
@@ -919,94 +738,7 @@ class RunningSupportLogic {
     }
   }
 
-  void _showAudioPermissionModal() {
-    if (!_canShowDialog) return;
-    final l10n = AppLocalizations.of(context)!;
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final fontScale = isAr ? 1.15 : 1.0;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 32.0, left: 24.0, right: 24.0, bottom: 24.0),
-              child: Column(
-                children: [
-                  Text(
-                    l10n.audioPermissionTitle,
-                    style: GoogleFonts.lexend(
-                      fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF24252C),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12.0),
-                  Text(
-                    l10n.audioPermissionMessage,
-                    style: GoogleFonts.lexend(
-                      fontSize: 14.0 * fontScale,
-                      color: const Color(0xFF24252C).withValues(alpha: 0.8),
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-            const Divider(color: Color(0xFFE5E7EB), height: 1, thickness: 1),
-            InkWell(
-              onTap: () async {
-                Navigator.pop(ctx);
-                bool granted = false;
-                if (Platform.isAndroid) {
-                  granted = (await Permission.audio.request()).isGranted ||
-                      (await Permission.storage.request()).isGranted;
-                } else {
-                  granted = (await Permission.mediaLibrary.request()).isGranted;
-                }
-                if (granted && context.mounted) {
-                  hasAudioPermission = true;
-                  await _loadAndroidSongs();
-                } else if (!granted && context.mounted) {
-                  openAppSettings();
-                }
-              },
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20.0),
-                bottomRight: Radius.circular(20.0),
-              ),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 18.0, horizontal: 10.0),
-                alignment: Alignment.center,
-                child: Text(
-                  l10n.allowAudio,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.lexend(
-                    fontSize: 13.0 * fontScale,
-                    color: const Color(0xFF900EBF),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showLocationServiceDisabledModal() {
+  Future<void> _showLocationServiceDisabledModal() async {
     if (_locationDialogShown) return;
     if (!_canShowDialog) return;
     _locationDialogShown = true;
@@ -1015,7 +747,7 @@ class RunningSupportLogic {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final fontScale = isAr ? 1.15 : 1.0;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
@@ -1033,9 +765,9 @@ class RunningSupportLogic {
                 children: [
                   Text(
                     l10n.locationServiceDisabledTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
@@ -1043,7 +775,7 @@ class RunningSupportLogic {
                   const SizedBox(height: 12.0),
                   Text(
                     l10n.locationServiceDisabledMessage,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0 * fontScale,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
@@ -1071,10 +803,10 @@ class RunningSupportLogic {
                 child: Text(
                   l10n.enableLocation,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.lexend(
+                  style: GoogleFonts.tajawal(
                     fontSize: 13.0 * fontScale,
                     color: const Color(0xFF900EBF),
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -1087,7 +819,7 @@ class RunningSupportLogic {
     });
   }
 
-  void _showLocationPermissionModal() {
+  Future<void> _showLocationPermissionModal() async {
     if (_locationDialogShown) return;
     if (!_canShowDialog) return;
     _locationDialogShown = true;
@@ -1096,7 +828,7 @@ class RunningSupportLogic {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final fontScale = isAr ? 1.15 : 1.0;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
@@ -1114,9 +846,9 @@ class RunningSupportLogic {
                 children: [
                   Text(
                     l10n.locationPermissionTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
@@ -1124,7 +856,7 @@ class RunningSupportLogic {
                   const SizedBox(height: 12.0),
                   Text(
                     l10n.locationPermissionMessage,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0 * fontScale,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
@@ -1142,6 +874,8 @@ class RunningSupportLogic {
                 final granted = await Geolocator.requestPermission();
                 if (granted == LocationPermission.denied ||
                     granted == LocationPermission.deniedForever) { return; }
+                // Permission granted — re-init location so the map switches
+                // from fallback coords to the user's real location.
                 await _coreLogic?.fetchInitialLocation();
               },
               borderRadius: const BorderRadius.only(
@@ -1155,10 +889,10 @@ class RunningSupportLogic {
                 child: Text(
                   l10n.allowLocation,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.lexend(
+                  style: GoogleFonts.tajawal(
                     fontSize: 13.0 * fontScale,
                     color: const Color(0xFF900EBF),
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -1171,7 +905,7 @@ class RunningSupportLogic {
     });
   }
 
-  void _showLocationDeniedModal() {
+  Future<void> _showLocationDeniedModal() async {
     if (_locationDialogShown) return;
     if (!_canShowDialog) return;
     _locationDialogShown = true;
@@ -1180,7 +914,7 @@ class RunningSupportLogic {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final fontScale = isAr ? 1.15 : 1.0;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
@@ -1198,9 +932,9 @@ class RunningSupportLogic {
                 children: [
                   Text(
                     l10n.locationDeniedTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
@@ -1208,7 +942,7 @@ class RunningSupportLogic {
                   const SizedBox(height: 12.0),
                   Text(
                     l10n.locationDeniedMessage,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0 * fontScale,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
@@ -1236,10 +970,10 @@ class RunningSupportLogic {
                 child: Text(
                   l10n.openSettings,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.lexend(
+                  style: GoogleFonts.tajawal(
                     fontSize: 13.0 * fontScale,
                     color: const Color(0xFF900EBF),
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -1279,9 +1013,9 @@ class RunningSupportLogic {
                 children: [
                   Text(
                     l10n.endRunTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
@@ -1289,7 +1023,7 @@ class RunningSupportLogic {
                   const SizedBox(height: 12.0),
                   Text(
                     l10n.endRunMessage,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0 * fontScale,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
@@ -1309,10 +1043,10 @@ class RunningSupportLogic {
                 alignment: Alignment.center,
                 child: Text(
                   l10n.saveAndExit,
-                  style: GoogleFonts.lexend(
+                  style: GoogleFonts.tajawal(
                     fontSize: 16.0 * fontScale,
                     color: const Color(0xFF900EBF),
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -1327,10 +1061,10 @@ class RunningSupportLogic {
                 alignment: Alignment.center,
                 child: Text(
                   l10n.keepRunning,
-                  style: GoogleFonts.lexend(
+                  style: GoogleFonts.tajawal(
                     fontSize: 16.0 * fontScale,
                     color: const Color(0xFF8B88B5),
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -1365,9 +1099,9 @@ class RunningSupportLogic {
                 children: [
                   Text(
                     l10n.resumeActivityTitle,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20.0 * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF24252C),
                     ),
                     textAlign: TextAlign.center,
@@ -1375,7 +1109,7 @@ class RunningSupportLogic {
                   const SizedBox(height: 12.0),
                   Text(
                     l10n.resumeActivityMessage,
-                    style: GoogleFonts.lexend(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14.0 * fontScale,
                       color: const Color(0xFF24252C).withOpacity(0.8),
                       height: 1.4,
@@ -1398,10 +1132,10 @@ class RunningSupportLogic {
                       child: Text(
                         l10n.discardButton,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 14.0 * fontScale,
                           color: const Color(0xFF8B88B5),
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -1418,10 +1152,10 @@ class RunningSupportLogic {
                       child: Text(
                         l10n.resumeButton,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.lexend(
+                        style: GoogleFonts.tajawal(
                           fontSize: 14.0 * fontScale,
                           color: const Color(0xFF900EBF),
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),

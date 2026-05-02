@@ -35,3 +35,4 @@ Map<String, dynamic> _$ChallengeToJson(Challenge instance) => <String, dynamic>{
   'progressPercentage': instance.progressPercentage,
   'participantCount': instance.participantCount,
 };
+

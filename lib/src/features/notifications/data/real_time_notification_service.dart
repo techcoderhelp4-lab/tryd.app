@@ -30,7 +30,7 @@ class RealTimeNotificationService {
   final Ref _ref;
   io.Socket? _socket;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging get _fcm => FirebaseMessaging.instance;
   bool _isMuted = false;
 
   void setMuted(bool muted) {
@@ -273,7 +273,7 @@ class RealTimeNotificationService {
             Text(
               title,
               style: const TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
                 fontSize: 14,
                 color: Colors.white,
               ),
@@ -375,3 +375,4 @@ class RealTimeNotificationService {
 final realTimeNotificationServiceProvider = Provider<RealTimeNotificationService>((ref) {
   return RealTimeNotificationService(ref);
 });
+

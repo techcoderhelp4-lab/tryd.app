@@ -214,9 +214,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
           ),
           Text(
             l10n.rewardsTitle,
-            style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+            style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
               fontSize: titleSize * fontScale,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
               color: const Color(0xFF24252C),
             ),
           ),
@@ -259,18 +259,18 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
             children: [
               Text(
                 points != null ? NumberFormat('#,###').format(points) : '--',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: pointsFontSize,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                   color: const Color(0xFF221F48),
                   height: 1.0,
                 ),
               ),
               Text(
                 l10n.availablePointsLabel,
-                style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                   fontSize: labelFontSize * fontScale,
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w600,
                   color: const Color(0xFF221F48),
                 ),
               ),
@@ -318,9 +318,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                         width: constraints.maxWidth,
                         height: constraints.maxHeight,
                         showIcon: false,
-                        textStyle: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        textStyle: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                           fontSize: tabFontSize * fontScale,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
                       );
@@ -337,9 +337,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                       alignment: Alignment.center,
                       child: Text(
                         l10n.availableRewardsTab,
-                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                           fontSize: tabFontSize * fontScale,
-                          fontWeight: FontWeight.w400,
+                          fontWeight: FontWeight.w600,
                           color: const Color(0xFF8B88B5),
                         ),
                       ),
@@ -356,9 +356,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                         width: constraints.maxWidth,
                         height: constraints.maxHeight,
                         showIcon: false,
-                        textStyle: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        textStyle: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                           fontSize: tabFontSize * fontScale,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
                       );
@@ -375,9 +375,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                       alignment: Alignment.center,
                       child: Text(
                         l10n.myRedemptionsTab,
-                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                           fontSize: tabFontSize * fontScale,
-                          fontWeight: FontWeight.w400,
+                          fontWeight: FontWeight.w600,
                           color: const Color(0xFF8B88B5),
                         ),
                       ),
@@ -455,7 +455,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                   SizedBox(height: 6.0 * scale),
                   Text(
                     categoryLabels[category['name']] ?? category['name'],
-                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                    style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                       fontSize: labelSize * fontScale,
                       color: const Color(0xFF1B2D51),
                     ),
@@ -492,10 +492,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                       SizedBox(height: 12.0 * scale),
                       Text(
                         l10n.noRewardsAvailable,
-                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                        style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                           fontSize: 16.0 * scale * fontScale,
                           color: const Color(0xFF8B88B5),
-                          fontWeight: FontWeight.w400,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -558,10 +558,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                       SizedBox(height: 12.0 * scale),
                       Text(
                         l10n.noRedemptionsYet,
-                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                        style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                           fontSize: 16.0 * scale * fontScale,
                           color: const Color(0xFF8B88B5),
-                          fontWeight: FontWeight.w400,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -751,9 +751,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                 children: [
                   Text(
                     reward.title,
-                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                    style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                       fontSize: titleFontSize * fontScale,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w600,
                       color: Colors.black,
                     ),
                     maxLines: 1,
@@ -761,7 +761,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                   ),
                   Text(
                     reward.partner,
-                    style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                    style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                       fontSize: partnerFontSize * fontScale,
                       color: const Color(0xFF8B88B5),
                     ),
@@ -775,16 +775,16 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                       SizedBox(width: 4.0 * scale),
                       Text(
                         reward.requiredPoints.toString(),
-                        style: GoogleFonts.lexendDeca(
+                        style: GoogleFonts.tajawal(
                           fontSize: pointsFontSize * fontScale,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                           color: Colors.black,
                         ),
                       ),
                       SizedBox(width: 4.0 * scale),
                       Text(
                         l10n.pointsLabel,
-                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                           fontSize: partnerFontSize * fontScale,
                           color: const Color(0xFF8B88B5),
                         ),
@@ -814,7 +814,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                       ),
                       child: Text(
                         l10n.manualApprovalBadge,
-                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                           fontSize: badgeFontSize * fontScale,
                           color: Colors.black,
                         ),
@@ -830,9 +830,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                         SizedBox(width: 4.0 * scale),
                         Text(
                           l10n.claimedLabel,
-                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                             fontSize: 12.0 * scale * fontScale,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w700,
                             color: const Color(0xFF22D198),
                           ),
                         ),
@@ -846,9 +846,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                         SizedBox(width: 4.0 * scale),
                         Text(
                           l10n.pendingLabel,
-                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                             fontSize: 12.0 * scale * fontScale,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w700,
                             color: const Color(0xFFDC931F),
                           ),
                         ),
@@ -869,9 +869,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                         alignment: Alignment.center,
                         child: Text(
                           l10n.redeemButton,
-                          style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                          style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                             fontSize: buttonFontSize * fontScale,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w800,
                             color: const Color(0xFF900EBF),
                           ),
                         ),
@@ -917,16 +917,16 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
               children: [
                 Text(
                   redemption.reward.title,
-                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                  style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                     fontSize: titleFontSize * fontScale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: Colors.black,
                   ),
                 ),
                 SizedBox(height: 4.0 * scale),
                 Text(
                   l10n.requestedOnDate(DateFormat('dd MMM yyyy', dateLocale).format(redemption.createdAt)),
-                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                  style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                     fontSize: dateFontSize * fontScale,
                     color: const Color(0xFF818181),
                   ),
@@ -938,9 +938,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                     SizedBox(width: 3.0 * scale),
                     Text(
                       '${redemption.pointsDeducted} ${l10n.pointsLabel}',
-                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                      style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                         fontSize: pointsFontSize * fontScale,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
                         color: Colors.black,
                       ),
                     ),
@@ -953,9 +953,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                       ),
                       child: Text(
                         l10n.refundedLabel,
-                        style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                        style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                           fontSize: 10.0 * scale * fontScale,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                           color: const Color(0xFF22D198),
                         ),
                       ),
@@ -982,7 +982,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                       redemption.adminNote != null && redemption.adminNote!.isNotEmpty
                           ? l10n.rejectedWithNote(redemption.adminNote!)
                           : l10n.requestRejectedDefault,
-                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                      style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                         fontSize: messageFontSize * fontScale,
                         color: const Color(0xFFE53E3E),
                         height: 1.2,
@@ -1013,16 +1013,16 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
               children: [
                 Text(
                   redemption.reward.title,
-                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                  style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                     fontSize: titleFontSize * fontScale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: Colors.black,
                   ),
                 ),
                 SizedBox(height: 4.0 * scale),
                 Text(
                   l10n.requestedOnDate(DateFormat('dd MMM yyyy', dateLocale).format(redemption.createdAt)),
-                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                  style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                     fontSize: dateFontSize * fontScale,
                     color: const Color(0xFF818181),
                   ),
@@ -1034,9 +1034,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                     SizedBox(width: 3.0 * scale),
                     Text(
                       '${redemption.pointsDeducted} ${l10n.pointsLabel}',
-                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                      style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                         fontSize: pointsFontSize * fontScale,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
                         color: Colors.black,
                       ),
                     ),
@@ -1059,7 +1059,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                   Expanded(
                     child: Text(
                       l10n.requestPendingMessage,
-                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                      style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                         fontSize: messageFontSize * fontScale,
                         color: const Color(0xFFDC931F),
                         height: 1.2,
@@ -1097,16 +1097,16 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
               children: [
                 Text(
                   redemption.reward.title,
-                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.lexendDeca)(
+                  style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                     fontSize: titleFontSize * fontScale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: Colors.black,
                   ),
                 ),
                 SizedBox(height: 4.0 * scale),
                 Text(
                   l10n.redeemedOnDate(DateFormat('dd MMM yyyy', dateLocale).format(redemption.createdAt)),
-                  style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                  style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                     fontSize: dateFontSize * fontScale,
                     color: const Color(0xFF818181),
                   ),
@@ -1118,9 +1118,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                     SizedBox(width: 4.0 * scale),
                     Text(
                       '${redemption.pointsDeducted} ${l10n.pointsLabel}',
-                      style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                      style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                         fontSize: pointsFontSize * fontScale,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
                         color: Colors.black,
                       ),
                     ),
@@ -1153,17 +1153,17 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                         children: [
                           Text(
                             l10n.yourCouponCode,
-                            style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                            style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                               fontSize: dateFontSize * fontScale,
-                              fontWeight: FontWeight.w400,
+                              fontWeight: FontWeight.w600,
                               color: const Color(0xFF818181),
                             ),
                           ),
                           Text(
                             redemption.couponCode!,
-                            style: GoogleFonts.lexendDeca(
+                            style: GoogleFonts.tajawal(
                               fontSize: titleFontSize,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w800,
                               color: Colors.black,
                             ),
                           ),
@@ -1188,9 +1188,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                           ),
                           child: Text(
                             l10n.copyButton,
-                            style: (isRTL ? GoogleFonts.cairo : GoogleFonts.poppins)(
+                            style: (isRTL ? GoogleFonts.tajawal : GoogleFonts.tajawal)(
                               fontSize: dateFontSize * fontScale,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w800,
                                color: const Color(0xFFF83A71),
                              ),
                            ),
@@ -1264,9 +1264,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                   padding: EdgeInsets.only(left: horizontalPadding, top: horizontalPadding),
                   child: Text(
                     AppLocalizations.of(context)!.confirmRedemptionTitle,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.tajawal(
                       fontSize: titleFontSize,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: Colors.black,
                     ),
                   ),
@@ -1309,9 +1309,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                               children: [
                                 Text(
                                   reward.title,
-                                  style: GoogleFonts.poppins(
+                                  style: GoogleFonts.tajawal(
                                     fontSize: cardTitleSize,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w700,
                                     color: Colors.black,
                                   ),
                                   maxLines: 1,
@@ -1319,9 +1319,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                                 ),
                                 Text(
                                   reward.partner,
-                                  style: GoogleFonts.poppins(
+                                  style: GoogleFonts.tajawal(
                                     fontSize: cardLabelSize,
-                                    fontWeight: FontWeight.w400,
+                                    fontWeight: FontWeight.w600,
                                     color: const Color(0xFF8B88B5),
                                   ),
                                 ),
@@ -1341,9 +1341,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                         children: [
                           Text(
                             AppLocalizations.of(context)!.pointsRequired,
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.tajawal(
                               fontSize: balanceLabelSize,
-                              fontWeight: FontWeight.w400,
+                              fontWeight: FontWeight.w600,
                               color: const Color(0xFF8B88B5),
                             ),
                           ),
@@ -1353,9 +1353,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                               SizedBox(width: 4.0 * scale),
                               Text(
                                 reward.requiredPoints.toString(),
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.tajawal(
                                   fontSize: ptsSize,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w800,
                                   color: Colors.black,
                                 ),
                               ),
@@ -1382,17 +1382,17 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                         children: [
                           Text(
                             AppLocalizations.of(context)!.currentBalance,
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.tajawal(
                               fontSize: balanceLabelSize,
-                              fontWeight: FontWeight.w400,
+                              fontWeight: FontWeight.w600,
                               color: Colors.black,
                             ),
                           ),
                           Text(
                             AppLocalizations.of(context)!.afterRedemption,
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.tajawal(
                               fontSize: balanceLabelSize,
-                              fontWeight: FontWeight.w400,
+                              fontWeight: FontWeight.w600,
                               color: Colors.black,
                             ),
                           ),
@@ -1407,17 +1407,17 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                             children: [
                               Text(
                                 '${NumberFormat('#,###').format(points)} ${AppLocalizations.of(context)!.ptsSuffix}',
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.tajawal(
                                   fontSize: balanceValueSize,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w700,
                                   color: Colors.black,
                                 ),
                               ),
                               Text(
                                 '${NumberFormat('#,###').format(math.max(0, points - reward.requiredPoints))} ${AppLocalizations.of(context)!.ptsSuffix}',
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.tajawal(
                                   fontSize: balanceValueSize,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w700,
                                   color: const Color(0xFFF83A71),
                                 ),
                               ),
@@ -1446,9 +1446,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                             alignment: Alignment.center,
                             child: Text(
                               AppLocalizations.of(context)!.cancelButton,
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.tajawal(
                                 fontSize: buttonFontSize,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w800,
                                 color: const Color(0xFF838383),
                               ),
                             ),
@@ -1477,9 +1477,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> with AutomaticKee
                                 alignment: Alignment.center,
                                 child: Text(
                                   AppLocalizations.of(context)!.confirmRedeemButton,
-                                  style: GoogleFonts.poppins(
+                                  style: GoogleFonts.tajawal(
                                     fontSize: buttonFontSize,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w800,
                                     color: canRedeem ? Colors.white : Colors.white.withOpacity(0.6),
                                   ),
                                 ),
@@ -1629,3 +1629,4 @@ class DashedRectPainter extends CustomPainter {
         oldDelegate.borderRadius != borderRadius;
   }
 }
+

@@ -88,3 +88,4 @@ class LeaderboardChallengeInfo {
   }
   Map<String, dynamic> toJson() => _$LeaderboardChallengeInfoToJson(this);
 }
+

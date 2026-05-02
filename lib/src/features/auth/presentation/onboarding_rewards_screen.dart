@@ -146,9 +146,9 @@ class _OnboardingRewardsScreenState extends State<OnboardingRewardsScreen>
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             text: TextSpan(
-                              style: GoogleFonts.lexend(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 28.0 * scale,
-                                fontWeight: FontWeight.w400,
+                                fontWeight: FontWeight.w600,
                                 color: Colors.white,
                                 height: 1.2,
                               ),
@@ -158,7 +158,7 @@ class _OnboardingRewardsScreenState extends State<OnboardingRewardsScreen>
                                   text: _firstName.isNotEmpty
                                       ? 'TRYD, $_firstName!'
                                       : 'TRYD!',
-                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                  style: const TextStyle(fontWeight: FontWeight.w800),
                                 ),
                               ],
                             ),
@@ -174,9 +174,9 @@ class _OnboardingRewardsScreenState extends State<OnboardingRewardsScreen>
                             fit: BoxFit.fitWidth,
                             child: Text(
                               'Step Up Your Journey.',
-                              style: GoogleFonts.lexend(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 20.0 * scale,
-                                fontWeight: FontWeight.w400,
+                                fontWeight: FontWeight.w600,
                                 color: Colors.white.withValues(alpha: 0.90),
                                 letterSpacing: 1.5,
                               ),
@@ -253,7 +253,7 @@ class _OnboardingRewardsScreenState extends State<OnboardingRewardsScreen>
                                                   children: [
                                                     Text(
                                                       '+${widget.points - widget.referralPoints}',
-                                                      style: GoogleFonts.lexend(
+                                                      style: GoogleFonts.tajawal(
                                                         fontSize: 52.0 * scale,
                                                         fontWeight: FontWeight.w800,
                                                         color: const Color(0xFF1B2D51),
@@ -263,9 +263,9 @@ class _OnboardingRewardsScreenState extends State<OnboardingRewardsScreen>
                                                     SizedBox(height: 4.0 * scale),
                                                     Text(
                                                       'DOWNLOAD',
-                                                      style: GoogleFonts.lexend(
+                                                      style: GoogleFonts.tajawal(
                                                         fontSize: 11.0 * scale,
-                                                        fontWeight: FontWeight.w700,
+                                                        fontWeight: FontWeight.w800,
                                                         color: const Color(0xFF8B88B5),
                                                         letterSpacing: 1.8,
                                                       ),
@@ -287,7 +287,7 @@ class _OnboardingRewardsScreenState extends State<OnboardingRewardsScreen>
                                                   children: [
                                                     Text(
                                                       '+${widget.referralPoints}',
-                                                      style: GoogleFonts.lexend(
+                                                      style: GoogleFonts.tajawal(
                                                         fontSize: 52.0 * scale,
                                                         fontWeight: FontWeight.w800,
                                                         color: const Color(0xFF8A0BBB),
@@ -297,9 +297,9 @@ class _OnboardingRewardsScreenState extends State<OnboardingRewardsScreen>
                                                     SizedBox(height: 4.0 * scale),
                                                     Text(
                                                       'REFERRAL',
-                                                      style: GoogleFonts.lexend(
+                                                      style: GoogleFonts.tajawal(
                                                         fontSize: 11.0 * scale,
-                                                        fontWeight: FontWeight.w700,
+                                                        fontWeight: FontWeight.w800,
                                                         color: const Color(0xFF8B88B5),
                                                         letterSpacing: 1.8,
                                                       ),
@@ -314,7 +314,7 @@ class _OnboardingRewardsScreenState extends State<OnboardingRewardsScreen>
                                           // Original single number
                                           Text(
                                             '+${widget.points}',
-                                            style: GoogleFonts.lexend(
+                                            style: GoogleFonts.tajawal(
                                               fontSize: 64.0 * scale,
                                               fontWeight: FontWeight.w800,
                                               color: const Color(0xFF1B2D51),
@@ -324,7 +324,7 @@ class _OnboardingRewardsScreenState extends State<OnboardingRewardsScreen>
                                           SizedBox(height: 4.0 * scale),
                                           Text(
                                             'POINTS',
-                                            style: GoogleFonts.lexend(
+                                            style: GoogleFonts.tajawal(
                                               fontSize: 18.0 * scale,
                                               fontWeight: FontWeight.w800,
                                               color: const Color(0xFF8B88B5),
@@ -342,9 +342,9 @@ class _OnboardingRewardsScreenState extends State<OnboardingRewardsScreen>
                                           width: double.infinity,
                                           height: 64.0 * scale,
                                           showIcon: false,
-                                          textStyle: GoogleFonts.lexendDeca(
+                                          textStyle: GoogleFonts.tajawal(
                                             fontSize: 20.0 * scale,
-                                            fontWeight: FontWeight.w600,
+                                            fontWeight: FontWeight.w800,
                                             color: Colors.white,
                                           ),
                                         ),
@@ -370,3 +370,4 @@ class _OnboardingRewardsScreenState extends State<OnboardingRewardsScreen>
     );
   }
 }
+

@@ -28,3 +28,4 @@ Map<String, dynamic> _$AuthResponseToJson(AuthResponse instance) =>
       'grantedDownloadRewardPoints': instance.grantedDownloadRewardPoints,
       'grantedReferralBonusPoints': instance.grantedReferralBonusPoints,
     };
+

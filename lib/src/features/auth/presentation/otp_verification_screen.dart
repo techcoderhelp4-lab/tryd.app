@@ -121,7 +121,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.otpResentFailed, style: GoogleFonts.poppins()),
+            content: Text(AppLocalizations.of(context)!.otpResentFailed, style: GoogleFonts.tajawal()),
             backgroundColor: Colors.red,
           ),
         );
@@ -148,7 +148,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     if (otp.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.enterCompleteOtp, style: GoogleFonts.poppins()),
+          content: Text(AppLocalizations.of(context)!.enterCompleteOtp, style: GoogleFonts.tajawal()),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 2),
         ),
@@ -206,7 +206,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage, style: GoogleFonts.poppins()),
+            content: Text(errorMessage, style: GoogleFonts.tajawal()),
             backgroundColor: Colors.red,
           ),
         );
@@ -365,7 +365,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
           ),
           if (defaultTargetPlatform == TargetPlatform.iOS && bottomInset > 0)
             Positioned(
-              bottom: bottomInset,
+              bottom: 0,
               left: 0,
               right: 0,
               child: Container(
@@ -379,9 +379,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         child: Text(
                           'Done',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.tajawal(
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w800,
                             color: const Color(0xFF007AFF),
                           ),
                         ),
@@ -415,9 +415,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
       maxLines: 1,
       overflow: TextOverflow.visible,
       softWrap: false,
-      style: GoogleFonts.lexendDeca(
+      style: GoogleFonts.tajawal(
         fontSize: 22.0 * scale * fontScale,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w800,
         height: 1.25,
         color: _primaryTextColor,
       ),
@@ -428,9 +428,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     return Text(
       l10n.verifySubtitle(widget.email),
       textAlign: TextAlign.center,
-      style: GoogleFonts.poppins(
+      style: GoogleFonts.tajawal(
         fontSize: 16.0 * scale * fontScale,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w600,
         height: 1.5,
         color: _labelColor,
       ),
@@ -440,14 +440,20 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   Widget _buildOtpField(double scale, double fontScale) {
     return Directionality(
       textDirection: TextDirection.ltr,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          for (int i = 0; i < 4; i++) ...[
-            Expanded(child: _buildOtpDigitBox(i, scale, fontScale)),
-            if (i < 3) SizedBox(width: 10.0 * scale),
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (int i = 0; i < 4; i++) ...[
+              SizedBox(
+                width: 62.0 * scale,
+                child: _buildOtpDigitBox(i, scale, fontScale),
+              ),
+              if (i < 3) SizedBox(width: 12.0 * scale),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -466,9 +472,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   Widget _buildVerifyButton(double scale, AppLocalizations l10n, double fontScale) {
     return GradientButton(
       text: _isVerifying ? l10n.verifying : l10n.verifyButton,
-      textStyle: GoogleFonts.poppins(
-        fontSize: 16.0 * scale * fontScale,
-        fontWeight: FontWeight.w600,
+      textStyle: GoogleFonts.tajawal(
+        fontSize: 22.0 * scale * fontScale,
+        fontWeight: FontWeight.w800,
         color: Colors.white,
       ),
       height: 58.0 * scale,
@@ -484,9 +490,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
           children: [
             Text(
               l10n.resendText + "  ",
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 16.0 * scale * fontScale,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
                 color: _labelColor,
               ),
             ),
@@ -495,9 +501,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                 onTap: _isResending ? null : _handleResend,
                 child: Text(
                   _isResending ? l10n.sending : l10n.resendButton,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: 16.0 * scale * fontScale,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: _isResending ? _labelColor : _linkColor,
                   ),
                 ),
@@ -505,9 +511,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
             else
               Text(
                 '0:${_timerRemaining.toString().padLeft(2, '0')}',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: 14.0 * scale * fontScale,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w700,
                   color: _labelColor,
                 ),
               ),
@@ -524,9 +530,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
             ),
             child: Text(
               l10n.changeEmail,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 15.0 * scale * fontScale,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w800,
                 color: _linkColor,
               ),
             ),
@@ -615,19 +621,27 @@ class _OtpDigitBoxState extends State<_OtpDigitBox> {
         ],
       ),
       alignment: Alignment.center,
+      // Tajawal numerals render with extra space above the glyph. Push the
+      // TextField down by ~6% of the cell height to compensate.
+      padding: EdgeInsets.only(top: 4.0 * s),
       child: TextField(
         controller: widget.controller,
         focusNode: widget.focusNode,
         textAlign: TextAlign.center,
+        textAlignVertical: TextAlignVertical.center,
         keyboardType: TextInputType.number,
+        cursorColor: _purple,
+        cursorWidth: 2,
+        cursorHeight: 26.0 * s * fs,
         textInputAction: widget.isLast ? TextInputAction.done : TextInputAction.next,
-        style: GoogleFonts.poppins(
-          fontSize: 22.0 * s * fs,
-          fontWeight: FontWeight.w600,
-          height: 1.5,
+        style: GoogleFonts.tajawal(
+          fontSize: 26.0 * s * fs,
+          fontWeight: FontWeight.w800,
           color: _inputText,
+          height: 1.0,
         ),
         decoration: const InputDecoration(
+          isCollapsed: true,
           border: InputBorder.none,
           counterText: '',
           contentPadding: EdgeInsets.zero,
@@ -647,3 +661,4 @@ class _OtpDigitBoxState extends State<_OtpDigitBox> {
     );
   }
 }
+

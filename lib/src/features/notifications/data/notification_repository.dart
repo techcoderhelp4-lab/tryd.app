@@ -88,3 +88,4 @@ final unreadNotificationCountProvider = FutureProvider<int>((ref) {
 
   return repository.getUnreadCount();
 });
+

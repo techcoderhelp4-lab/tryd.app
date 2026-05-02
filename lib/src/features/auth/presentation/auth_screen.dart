@@ -206,9 +206,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Text(
       l10n.loginTitle,
       textAlign: TextAlign.center,
-      style: GoogleFonts.lexendDeca(
+      style: GoogleFonts.tajawal(
         fontSize: 22.0 * scale * fontScale,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w800,
         height: 1.25,
         color: _primaryTextColor,
       ),
@@ -219,9 +219,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Text(
       l10n.loginSubtitle,
       textAlign: TextAlign.center,
-      style: GoogleFonts.poppins(
+      style: GoogleFonts.tajawal(
         fontSize: 16.0 * scale * fontScale,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w600,
         height: 1.5,
         color: _labelColor,
       ),
@@ -264,9 +264,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               children: [
                 Text(
                   l10n.emailLabel,
-                  style: GoogleFonts.lexendDeca(
+                  style: GoogleFonts.tajawal(
                     fontSize: 14.0 * scale * fontScale,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                     height: 1.25,
                     color: _labelColor,
                     letterSpacing: 0.2,
@@ -282,22 +282,27 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   textDirection: TextDirection.ltr,
                   autofillHints: const [AutofillHints.email],
                   onSubmitted: (_) => _handleSubmit(),
-                  style: GoogleFonts.poppins(
-                    fontSize: 18.0 * scale * fontScale,
-                    fontWeight: FontWeight.w500,
+                  // Tajawal sits low in its em-box — nudge baseline up so text
+                  // and hint align vertically with the surrounding label.
+                  textAlignVertical: const TextAlignVertical(y: -0.25),
+                  cursorHeight: 22.0 * scale * fontScale,
+                  style: GoogleFonts.tajawal(
+                    fontSize: 22.0 * scale * fontScale,
+                    fontWeight: FontWeight.w700,
                     color: _inputTextColor,
-                    height: 1.4,
+                    height: 1.2,
                   ),
                   decoration: InputDecoration(
                     hintText: l10n.emailPlaceholder,
-                    hintStyle: GoogleFonts.poppins(
-                      fontSize: 16.0 * scale * fontScale,
-                      fontWeight: FontWeight.w400,
+                    hintStyle: GoogleFonts.tajawal(
+                      fontSize: 20.0 * scale * fontScale,
+                      fontWeight: FontWeight.w600,
                       color: _labelColor.withValues(alpha: 0.5),
+                      height: 1.2,
                     ),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding: EdgeInsets.symmetric(vertical: 10.0 * scale),
                   ),
                 ),
               ],
@@ -311,9 +316,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   Widget _buildSubmitButton(double scale, AppLocalizations l10n, double fontScale) {
     return GradientButton(
       text: _isLoading ? _loadingText : l10n.continueButton,
-      textStyle: GoogleFonts.poppins(
-        fontSize: 16.0 * scale * fontScale,
-        fontWeight: FontWeight.w600,
+      textStyle: GoogleFonts.tajawal(
+        fontSize: 22.0 * scale * fontScale,
+        fontWeight: FontWeight.w800,
         color: Colors.white,
       ),
       height: 58.0 * scale,
@@ -321,3 +326,4 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 }
+

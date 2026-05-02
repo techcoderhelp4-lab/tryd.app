@@ -120,3 +120,4 @@ class _ChevronPainter extends CustomPainter {
   @override
   bool shouldRepaint(_ChevronPainter oldDelegate) => oldDelegate.color != color;
 }
+

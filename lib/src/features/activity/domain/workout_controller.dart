@@ -579,3 +579,4 @@ class WorkoutController extends StateNotifier<WorkoutState> {
 final workoutControllerProvider = StateNotifierProvider<WorkoutController, WorkoutState>((ref) {
   return WorkoutController();
 });
+

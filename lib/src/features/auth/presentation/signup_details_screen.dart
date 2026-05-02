@@ -385,10 +385,10 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                                   text: _isSigningUp ? l10n.signingUp : l10n.completeSignup,
                                   onPressed: _isSigningUp ? () {} : _handleSignup,
                                   height: 66.0 * scale,
-                                  textStyle: GoogleFonts.lexendDeca(
-                                    fontSize: 21.0 * scale * fontScale,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.26,
+                                  textStyle: GoogleFonts.tajawal(
+                                    fontSize: 24.0 * scale * fontScale,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.0,
                                     color: Colors.white,
                                   ),
                                 ),
@@ -414,9 +414,12 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                 child: SizedBox(
                   width: 42.0 * scale,
                   height: 42.0 * scale,
-                  child: CustomArrowIcon(
-                    size: 42.0 * scale,
-                    color: const Color(0xFF130F26),
+                  child: Transform.scale(
+                    scaleX: Directionality.of(context) == TextDirection.rtl ? 1 : -1,
+                    child: CustomArrowIcon(
+                      size: 42.0 * scale,
+                      color: const Color(0xFF130F26),
+                    ),
                   ),
                 ),
               ),
@@ -424,7 +427,7 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
           ),
           if (defaultTargetPlatform == TargetPlatform.iOS && bottomInset > 0)
             Positioned(
-              bottom: bottomInset,
+              bottom: 0,
               left: 0,
               right: 0,
               child: Container(
@@ -438,9 +441,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         child: Text(
                           'Done',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.tajawal(
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w800,
                             color: const Color(0xFF007AFF),
                           ),
                         ),
@@ -470,9 +473,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
     return Text(
       l10n.signupTitle,
       textAlign: TextAlign.center,
-      style: GoogleFonts.lexendDeca(
+      style: GoogleFonts.tajawal(
         fontSize: 22.0 * scale * fontScale,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w800,
         height: 1.25,
         color: _primaryTextColor,
       ),
@@ -485,9 +488,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
       children: [
         Text(
           l10n.verificationCodeLabel,
-          style: GoogleFonts.lexendDeca(
+          style: GoogleFonts.tajawal(
             fontSize: 16.0 * scale * fontScale,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w800,
             color: _primaryTextColor,
           ),
         ),
@@ -498,39 +501,40 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
             children: [
               TextSpan(
                 text: l10n.codeSentTo,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: 16.0 * scale * fontScale,
                   color: _labelColor,
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               TextSpan(
                 text: widget.email,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: 16.0 * scale * fontScale,
                   color: const Color(0xFF900EBF),
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
         ),
         SizedBox(height: 20.0 * scale),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24.0 * scale),
+        Center(
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 for (int i = 0; i < 4; i++) ...[
-                  Expanded(
+                  SizedBox(
+                    width: 72.0 * scale,
                     child: AspectRatio(
                       aspectRatio: 1.0,
                       child: _buildOtpDigitBox(i, scale, fontScale),
                     ),
                   ),
-                  if (i < 3) SizedBox(width: 10.0 * scale),
+                  if (i < 3) SizedBox(width: 12.0 * scale),
                 ],
               ],
             ),
@@ -565,9 +569,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                 child: Text(
                   l10n.didntReceiveCode,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: 15.0 * scale * fontScale,
-                    fontWeight: FontWeight.w400,
+                    fontWeight: FontWeight.w700,
                     color: _labelColor,
                   ),
                 ),
@@ -577,9 +581,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                   onTap: _isResending ? null : _handleResend,
                   child: Text(
                     _isResending ? l10n.sending : l10n.resendCode,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.tajawal(
                       fontSize: 15.0 * scale * fontScale,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: _isResending ? _labelColor : _linkColor,
                     ),
                   ),
@@ -587,9 +591,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
               else
                 Text(
                   '0:${_timerRemaining.toString().padLeft(2, '0')}',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: 15.0 * scale * fontScale,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w800,
                     color: _labelColor,
                   ),
                 ),
@@ -600,9 +604,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
           onTap: () => Navigator.pop(context),
           child: Text(
             l10n.changeEmail,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.tajawal(
               fontSize: 14.0 * scale * fontScale,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
               color: const Color(0xFF900EBF),
             ),
           ),
@@ -649,9 +653,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                 padding: EdgeInsets.symmetric(horizontal: 24.0 * scale),
                 child: Text(
                   l10n.phoneNumberLabel,
-                  style: GoogleFonts.lexendDeca(
+                  style: GoogleFonts.tajawal(
                     fontSize: 14.0 * scale * fontScale,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w800,
                     height: 1.25,
                     color: _labelColor,
                     letterSpacing: 0.2,
@@ -663,12 +667,15 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                 controller: _phoneController,
                 focusNode: _phoneFocusNode,
                 textAlign: TextAlign.left,
+                textAlignVertical: const TextAlignVertical(y: -0.25),
+                cursorHeight: 26.0 * scale * fontScale,
                 decoration: InputDecoration(
                   hintText: l10n.phoneNumberPlaceholder,
-                  hintStyle: GoogleFonts.poppins(
-                    fontSize: 22.0 * scale * fontScale,
-                    fontWeight: FontWeight.w400,
+                  hintStyle: GoogleFonts.tajawal(
+                    fontSize: 26.0 * scale * fontScale,
+                    fontWeight: FontWeight.w700,
                     color: _labelColor.withValues(alpha: 0.5),
+                    height: 1.2,
                   ),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
@@ -676,14 +683,15 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                   errorBorder: InputBorder.none,
                   focusedErrorBorder: InputBorder.none,
                   isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 6.0 * scale),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 10.0 * scale, vertical: 14.0 * scale),
                   counterText: '',
                   errorStyle: const TextStyle(fontSize: 0, height: 0),
                 ),
-                style: GoogleFonts.poppins(
-                  fontSize: 20.0 * scale * fontScale,
-                  fontWeight: FontWeight.w500,
+                style: GoogleFonts.tajawal(
+                  fontSize: 26.0 * scale * fontScale,
+                  fontWeight: FontWeight.w800,
                   color: _inputTextColor,
+                  height: 1.2,
                 ),
                 initialCountryCode: 'KW',
                 disableLengthCheck: true,
@@ -693,13 +701,13 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                 },
                 pickerDialogStyle: PickerDialogStyle(
                   backgroundColor: Colors.white,
-                  countryCodeStyle: GoogleFonts.poppins(fontSize: 14 * scale),
-                  countryNameStyle: GoogleFonts.poppins(fontSize: 14 * scale),
+                  countryCodeStyle: GoogleFonts.tajawal(fontSize: 14 * scale),
+                  countryNameStyle: GoogleFonts.tajawal(fontSize: 14 * scale),
                   searchFieldPadding: EdgeInsets.all(16 * scale),
                 ),
-                dropdownTextStyle: GoogleFonts.poppins(
+                dropdownTextStyle: GoogleFonts.tajawal(
                   fontSize: 20.0 * scale,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w800,
                   color: _inputTextColor,
                 ),
                 showCountryFlag: true,
@@ -759,9 +767,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                         children: [
                           Text(
                             'Referral Code',
-                            style: GoogleFonts.lexendDeca(
+                            style: GoogleFonts.tajawal(
                               fontSize: 14.0 * scale * fontScale,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w800,
                               color: _labelColor,
                             ),
                           ),
@@ -774,9 +782,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                             ),
                             child: Text(
                               'Optional',
-                              style: GoogleFonts.lexendDeca(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 11.0 * scale * fontScale,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w800,
                                 color: _labelColor,
                               ),
                             ),
@@ -792,27 +800,29 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                               controller: _referralController,
                               focusNode: _referralFocusNode,
                               textCapitalization: TextCapitalization.characters,
-                              style: GoogleFonts.poppins(
-                                fontSize: 18.0 * scale * fontScale,
-                                fontWeight: FontWeight.w500,
+                              textAlignVertical: const TextAlignVertical(y: -0.25),
+                              cursorHeight: 24.0 * scale * fontScale,
+                              style: GoogleFonts.tajawal(
+                                fontSize: 24.0 * scale * fontScale,
+                                fontWeight: FontWeight.w800,
                                 color: _inputTextColor,
                                 letterSpacing: 1.5,
+                                height: 1.2,
                               ),
                               decoration: InputDecoration(
                                 hintText: 'Enter code',
-                                hintStyle: GoogleFonts.poppins(
-                                  fontSize: 16.0 * scale * fontScale,
-                                  fontWeight: FontWeight.w400,
+                                hintStyle: GoogleFonts.tajawal(
+                                  fontSize: 22.0 * scale * fontScale,
+                                  fontWeight: FontWeight.w600,
                                   color: _labelColor.withValues(alpha: 0.5),
                                   letterSpacing: 0,
+                                  height: 1.2,
                                 ),
                                 border: InputBorder.none,
                                 isDense: true,
-                                contentPadding: EdgeInsets.zero,
+                                contentPadding: EdgeInsets.symmetric(vertical: 10.0 * scale),
                               ),
                               onChanged: (_) {
-                                // Keep _verifiedReferralCode applied until user
-                                // explicitly re-verifies a new code
                                 if (_referralStatus != 'none') {
                                   setState(() {
                                     _referralStatus = 'none';
@@ -849,9 +859,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                                       )
                                     : Text(
                                         'Verify',
-                                        style: GoogleFonts.lexendDeca(
+                                        style: GoogleFonts.tajawal(
                                           fontSize: 13.0 * scale * fontScale,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: FontWeight.w800,
                                           color: Colors.white,
                                         ),
                                       ),
@@ -869,10 +879,10 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                 padding: EdgeInsets.only(top: 6 * scale, left: 12 * scale),
                 child: Text(
                   'Referred by $_referrerName',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: 13.0 * scale * fontScale,
                     color: const Color(0xFF22C55E),
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -886,10 +896,10 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                     SizedBox(width: 4 * scale),
                     Text(
                       'Promo applied: $_verifiedReferralCode',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.tajawal(
                         fontSize: 13.0 * scale * fontScale,
                         color: const Color(0xFF22C55E),
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -900,10 +910,10 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                 padding: EdgeInsets.only(top: 6 * scale, left: 12 * scale),
                 child: Text(
                   'Invalid referral code',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: 13.0 * scale * fontScale,
                     color: const Color(0xFFF83A71),
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -957,9 +967,9 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
             children: [
               Text(
                 label,
-                style: GoogleFonts.lexendDeca(
+                style: GoogleFonts.tajawal(
                   fontSize: 14.0 * scale * fontScale,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w700,
                   height: 1.25,
                   color: _labelColor,
                   letterSpacing: 0.2,
@@ -973,22 +983,25 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
                 keyboardType: keyboardType,
                 textAlign: TextAlign.left,
                 textDirection: TextDirection.ltr,
-                style: GoogleFonts.poppins(
-                  fontSize: 18.0 * scale * fontScale,
-                  fontWeight: FontWeight.w500,
+                textAlignVertical: const TextAlignVertical(y: -0.25),
+                cursorHeight: 24.0 * scale * fontScale,
+                style: GoogleFonts.tajawal(
+                  fontSize: 24.0 * scale * fontScale,
+                  fontWeight: FontWeight.w700,
                   color: _inputTextColor,
-                  height: 1.4,
+                  height: 1.2,
                 ),
                 decoration: InputDecoration(
                   hintText: placeholder,
-                  hintStyle: GoogleFonts.poppins(
-                    fontSize: 16.0 * scale * fontScale,
-                    fontWeight: FontWeight.w400,
+                  hintStyle: GoogleFonts.tajawal(
+                    fontSize: 22.0 * scale * fontScale,
+                    fontWeight: FontWeight.w600,
                     color: _labelColor.withValues(alpha: 0.5),
+                    height: 1.2,
                   ),
                   border: InputBorder.none,
                   isDense: true,
-                  contentPadding: EdgeInsets.zero,
+                  contentPadding: EdgeInsets.symmetric(vertical: 10.0 * scale),
                 ),
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
@@ -1057,45 +1070,54 @@ class _OtpDigitBoxState extends State<_OtpDigitBox> {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
+      height: 72.0 * widget.scale,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14.0 * widget.scale),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(
           color: _isFocused
               ? const Color(0xFF900EBF)
               : _hasText
                   ? const Color(0xFF221F48).withValues(alpha: 0.3)
                   : Colors.black.withValues(alpha: 0.08),
-          width: _isFocused ? 2.0 : 1.5,
+          width: 2.0,
         ),
         boxShadow: [
           BoxShadow(
-            offset: const Offset(0, 2),
-            blurRadius: 8,
-            color: Colors.black.withValues(alpha: 0.06),
+            offset: const Offset(0, 4),
+            blurRadius: 10,
+            color: (_isFocused ? const Color(0xFF900EBF) : const Color(0xFFAFA9A9)).withValues(alpha: 0.1),
           ),
         ],
       ),
-      child: TextField(
+      child: TextFormField(
         controller: widget.controller,
         focusNode: widget.focusNode,
         textAlign: TextAlign.center,
+        // Tajawal's numerals sit low in the em-box; nudge the baseline up
+        // (-0.25 ≈ 1/8 of cell height) so digits appear visually centered.
+        textAlignVertical: const TextAlignVertical(y: -0.25),
         keyboardType: TextInputType.number,
-        maxLength: 4,
-        textInputAction: widget.isLast ? TextInputAction.done : TextInputAction.next,
-        style: GoogleFonts.poppins(
-          fontSize: 24.0 * widget.scale * widget.fontScale,
-          fontWeight: FontWeight.w700,
+        cursorColor: const Color(0xFF900EBF),
+        cursorWidth: 2,
+        cursorHeight: 32.0 * widget.scale * widget.fontScale,
+        style: GoogleFonts.tajawal(
+          fontSize: 32.0 * widget.scale * widget.fontScale,
+          fontWeight: FontWeight.w800,
           color: _inputTextColor,
+          height: 1.2,
         ),
         decoration: InputDecoration(
+          isCollapsed: true,
           counterText: '',
           border: InputBorder.none,
           contentPadding: EdgeInsets.zero,
           hintText: '·',
-          hintStyle: GoogleFonts.poppins(
-            fontSize: 28.0 * widget.scale,
+          hintStyle: GoogleFonts.tajawal(
+            fontSize: 34.0 * widget.scale,
             color: _labelColor.withValues(alpha: 0.4),
+            height: 1.2,
           ),
         ),
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
