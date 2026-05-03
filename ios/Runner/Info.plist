@@ -73,6 +73,10 @@
 		<string>Tryd needs permission to save photos to your library.</string>
 		<key>NSAppleMusicUsageDescription</key>
 		<string>Tryd needs access to your music library to play songs during your run.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Tryd does not record audio. This permission is required by audio playback components.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>Tryd does not perform speech recognition. This permission is required by text-to-speech components used for run announcements.</string>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
