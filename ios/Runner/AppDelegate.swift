@@ -30,7 +30,7 @@ import UIKit
     let liveActivityChannel = FlutterMethodChannel(name: "tryd.app/live_activity",
                                                    binaryMessenger: controller.binaryMessenger)
     liveActivityChannel.setMethodCallHandler { call, result in
-      if #available(iOS 16.1, *) {
+      if #available(iOS 16.2, *) {
         WorkoutLiveActivityManager.shared.handle(call: call, result: result)
       } else {
         result(nil)
@@ -38,7 +38,7 @@ import UIKit
     }
 
     // Store the channel so URL-scheme callbacks can forward actions to Flutter.
-    if #available(iOS 16.1, *) {
+    if #available(iOS 16.2, *) {
       WorkoutLiveActivityManager.shared.setChannel(liveActivityChannel)
     }
 
@@ -56,7 +56,7 @@ import UIKit
   ) -> Bool {
     if url.scheme == "tryd", url.host == "workout" {
       let action = url.lastPathComponent // "pause" | "resume" | "finish"
-      if #available(iOS 16.1, *) {
+      if #available(iOS 16.2, *) {
         WorkoutLiveActivityManager.shared.sendAction(action)
       }
       return true
@@ -67,7 +67,7 @@ import UIKit
 
 // MARK: – Live Activity Manager
 
-@available(iOS 16.1, *)
+@available(iOS 16.2, *)
 class WorkoutLiveActivityManager {
   static let shared = WorkoutLiveActivityManager()
   private var currentActivity: Activity<WorkoutActivityAttributes>?
