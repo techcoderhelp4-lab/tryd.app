@@ -1,0 +1,12 @@
+{
+  "project": "tryd",
+  "platform": "ios",
+  "github": {
+    "owner": "techcoder01",
+    "repo": "tryd.app"
+  },
+  "ios": {
+    "path": "ios",
+    "scheme": "Runner"
+  }
+}
